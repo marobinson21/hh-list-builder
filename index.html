@@ -7525,10 +7525,32 @@ function clearSlot(iid,i){
   d.slots[i]=null; d.cfgs[i]={}; ST.modal=null; ST.modalState={}; saveAndRender();
 }
 
+// Remove a unit from an injected (PA-added) slot — its unit lives in injectedUnits, not slots.
+function clearInjected(iid,ii){
+  const d=ST.dets.find(x=>x.iid===iid);
+  if(!d) return;
+  d.injectedUnits=d.injectedUnits||[]; d.injectedCfgs=d.injectedCfgs||[];
+  d.injectedUnits[ii]=null; d.injectedCfgs[ii]={};
+  ST.modal=null; ST.modalState={}; saveAndRender();
+}
+
+// When the injected-slot customise modal is open, wargear setters must read/write the
+// injected unit's arrays (injectedUnits/injectedCfgs) instead of the regular slots/cfgs.
+// This proxy transparently redirects `slots`→injectedUnits and `cfgs`→injectedCfgs so the
+// existing setters work unchanged; otherwise it returns the detachment as-is.
+function modalDet(d){
+  if(!d || !ST.modal || ST.modal.mode!=='inj_customise') return d;
+  d.injectedUnits=d.injectedUnits||[]; d.injectedCfgs=d.injectedCfgs||[];
+  return new Proxy(d, {
+    get(t,p){ return p==='slots'?t.injectedUnits : p==='cfgs'?t.injectedCfgs : t[p]; },
+    set(t,p,v){ if(p==='slots') t.injectedUnits=v; else if(p==='cfgs') t.injectedCfgs=v; else t[p]=v; return true; }
+  });
+}
+
 // Toggle an optional champion upgrade (e.g. Evocatus Intendant). Resets the champion's
 // wargear config because the upgrade swaps which slots/options are available.
 function toggleChampUpgrade(iid,i){
-  const d=ST.dets.find(x=>x.iid===iid);
+  const d=modalDet(ST.dets.find(x=>x.iid===iid));
   const cfg=d.cfgs[i]||{};
   d.cfgs[i]={...cfg, champUpgrade:!cfg.champUpgrade, champion:{slots:{},addons:[],pairExchange:null}};
   saveAndRender();
@@ -7557,7 +7579,7 @@ function setLogisticalRole(iid,i,role){
 }
 
 function setSize(iid,i,v){
-  const d=ST.dets.find(x=>x.iid===iid);
+  const d=modalDet(ST.dets.find(x=>x.iid===iid));
   const u=d.slots[i]; if(!u)return;
   const s=Math.max(u.minSize,Math.min(u.maxSize,parseInt(v)||u.minSize));
   const cfg={...(d.cfgs[i]||{}),size:s};
@@ -7586,7 +7608,7 @@ function setSize(iid,i,v){
 }
 
 function setPairExchange(iid,i,pairId){
-  const d=ST.dets.find(x=>x.iid===iid);
+  const d=modalDet(ST.dets.find(x=>x.iid===iid));
   const cfg=d.cfgs[i]||{}; const u=d.slots[i];
   const wg=activeWargear(u,cfg);
   if(cfg.pairExchange===pairId){
@@ -7605,7 +7627,7 @@ function setPairExchange(iid,i,pairId){
 }
 
 function setSlotOption(iid,i,slotId,optId){
-  const d=ST.dets.find(x=>x.iid===iid);
+  const d=modalDet(ST.dets.find(x=>x.iid===iid));
   const cfg=d.cfgs[i]||{};
   const slots={...(cfg.slots||{})};
   if(slots[slotId]===optId){ delete slots[slotId]; }
@@ -7624,7 +7646,7 @@ function setSlotOption(iid,i,slotId,optId){
 }
 
 function toggleAddon(iid,i,addonId){
-  const d=ST.dets.find(x=>x.iid===iid);
+  const d=modalDet(ST.dets.find(x=>x.iid===iid));
   const cfg=d.cfgs[i]||{}; const u=d.slots[i];
   const wg=activeWargear(u,cfg);
   const addon=(wg.addons||[]).find(a=>a.id===addonId);
@@ -8191,7 +8213,7 @@ function setAllModelSections(iid, i, expand) {
 }
 
 function setPerModelPair(iid, i, modelKey, pairId) {
-  const d = ST.dets.find(x=>x.iid===iid);
+  const d = modalDet(ST.dets.find(x=>x.iid===iid));
   const cfg = d.cfgs[i]||{};
   const mc = modelKey==='champion' ? (cfg.champion||{}) : (cfg.chosen||[])[parseInt(modelKey)];
   if(!mc) return;
@@ -8260,7 +8282,7 @@ function optionValidInSlot(slot, chosen) {
 }
 
 function switchProfile(iid, i, profileId) {
-  const d = ST.dets.find(x=>x.iid===iid);
+  const d = modalDet(ST.dets.find(x=>x.iid===iid));
   const u = d.slots[i];
   const prof = (u.profiles||[]).find(p=>p.id===profileId);
   if (!prof) return;
@@ -8296,7 +8318,7 @@ function handlePmSlot(iid, i, modelKey, slotId, optId) {
 }
 
 function setPerModelSlot(iid, i, modelKey, slotId, optId) {
-  const d = ST.dets.find(x=>x.iid===iid);
+  const d = modalDet(ST.dets.find(x=>x.iid===iid));
   const cfg = d.cfgs[i]||{};
   const u=d.slots[i]; const wg=activeWargear(u,cfg);
   // Uniform slot: one selection shared by every model in the unit (e.g. Support squad
@@ -8354,7 +8376,7 @@ function setPerModelSlot(iid, i, modelKey, slotId, optId) {
 }
 
 function setPerModelAddonListChoice(iid, i, modelKey, addonId, itemId) {
-  const d = ST.dets.find(x=>x.iid===iid);
+  const d = modalDet(ST.dets.find(x=>x.iid===iid));
   const cfg = d.cfgs[i]||{};
   const mc = modelKey==='champion' ? (cfg.champion||{}) : (cfg.chosen||[])[parseInt(modelKey)];
   if(!mc) return;
@@ -9253,7 +9275,7 @@ function renderWargearModal(det, slotIdx) {
   }
 
   html += `<div class="mpt">Total: ${totalCost} pts</div>
-    <button class="clrbtn" onclick="clearSlot('${esc(iid)}',${slotIdx})">Remove unit from slot</button>
+    <button class="clrbtn" onclick="${(ST.modal&&ST.modal.mode==='inj_customise')?'clearInjected':'clearSlot'}('${esc(iid)}',${slotIdx})">Remove unit from slot</button>
   </div></div>`;
   return html;
 }
