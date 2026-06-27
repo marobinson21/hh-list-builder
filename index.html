@@ -606,6 +606,21 @@ const WEAPONS = {
   "the_lion_sword":      {label:"The Lion Sword", melee:true, im:"I", am:"A", sm:"+2", ap:2, d:3, specialRules:"—", rules:["Power","Sword of the Order"]},
   "the_fusil_actinaeus": {label:"The Fusil Actinaeus", range:18, fp:2, rs:7, ap:3, d:2, specialRules:"Breaching (4+)", rules:["Assault","Plasma"]},
   "the_wolf_blade":      {label:"The Wolf Blade", melee:true, im:"I", am:"A", sm:"S", ap:3, d:1, specialRules:"Shred (4+), Breaching (4+), Reaping Blow (2)", rules:["Chain","Sword of the Order"]},
+  "the_warmasters_talon": {label:"The Warmaster's Talon", profiles:[
+    {name:"Ranged", range:24, fp:5, rs:5, ap:3, d:1, specialRules:"Breaching (6+)", rules:["Bolt","Assault"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"S", ap:2, d:1, specialRules:"Reaping Blow (3), Shred (6+)", rules:["Power"]},
+  ]},
+  "worldbreaker":        {label:"Worldbreaker", melee:true, im:"-2", am:"A", sm:"+4", ap:2, d:3, specialRules:"Critical Hit (5+)", rules:["Power"]},
+  "mourn_it_all":        {label:"Mourn-It-All", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:2, specialRules:"Critical Hit (6+)", rules:["Power"]},
+  "banestrike_bolter":   {label:"Banestrike Bolter", range:18, fp:2, rs:4, ap:4, d:1, specialRules:"Breaching (6+)", rules:["Bolt"]},
+  "banestrike_combi_bolter": {label:"Banestrike Combi-bolter", range:18, fp:4, rs:4, ap:4, d:1, specialRules:"Breaching (6+)", rules:["Bolt"]},
+  "carsoran_power_axe":  {label:"Carsoran Power Axe", melee:true, im:"-1", am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (5+), Shred (6+)", rules:["Power"]},
+  "carsoran_power_tabar":{label:"Carsoran Power Tabar", melee:true, im:"-2", am:"A", sm:"+2", ap:3, d:1, specialRules:"Breaching (5+), Shred (5+)", rules:["Power"]},
+  "cthonian_power_claw": {label:"Cthonian Power Claw", melee:true, im:"-2", am:"A", sm:"+4", ap:2, d:2, specialRules:"Shred (5+)", rules:["Power"]},
+  "the_culling_blade":   {label:"The Culling Blade", melee:true, im:"I", am:"A", sm:"S", ap:3, d:1, specialRules:"Poisoned (2+), Critical Hit (6+), Breaching (5+)", rules:[]},
+  "the_axe_serpentis":   {label:"The Axe Serpentis", melee:true, im:"+1", am:"A", sm:"S", ap:2, d:1, specialRules:"Critical Hit (6+)", rules:["Power"]},
+  "staff_of_dark_authority": {label:"Staff of Dark Authority", melee:true, im:"I", am:"A", sm:"+1", ap:3, d:1, specialRules:"Critical Hit (6+)", rules:["Power"]},
+  "banestrike_fusilade": {label:"Banestrike Fusilade", range:10, fp:4, rs:5, ap:4, d:1, specialRules:"Pistol, Breaching (6+)", rules:["Bolt","Assault"]},
   "the_hydras_spite":   {label:"The Hydra's Spite", range:18, fp:2, rs:7, ap:3, d:1, specialRules:"Breaching (4+)", rules:["Plasma","Assault"]},
   "the_prince_and_the_prophet": {label:"The Prince and the Prophet", profiles:[
     {name:"The Prince", melee:true, im:"I", am:"A", sm:"S", ap:3, d:1, specialRules:"Breaching (5+), Thunderstrike", rules:["Power"]},
@@ -900,6 +915,71 @@ const WEAPONS = {
 const SU = {
   HighCommand:[
     {
+      id:"hc_horus_aximand", name:"'Little' Horus Aximand", basePts:170, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Horus Aximand",
+      traits:["Traitor","Sons of Horus","Master of the Legion","Shield"],
+      specialRules:["Haunted","Impact (I)"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:6,BS:5,S:4,T:4,W:4,I:5,A:5,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Mourn-It-All","Banestrike Bolter","Bolt Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"hc_abaddon", name:"Ezekyle Abaddon", basePts:250, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Ezekyle Abaddon",
+      traits:["Traitor","Sons of Horus","Master of the Legion"],
+      specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful","Deep Strike","Master of the Justaerin","Eternal Warrior (1)"],
+      modelTypes:["Infantry","Unique","Command","Heavy"],
+      stats:{M:6,WS:7,BS:5,S:4,T:5,W:5,I:5,A:6,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Cthonian Power Claw"],
+        slots:[
+          {id:"combi_bolter", label:"Banestrike Combi-bolter", options:[]},
+          {id:"harness", label:"Grenade Harness", options:[]},
+        ],
+        pairs:[{id:"paragon_blade", label:"Paragon Blade", pts:0, replaces:["combi_bolter","harness"], chips:["Paragon Blade"], sublabel:"Free — replaces banestrike combi-bolter & grenade harness"}],
+        addons:[],
+      }
+    },
+    {
+      id:"hc_garviel_loken", name:"Garviel Loken", basePts:175, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Loyalist"}, uniqueRule:"Garviel Loken",
+      traits:["Loyalist","Sons of Horus","Master of the Legion"],
+      specialRules:["Hatred (Traitor)","Born Survivor"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:6,BS:5,S:4,T:4,W:4,I:5,A:5,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Paragon Blade","Bolt Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"hc_tybalt_marr", name:"Tybalt Marr", basePts:160, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Tybalt Marr",
+      traits:["Traitor","Sons of Horus","Master of the Legion"],
+      specialRules:["Hatred (Shattered Legions)"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:6,BS:5,S:4,T:4,W:3,I:5,A:5,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["The Culling Blade","Banestrike Bolter","Bolt Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"hc_vheren_ashurhaddon", name:"Vheren Ashurhaddon", basePts:205, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Vheren Ashurhaddon",
+      traits:["Traitor","Sons of Horus","Master of the Legion"],
+      specialRules:[],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:7,BS:5,S:4,T:4,W:4,I:5,A:5,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["The Axe Serpentis","Banestrike Fusilade","Vexilla","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
       id:"hc_warsmith_artificer", name:"Warsmith in Artificer Armour", basePts:140, minSize:1, maxSize:1,
       req:{legion:"Iron Warriors"},
       traits:["[Allegiance]","Iron Warriors","Master of the Legion"],
@@ -1173,6 +1253,76 @@ const SU = {
     },
   ],
   Command:[
+    {
+      id:"cmd_dark_emissary", name:"Dark Emissary", basePts:90, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Dark Emissary",
+      traits:["Traitor","Sons of Horus"],
+      specialRules:["Eyes of the Warmaster"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:5,BS:5,S:4,T:4,W:4,I:5,A:4,LD:10,CL:10,WP:9,IN:8,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:["Staff of Dark Authority","Frag Grenades","Krak Grenades"],
+        slots:[
+          {id:"pistol", label:"Bolt Pistol", options:[
+            {id:"legion_pistol", label:"Legion Pistol", pts:0, list:"legion_pistols"},
+          ]},
+        ],
+        pairs:[], addons:[],
+      }
+    },
+    {
+      id:"cmd_maloghurst", name:"Maloghurst the Twisted", basePts:140, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Maloghurst the Twisted",
+      traits:["Traitor","Sons of Horus"],
+      specialRules:["Broken in Body","Slow and Purposeful"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:6,WS:5,BS:5,S:4,T:4,W:4,I:5,A:4,LD:10,CL:9,WP:9,IN:10,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:["Power Sword","Banestrike Bolter","Bolt Pistol","Frag Grenades","Krak Grenades","Icon of the Warmaster"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"cmd_dark_emissary_terminator", name:"Sons of Horus Dark Emissary in Terminator Armour", basePts:120, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Dark Emissary (Terminator)",
+      traits:["Traitor","Sons of Horus"],
+      profiles:[
+        {
+          id:"cataphractii", label:"Cataphractii Dark Emissary", pts:0,
+          stats:{M:6,WS:5,BS:5,S:4,T:5,W:5,I:5,A:4,LD:10,CL:10,WP:9,IN:8,SAV:"2+",INV:"4+"},
+          type:"Infantry", subtypes:["Unique","Command","Heavy"],
+          specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful","Eyes of the Warmaster"],
+          wargear:{
+            included_slots:["Staff of Dark Authority"],
+            pairs:[],
+            slots:[
+              { id:"combi_bolter", label:"Combi-bolter", options:[
+                {id:"volkite_charger", label:"Volkite Charger", pts:0},
+                {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
+              ]},
+            ],
+            addons:[],
+          }
+        },
+        {
+          id:"tartaros", label:"Tartaros Dark Emissary", pts:0,
+          stats:{M:7,WS:5,BS:5,S:4,T:5,W:5,I:5,A:4,LD:10,CL:10,WP:9,IN:8,SAV:"2+",INV:"5+"},
+          type:"Infantry", subtypes:["Unique","Command"],
+          specialRules:["Bulky (2)","Implacable Advance","Eyes of the Warmaster"],
+          wargear:{
+            included_slots:["Staff of Dark Authority"],
+            pairs:[],
+            slots:[
+              { id:"combi_bolter", label:"Combi-bolter", options:[
+                {id:"volkite_charger", label:"Volkite Charger", pts:0},
+                {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
+              ]},
+            ],
+            addons:[],
+          }
+        },
+      ],
+    },
     {
       id:"cmd_narik_dreygur", name:"Nârik Dreygur", basePts:115, minSize:1, maxSize:1,
       req:{legion:"Iron Warriors", allegiance:"Loyalist"}, uniqueRule:"Nârik Dreygur",
@@ -3237,6 +3387,50 @@ const SU = {
   ],
   Retinue:[
     {
+      id:"ret_soh_chieftain_squad", name:"Sons of Horus Chieftain Squad", basePts:155, minSize:5, maxSize:10, ptsPerModel:25,
+      req:{legion:"Sons of Horus"},
+      traits:["[Allegiance]","Sons of Horus","Shield"],
+      specialRules:["Honour Above All"],
+      modelTypes:["Infantry","Heavy"],
+      championLabel:"Chieftain", baseModelLabel:"Chieftain",
+      baseSizeBreakdown:"5 Chieftains",
+      championStats:{M:7,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"5+"},
+      modelStats:{M:7,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"5+"},
+      wargear:{
+        champion:{
+          included_slots:["Bolt Pistol","Boarding Shield","Frag Grenades","Krak Grenades"],
+          pairs:[],
+          slots:[
+            { id:"ranged", label:"Banestrike Bolter", options:[
+              {id:"legion_standard", label:"Legion Standard", pts:20, unique_in_unit:true},
+            ]},
+            { id:"melee", label:"Chainsword", options:[
+              {id:"chainaxe",     label:"Chainaxe",     pts:0},
+              {id:"power_weapon", label:"Power Weapon", pts:10, list:"power_weapons"},
+              {id:"power_fist",   label:"Power Fist",   pts:15},
+            ]},
+          ],
+          addons:[],
+        },
+        perModel:{
+          included_slots:["Bolt Pistol","Boarding Shield","Frag Grenades","Krak Grenades"],
+          modelTypes:["Infantry","Heavy"],
+          pairs:[],
+          slots:[
+            { id:"ranged", label:"Banestrike Bolter", options:[
+              {id:"legion_standard", label:"Legion Standard", pts:20, unique_in_unit:true},
+            ]},
+            { id:"melee", label:"Chainsword", options:[
+              {id:"chainaxe",     label:"Chainaxe",     pts:0},
+              {id:"power_weapon", label:"Power Weapon", pts:10, list:"power_weapons"},
+              {id:"power_fist",   label:"Power Fist",   pts:15},
+            ]},
+          ],
+          addons:[],
+        },
+      },
+    },
+    {
       id:"ret_iron_circle", name:"Iron Circle Maniple", basePts:150, minSize:1, maxSize:6, ptsPerModel:135,
       req:{legion:"Iron Warriors"},
       traits:["[Allegiance]","Iron Warriors","Shield"],
@@ -3736,6 +3930,65 @@ const SU = {
     },
   ],
   Elites:[
+    {
+      id:"e_justaerin_terminator_squad", name:"Justaerin Terminator Squad",
+      basePts:275, minSize:5, maxSize:10, ptsPerModel:50,
+      req:{legion:"Sons of Horus"},
+      traits:["[Allegiance]","Sons of Horus"],
+      specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful","Vanguard (4)"],
+      championLabel:"Justaerin", baseModelLabel:"Justaerin",
+      baseSizeBreakdown:"5 Justaerin",
+      championStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:4,LD:10,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      modelStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:4,LD:10,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      wargear:{
+        champion:{
+          modelTypes:["Infantry","Heavy"], included_slots:[],
+          pairs:[{id:"lightning_claws", label:"Pair of Lightning Claws", pts:10, replaces:["combi_bolter","power_weapon"], sublabel:"Replaces banestrike combi-bolter & power weapon"}],
+          slots:[
+            {id:"combi_bolter", label:"Banestrike Combi-bolter", options:[
+              {id:"volkite_charger",   label:"Volkite Charger",    pts:0},
+              {id:"combi_weapon",      label:"Combi-weapon",       pts:0, list:"combi_weapons"},
+              {id:"heavy_flamer",      label:"Heavy Flamer",       pts:10, per5cap:"just_heavy", per5max:1},
+              {id:"multi_melta",       label:"Multi-melta",        pts:15, per5cap:"just_heavy", per5max:1},
+              {id:"reaper_autocannon", label:"Reaper Autocannon",  pts:15, per5cap:"just_heavy", per5max:1},
+              {id:"plasma_blaster",    label:"Plasma Blaster",     pts:10, per5cap:"just_heavy", per5max:1},
+            ]},
+            {id:"power_weapon", label:"Power Weapon", options:[
+              {id:"pw_type",            label:"Specify Type",       pts:0,  list:"power_weapons"},
+              {id:"lightning_claw",     label:"Lightning Claw",     pts:5},
+              {id:"carsoran_power_axe", label:"Carsoran Power Axe", pts:5},
+              {id:"power_fist",         label:"Power Fist",         pts:10},
+              {id:"chainfist",          label:"Chainfist",          pts:10},
+              {id:"thunder_hammer",     label:"Thunder Hammer",     pts:10},
+            ]},
+          ],
+          addons:[],
+        },
+        perModel:{
+          modelTypes:["Infantry","Heavy"], included_slots:[],
+          pairs:[{id:"lightning_claws", label:"Pair of Lightning Claws", pts:10, replaces:["combi_bolter","power_weapon"], sublabel:"Replaces banestrike combi-bolter & power weapon"}],
+          slots:[
+            {id:"combi_bolter", label:"Banestrike Combi-bolter", options:[
+              {id:"volkite_charger",   label:"Volkite Charger",    pts:0},
+              {id:"combi_weapon",      label:"Combi-weapon",       pts:0, list:"combi_weapons"},
+              {id:"heavy_flamer",      label:"Heavy Flamer",       pts:10, per5cap:"just_heavy", per5max:1},
+              {id:"multi_melta",       label:"Multi-melta",        pts:15, per5cap:"just_heavy", per5max:1},
+              {id:"reaper_autocannon", label:"Reaper Autocannon",  pts:15, per5cap:"just_heavy", per5max:1},
+              {id:"plasma_blaster",    label:"Plasma Blaster",     pts:10, per5cap:"just_heavy", per5max:1},
+            ]},
+            {id:"power_weapon", label:"Power Weapon", options:[
+              {id:"pw_type",            label:"Specify Type",       pts:0,  list:"power_weapons"},
+              {id:"lightning_claw",     label:"Lightning Claw",     pts:5},
+              {id:"carsoran_power_axe", label:"Carsoran Power Axe", pts:5},
+              {id:"power_fist",         label:"Power Fist",         pts:10},
+              {id:"chainfist",          label:"Chainfist",          pts:10},
+              {id:"thunder_hammer",     label:"Thunder Hammer",     pts:10},
+            ]},
+          ],
+          addons:[],
+        },
+      },
+    },
     {
       id:"e_locutarus_storm", name:"Ultramarines Locutarus Storm Squad", basePts:200, minSize:5, maxSize:10, ptsPerModel:38,
       req:{legion:"Ultramarines"},
@@ -4896,14 +5149,14 @@ const SU = {
             {id:"twin_lascannon", label:"Twin Lascannon", pts:15},
             {id:"pf_cb", label:"Gravis Power Fist & Combi-bolter", pts:5, chips:["Gravis Power Fist","Combi-bolter"]},
             {id:"pf_hf", label:"Gravis Power Fist & Heavy Flamer", pts:10, chips:["Gravis Power Fist","Heavy Flamer"]},
-            {id:"pf_pb", label:"Gravis Power Fist & Plasma Blaster", pts:15},
-            {id:"pf_gg", label:"Gravis Power Fist & Graviton Gun", pts:15},
-            {id:"pf_m",  label:"Gravis Power Fist & Meltagun", pts:10},
+            {id:"pf_pb", label:"Gravis Power Fist & Plasma Blaster", pts:15, chips:["Gravis Power Fist","Plasma Blaster"]},
+            {id:"pf_gg", label:"Gravis Power Fist & Graviton Gun", pts:15, chips:["Gravis Power Fist","Graviton Gun"]},
+            {id:"pf_m",  label:"Gravis Power Fist & Meltagun", pts:10, chips:["Gravis Power Fist","Meltagun"]},
             {id:"cf_cb", label:"Gravis Chainfist & Combi-bolter", pts:5, chips:["Gravis Chainfist","Combi-bolter"]},
             {id:"cf_hf", label:"Gravis Chainfist & Heavy Flamer", pts:10, chips:["Gravis Chainfist","Heavy Flamer"]},
-            {id:"cf_pb", label:"Gravis Chainfist & Plasma Blaster", pts:15},
-            {id:"cf_gg", label:"Gravis Chainfist & Graviton Gun", pts:15},
-            {id:"cf_m",  label:"Gravis Chainfist & Meltagun", pts:10},
+            {id:"cf_pb", label:"Gravis Chainfist & Plasma Blaster", pts:15, chips:["Gravis Chainfist","Plasma Blaster"]},
+            {id:"cf_gg", label:"Gravis Chainfist & Graviton Gun", pts:15, chips:["Gravis Chainfist","Graviton Gun"]},
+            {id:"cf_m",  label:"Gravis Chainfist & Meltagun", pts:10, chips:["Gravis Chainfist","Meltagun"]},
           ]},
           { id:"mount2", label:"Weapon Mount 2", options:[
             {id:"gravis_bolt_cannon", label:"Gravis Bolt Cannon", pts:0},
@@ -4916,14 +5169,14 @@ const SU = {
             {id:"twin_lascannon", label:"Twin Lascannon", pts:15},
             {id:"pf_cb", label:"Gravis Power Fist & Combi-bolter", pts:5, chips:["Gravis Power Fist","Combi-bolter"]},
             {id:"pf_hf", label:"Gravis Power Fist & Heavy Flamer", pts:10, chips:["Gravis Power Fist","Heavy Flamer"]},
-            {id:"pf_pb", label:"Gravis Power Fist & Plasma Blaster", pts:15},
-            {id:"pf_gg", label:"Gravis Power Fist & Graviton Gun", pts:15},
-            {id:"pf_m",  label:"Gravis Power Fist & Meltagun", pts:10},
+            {id:"pf_pb", label:"Gravis Power Fist & Plasma Blaster", pts:15, chips:["Gravis Power Fist","Plasma Blaster"]},
+            {id:"pf_gg", label:"Gravis Power Fist & Graviton Gun", pts:15, chips:["Gravis Power Fist","Graviton Gun"]},
+            {id:"pf_m",  label:"Gravis Power Fist & Meltagun", pts:10, chips:["Gravis Power Fist","Meltagun"]},
             {id:"cf_cb", label:"Gravis Chainfist & Combi-bolter", pts:5, chips:["Gravis Chainfist","Combi-bolter"]},
             {id:"cf_hf", label:"Gravis Chainfist & Heavy Flamer", pts:10, chips:["Gravis Chainfist","Heavy Flamer"]},
-            {id:"cf_pb", label:"Gravis Chainfist & Plasma Blaster", pts:15},
-            {id:"cf_gg", label:"Gravis Chainfist & Graviton Gun", pts:15},
-            {id:"cf_m",  label:"Gravis Chainfist & Meltagun", pts:10},
+            {id:"cf_pb", label:"Gravis Chainfist & Plasma Blaster", pts:15, chips:["Gravis Chainfist","Plasma Blaster"]},
+            {id:"cf_gg", label:"Gravis Chainfist & Graviton Gun", pts:15, chips:["Gravis Chainfist","Graviton Gun"]},
+            {id:"cf_m",  label:"Gravis Chainfist & Meltagun", pts:10, chips:["Gravis Chainfist","Meltagun"]},
           ]},
         ],
         addons:[
@@ -6675,6 +6928,31 @@ const SU = {
       }
     },
     {
+      id:"wl_horus_ascended", name:"Horus Ascended", basePts:850, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Horus",
+      traits:["Traitor","Sons of Horus","Master of the Legion"],
+      specialRules:["Bulky (6)","Deep Strike","Feel No Pain (5+)","Master of War","The Warmaster Ascended","Eternal Warrior (3)","Fear (1)","The Spreading Corruption"],
+      modelTypes:["Paragon","Unique"],
+      stats:{M:8,WS:9,BS:7,S:8,T:8,W:8,I:7,A:7,LD:14,CL:12,WP:12,IN:10,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["The Warmaster's Talon","Worldbreaker"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"wl_horus_lupercal", name:"Horus Lupercal", basePts:530, minSize:1, maxSize:1,
+      req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Horus",
+      primeAllTroops:{count:4, allowed:["Tactical Squad","Despoiler Squad"]},
+      traits:["Traitor","Sons of Horus","Master of the Legion"],
+      specialRules:["Sire of the Sons of Horus","Bulky (6)","Deep Strike","Master of War","Eternal Warrior (2)"],
+      modelTypes:["Paragon","Unique"],
+      stats:{M:8,WS:8,BS:6,S:6,T:6,W:7,I:6,A:6,LD:12,CL:12,WP:10,IN:10,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["The Warmaster's Talon","Worldbreaker"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
       id:"wl_alpharius", name:"Alpharius", basePts:465, minSize:1, maxSize:1,
       req:{legion:"Alpha Legion"}, uniqueRule:"Alpharius",
       primeAllTroops:{count:4, allowed:["Tactical Squad","Assault Squad"]},
@@ -6707,6 +6985,7 @@ const SU = {
 const EQUIPMENT = {
   "Stasis Grenades":      {text:"Rules/profile pending — please provide."},
   "Vexilla":              {text:"Add 1 to the Melee Combat Resolution score of the unit carrying this item."},
+  "Icon of the Warmaster": {text:"When this model is part of a unit that contains models with the Line (X) or Vanguard (X) rules, modify the value of X by +1."},
   "Nuncio-vox":           {text:"The unit may attempt to remove one Status token from itself at the beginning of its turn."},
   "Augury Scanner":       {text:"Ranged attacks made by models in this unit ignore the Shrouded special rule."},
   "Narthecium":           {text:"If this unit must make a Characteristic Check during the Morale Sub-Phase (after the Shooting Phase), this model may make a Recovery Test. If successful, this unit gets a -2 bonus to the Characteristic Check."},
@@ -6781,6 +7060,16 @@ const RULES = {
   "The Lion's Choler": {type:"special_rule", text:"Rules text pending — please provide."},
   "Sword of the Order": {type:"weapon_special", text:"Rules text pending — please provide."},
   "Malefic": {type:"special_rule", text:"• If this unit would gain a Tactical Status, instead it suffers D3 automatic wounds with AP 2 Damage 1. No saving throws of any kind may be made against these wounds.<br>• Not affected by any rules that would negatively modify their Leadership, Cool, Willpower, or Intelligence.<br>• May never join or be joined by a model or unit that does not also have the Malefic type."},
+  "Master of War": {type:"special_rule", text:"While this model is on the Battlefield, you have +1 Reaction Allotment each turn."},
+  "The Warmaster Ascended": {type:"special_rule", text:"This model cannot be included in the same army as Horus Lupercal."},
+  "The Spreading Corruption": {type:"special_rule", text:"This model may join units with the Malefic type, and while in that unit is treated as having that type."},
+  "Sire of the Sons of Horus": {type:"special_rule", text:"If this is a Sons of Horus army:<br>• If four or more Troops slots in your Primary Detachment are filled with Tactical Squad and/or Despoiler Squad units, then all of those slots are considered Prime Slots.<br>• Until the end of the first turn, all non-Vehicle Sons of Horus models gain +1 Move Characteristic."},
+  "Haunted": {type:"special_rule", text:"Gain 2 Victory Points if Garviel Loken is removed as a casualty while engaged in a Challenge with this model."},
+  "Master of the Justaerin": {type:"special_rule", text:"If this model joins a Justaerin Terminator Squad unit in Reserves, models in that unit gain the Deep Strike special rule. In addition, while this model is deployed using Deep Strike, this model and each model in its unit gain Feel No Pain (5+) until your next turn."},
+  "Born Survivor": {type:"special_rule", text:"If this model is reduced to 0 wounds or less, roll one D6. On a 4+, this model is not removed as a casualty and has its remaining wounds set to 1."},
+  "Eyes of the Warmaster": {type:"special_rule", text:"If this model joins a unit with a different Faction, the Leadership and Cool characteristics of models in that unit are not reduced as normal."},
+  "Broken in Body": {type:"special_rule", text:"When an enemy model declares a Challenge, you may select whether or not this model is eligible to take part in a Challenge. If it is not, and there are no other eligible models in the combat who could accept a Challenge, the Challenge fails without penalty."},
+  "Honour Above All": {type:"special_rule", text:"When any model that is in this unit or has joined this unit takes part in a Challenge, this model gains +1 to Wound during the Fight Sub-Phase following this Challenge."},
   "Calculating Swordsman": {type:"special_rule", text:"While this model is in a Challenge, it has access to the following special Gambit — Calculating Swordsman: if this Gambit is selected, gain a positive modifier to the Focus Roll equal to the current Battle Turn (maximum of +4)."},
   "Everywhere and Nowhere": {type:"special_rule", text:"After both players have deployed, this model may redeploy. You may swap which unit it has joined, including placing it inside a transport if needed (that transport must have enough free capacity). This model may not redeploy outside of its own deployment zone, or on a transport outside its own deployment zone."},
   "Harrowmaster": {type:"special_rule", text:"As long as no model in the unit this model has joined has Bulky, that unit gains the Infiltrate (12) rule."},
@@ -7496,6 +7785,11 @@ function defaultCfg(u){
     : [];
   return {size, pairExchange:null, slots:{}, addons:[], champion:{slots:{},addons:[],pairExchange:null}, chosen};
 }
+
+// A "uniform" squad has no distinct leader — its champion and base models share one label.
+// Such units are modelled with the champion/model split for storage, but should render as a
+// single numbered group (Model 1..N), with one merged type group and one composition group.
+function isUniform(u){ return !!(u && u.championLabel && u.baseModelLabel && u.championLabel===u.baseModelLabel); }
 
 function assignById(uid){
   const u=UNIT_LOOKUP[uid]; if(!u)return;
@@ -8560,8 +8854,13 @@ function renderWargearModal(det, slotIdx) {
   if (wg.perModel) {
     const champTypes = [...new Set([...((wg.champion && wg.champion.modelTypes) || []), ...champGrantTypes])];
     const perModelTypes = (wg.perModel && wg.perModel.modelTypes) || [];
-    if (champTypes.length || champGrantTraits.length) typeGroups.push({label:(u.championLabel||'Champion'), types:champTypes, traits:champGrantTraits});
-    if (perModelTypes.length) typeGroups.push({label:(u.baseModelLabel||'Model'), types:perModelTypes});
+    if (isUniform(u)) {
+      const merged = [...new Set([...champTypes, ...perModelTypes])];
+      if (merged.length || champGrantTraits.length) typeGroups.push({label:'', types:merged, traits:champGrantTraits});
+    } else {
+      if (champTypes.length || champGrantTraits.length) typeGroups.push({label:(u.championLabel||'Champion'), types:champTypes, traits:champGrantTraits});
+      if (perModelTypes.length) typeGroups.push({label:(u.baseModelLabel||'Model'), types:perModelTypes});
+    }
     if (!typeGroups.length && singleTypes.length) typeGroups.push({label:'', types:singleTypes});
   } else if (singleTypes.length) {
     typeGroups.push({label:'', types:singleTypes});
@@ -9237,10 +9536,11 @@ function renderWargearModal(det, slotIdx) {
       <button onclick="setAllModelSections('${esc(iid)}',${slotIdx},true)" style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.04em;padding:3px 9px;border-radius:4px;cursor:pointer;border:.5px solid var(--gold);background:var(--card-bg);color:var(--gold-dark);">Expand all</button>
       <button onclick="setAllModelSections('${esc(iid)}',${slotIdx},false)" style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.04em;padding:3px 9px;border-radius:4px;cursor:pointer;border:.5px solid var(--gold);background:var(--card-bg);color:var(--gold-dark);">Collapse all</button>
     </div>`;
-    html += renderModelSection('champion', wg.champion, cfg.champion||{}, championLabel, false);
+    const _uniformSquad = isUniform(u) && !upgraded;
+    html += renderModelSection('champion', wg.champion, cfg.champion||{}, _uniformSquad ? modelLabel+' 1' : championLabel, false);
     // Models
     (cfg.chosen||[]).forEach((mc, idx) => {
-      html += renderModelSection(String(idx), wg.perModel, mc, modelLabel+' '+(idx+1), false);
+      html += renderModelSection(String(idx), wg.perModel, mc, modelLabel+' '+(idx + (_uniformSquad?2:1)), false);
     });
     html += `</div>`;
   }
@@ -10014,7 +10314,7 @@ function _modelGearLabels(blk, mc){
 
 function pmPlural(label,n){
   if(n===1) return label;
-  if(/(ii|s|x|Cavalry|Infantry)$/i.test(label)) return label;   // latin/mass/already-plural
+  if(/(ii|s|x|Cavalry|Infantry|Justaerin)$/i.test(label)) return label;   // latin/mass/already-plural
   if(/[^aeiou]y$/.test(label)) return label.slice(0,-1)+'ies';
   if(/(ch|sh|z)$/i.test(label)) return label+'es';
   return label+'s';
@@ -10057,15 +10357,22 @@ function playComposition(u, cfg){
   const groups=[];
   if(wg.perModel){
     const size=cfg.size||u.minSize||1;
-    const champLabel=(cfg.champUpgrade&&u.championUpgrade)?u.championUpgrade.label:(u.championLabel||'Champion');
+    const upgraded=cfg.champUpgrade&&u.championUpgrade;
+    const champLabel=upgraded?u.championUpgrade.label:(u.championLabel||'Champion');
     const baseLabel=u.baseModelLabel||'Model';
-    groups.push({n:1,label:champLabel,weps:[...incl,..._modelGearLabels(wg.champion,cfg.champion||{})]});
+    const uniform=isUniform(u)&&!upgraded;
     const baseCount=size-1, chosen=cfg.chosen||[], sigMap={};
-    for(let k=0;k<baseCount;k++){
-      const weps=[...incl,..._modelGearLabels(wg.perModel,chosen[k]||{})];
-      const sig=[...new Set(weps)].sort().join('|');
-      if(!sigMap[sig]){ sigMap[sig]={n:0,label:baseLabel,weps}; groups.push(sigMap[sig]); }
+    const addToGroup=(weps,label)=>{
+      const sig=label+'::'+[...new Set(weps)].sort().join('|');
+      if(!sigMap[sig]){ sigMap[sig]={n:0,label,weps}; groups.push(sigMap[sig]); }
       sigMap[sig].n++;
+    };
+    if(uniform){
+      addToGroup([...incl,..._modelGearLabels(wg.champion,cfg.champion||{})], baseLabel);
+      for(let k=0;k<baseCount;k++) addToGroup([...incl,..._modelGearLabels(wg.perModel,chosen[k]||{})], baseLabel);
+    } else {
+      groups.push({n:1,label:champLabel,weps:[...incl,..._modelGearLabels(wg.champion,cfg.champion||{})]});
+      for(let k=0;k<baseCount;k++) addToGroup([...incl,..._modelGearLabels(wg.perModel,chosen[k]||{})], baseLabel);
     }
   } else {
     groups.push({n:1,label:u.name,weps:[...incl,..._modelGearLabels(wg,cfg)]});
