@@ -11112,7 +11112,7 @@ const cloud = (() => {
 
 /* ── Auth UI ─────────────────────────────────────────────────────────────── */
 function _auth(){ if(!ST.auth) ST.auth={open:false, mode:"signin", busy:false, err:"", msg:""}; return ST.auth; }
-function openAuth(){ const a=_auth(); a.open=true; a.err=""; a.msg=""; a.busy=false; render(); }
+function openAuth(){ const a=_auth(); a.open=true; a.err=""; a.msg=""; a.busy=false; if(cloud.currentUser()){ _myl().msg=""; refreshMyLists(); } else render(); }
 function closeAuth(){ const a=_auth(); a.open=false; a.err=""; a.msg=""; render(); }
 function authMode(m){ const a=_auth(); a.mode=m; a.err=""; a.msg=""; render(); }
 async function authSubmit(){
@@ -11121,10 +11121,10 @@ async function authSubmit(){
   const pw=(document.getElementById("auth-pw")||{}).value||"";
   a.err=""; a.msg=""; a.busy=true; render();
   try{
-    if(a.mode==="signin"){ await cloud.signIn(email, pw); a.open=false; }
+    if(a.mode==="signin"){ await cloud.signIn(email, pw); await refreshMyLists(); }
     else if(a.mode==="signup"){
       await cloud.signUp(email, pw);
-      if(cloud.currentUser()){ a.open=false; }
+      if(cloud.currentUser()){ await refreshMyLists(); }
       else { a.msg="Account created — check your email to confirm, then sign in."; a.mode="signin"; }
     }
     else if(a.mode==="reset"){ await cloud.resetPassword(email); a.msg="If that email exists, a reset link is on its way."; }
@@ -11132,6 +11132,85 @@ async function authSubmit(){
   a.busy=false; render();
 }
 async function authSignOut(){ await cloud.signOut(); const a=_auth(); a.open=false; render(); }
+
+/* ── My Lists (cloud save/load) ──────────────────────────────────────────── */
+function _myl(){ if(!ST.myl) ST.myl={lists:null, loading:false, saving:false, err:"", msg:"", renamingId:null}; return ST.myl; }
+function _curName(){ return ST.currentListName || "Untitled Army"; }
+function _saveMeta(name){ return { name:name||_curName(), legion:ST.legion, allegiance:ST.allegiance, points:totalPts(), schema_ver:2 }; }
+
+async function refreshMyLists(){
+  const s=_myl(); s.loading=true; s.err=""; render();
+  try{ s.lists = (await cloud.listLists()) || []; }
+  catch(e){ s.err = e.message || "Couldn't load your lists."; s.lists = s.lists || []; }
+  s.loading=false; render();
+}
+async function saveCurrent(asNew){
+  const s=_myl();
+  const nameInput=document.getElementById("myl-name");
+  const name=(((nameInput&&nameInput.value)||_curName()).trim())||"Untitled Army";
+  const data=serialise(ST);
+  s.saving=true; s.err=""; s.msg=""; render();
+  try{
+    if(!asNew && ST.currentListId){
+      await cloud.updateList(ST.currentListId, _saveMeta(name), data);
+      ST.currentListName=name; s.msg="Saved.";
+    } else {
+      const row=await cloud.createList(_saveMeta(name), data);
+      if(row){ ST.currentListId=row.id; ST.currentListName=row.name; }
+      s.msg="Saved as a new list.";
+    }
+    await refreshMyLists();
+  }catch(e){ s.err=e.message||"Save failed."; }
+  s.saving=false; render();
+}
+async function loadCloudList(id){
+  const s=_myl(); const row=(s.lists||[]).find(x=>x.id===id)||{};
+  s.err=""; s.msg=""; render();
+  try{
+    const data=await cloud.loadList(id);
+    if(!data){ s.err="That list couldn't be loaded."; render(); return; }
+    const loaded=deserialise(data);
+    if(!loaded){ s.err="That list is in an unrecognised format."; render(); return; }
+    Object.assign(ST, loaded);
+    ST.currentListId=id; ST.currentListName=row.name||"Untitled Army";
+    ST.modal=null; _auth().open=false;
+    pushToURL(data); render();
+  }catch(e){ s.err=e.message||"Load failed."; render(); }
+}
+async function deleteCloudList(id){
+  const s=_myl();
+  if(!confirm("Delete this list permanently? This can't be undone.")) return;
+  s.err=""; s.msg=""; render();
+  try{
+    await cloud.deleteList(id);
+    if(ST.currentListId===id){ ST.currentListId=null; ST.currentListName=null; }
+    await refreshMyLists();
+  }catch(e){ s.err=e.message||"Delete failed."; render(); }
+}
+async function duplicateCloudList(id){
+  const s=_myl(); const row=(s.lists||[]).find(x=>x.id===id)||{};
+  s.err=""; s.msg=""; render();
+  try{
+    const data=await cloud.loadList(id);
+    if(!data){ s.err="Couldn't duplicate that list."; render(); return; }
+    await cloud.createList({ name:(row.name||"Untitled")+" (copy)", legion:row.legion||ST.legion,
+      allegiance:row.allegiance||ST.allegiance, points:row.points||0, schema_ver:2 }, data);
+    await refreshMyLists();
+  }catch(e){ s.err=e.message||"Duplicate failed."; render(); }
+}
+function startRename(id){ _myl().renamingId=id; render(); }
+function cancelRename(){ _myl().renamingId=null; render(); }
+async function commitRename(id){
+  const s=_myl(); const inp=document.getElementById("myl-rename");
+  const name=(((inp&&inp.value)||"").trim());
+  if(!name){ s.renamingId=null; render(); return; }
+  s.err=""; render();
+  try{
+    await cloud.renameList(id, name);
+    if(ST.currentListId===id) ST.currentListName=name;
+    s.renamingId=null; await refreshMyLists();
+  }catch(e){ s.err=e.message||"Rename failed."; render(); }
+}
 
 function renderAuthModal(){
   const a=_auth(); if(!a.open) return "";
@@ -11144,11 +11223,45 @@ function renderAuthModal(){
   }
   const u=cloud.currentUser();
   if(u){
-    return wrap(`<div class="mt">Account</div>
-      <div class="ms">Signed in as <b>${esc(u.email||"")}</b></div>
+    const s=_myl();
+    const status = s.err ? `<div style="color:#f06060;font-size:13px;margin:4px 0">${esc(s.err)}</div>`
+                 : s.msg ? `<div style="color:#6fbf6f;font-size:13px;margin:4px 0">${esc(s.msg)}</div>` : "";
+    const rowsHtml = s.loading
+      ? `<div style="color:var(--gold-light);padding:14px 2px">Loading your lists…</div>`
+      : !(s.lists&&s.lists.length)
+        ? `<div style="color:var(--gold-light);padding:14px 2px">No saved lists yet — save your current army above.</div>`
+        : s.lists.map(it=>{
+            const when = it.updated_at ? new Date(it.updated_at).toLocaleDateString() : "";
+            const cur  = ST.currentListId===it.id ? ` <span style="color:var(--gold)">★</span>` : "";
+            if(s.renamingId===it.id){
+              return `<div style="display:flex;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #2a2418">
+                <input id="myl-rename" value="${esc(it.name||"")}" onkeydown="if(event.key==='Enter')commitRename('${esc(it.id)}');if(event.key==='Escape')cancelRename()"
+                  style="flex:1;padding:6px;background:#12100c;border:1px solid var(--gold);color:#e8e0cc;border-radius:3px;font-size:14px">
+                <button class="clrbtn" style="width:auto;padding:5px 12px" onclick="commitRename('${esc(it.id)}')">Save</button>
+                <button class="clrbtn" style="width:auto;padding:5px 10px" onclick="cancelRename()">✕</button></div>`;
+            }
+            const b=(fn,label,color)=>`<button onclick="${fn}('${esc(it.id)}')" style="padding:4px 9px;background:transparent;border:1px solid ${color||'var(--gold)'};color:${color||'var(--gold-light)'};border-radius:3px;cursor:pointer;font-size:12px;font-family:'Cinzel',serif">${label}</button>`;
+            return `<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #2a2418">
+              <div style="flex:1;min-width:0">
+                <div style="color:#e8e0cc;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name||"Untitled")}${cur}</div>
+                <div style="color:var(--gold-light);font-size:12px">${esc(it.legion||"")}${it.points!=null?" · "+it.points+" pts":""}${when?" · "+when:""}</div>
+              </div>
+              <div style="display:flex;gap:5px;flex-shrink:0">
+                ${b('loadCloudList','Load','#6fbf6f')}${b('startRename','Rename')}${b('duplicateCloudList','Duplicate')}${b('deleteCloudList','Delete','#c46060')}
+              </div></div>`;
+          }).join("");
+    return wrap(`<div class="mt">Your Lists</div>
+      <div style="font-size:12px;color:var(--gold-light);margin-bottom:10px">Signed in as <b>${esc(u.email||"")}</b> · <a href="#" onclick="authSignOut();return false" style="color:var(--gold-light)">Sign out</a></div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:2px">
+        <input id="myl-name" value="${esc(_curName())}" placeholder="Army name" onkeydown="if(event.key==='Enter')saveCurrent(false)"
+          style="flex:1;padding:9px;background:#12100c;border:1px solid var(--gold);color:#e8e0cc;border-radius:3px;font-size:15px">
+        <button class="clrbtn" style="width:auto;padding:8px 16px" ${s.saving?'disabled':''} onclick="saveCurrent(false)">${s.saving?'…':(ST.currentListId?'Save':'Save')}</button>
+        ${ST.currentListId?`<button class="clrbtn" style="width:auto;padding:8px 12px" ${s.saving?'disabled':''} onclick="saveCurrent(true)">Save as new</button>`:''}
+      </div>
+      <div style="font-size:11px;color:var(--gold-light);margin-bottom:6px">${ST.currentListId?`Editing a saved list — “Save” updates it.`:`Saving will create a new list (${totalPts()} pts, ${esc(ST.legion)}).`}</div>
+      ${status}
       <hr class="mdiv">
-      <div style="color:var(--gold-light);font-size:13px;margin-bottom:14px">Saving &amp; loading your list library lands in the next update.</div>
-      <div style="text-align:center"><button class="clrbtn" style="width:auto;padding:6px 22px" onclick="authSignOut()">Sign out</button></div>`);
+      <div style="max-height:46vh;overflow-y:auto">${rowsHtml}</div>`, 560);
   }
   const tab=(m,label)=>`<button onclick="authMode('${m}')" style="flex:1;padding:8px;background:${a.mode===m?'var(--gold)':'transparent'};color:${a.mode===m?'#1a1512':'var(--gold-light)'};border:1px solid var(--gold);cursor:pointer;font-family:'Cinzel',serif;font-size:13px;">${label}</button>`;
   const enter=`onkeydown="if(event.key==='Enter')authSubmit()"`;
