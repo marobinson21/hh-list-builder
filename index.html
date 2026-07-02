@@ -871,6 +871,7 @@ const WEAPONS = {
   "paired_gravis_chainfists": {label:"Paired Gravis Chainfists", melee:true, im:-1, am:"A", sm:"+4", ap:2, d:4, specialRules:"Armourbane, Shred (6+)", rules:["Chain"]},
   "pintle_bolter":       {label:"Pintle-mounted Bolter",       range:24, fp:2, rs:4, ap:5, d:1, specialRules:"—", rules:["Bolt"]},
   "pintle_combi_bolter": {label:"Pintle-mounted Combi-bolter", range:24, fp:4, rs:4, ap:5, d:1, specialRules:"—", rules:["Bolt"]},
+  "pintle_banestrike_bolt_cannon": {label:"Pintle-mounted Banestrike Bolt Cannon", range:24, fp:4, rs:6, ap:4, d:2, specialRules:"Breaching (6+)", rules:["Bolt"]},
   "hunter_killer_missile": {label:"Hunter-Killer Missile", range:48, fp:1, rs:9, ap:3, d:3, specialRules:"Armourbane, Limited (1)", rules:["Missile"]},
   "missile_launcher": {label:"Missile Launcher", profiles:[
     {name:"Frag", range:48, fp:1, rs:4, ap:6, d:1, specialRules:"Heavy (RS), Blast (3in)", rules:["Missile"]},
@@ -7144,6 +7145,7 @@ const EQUIPMENT = {
   "Icon of the Warmaster": {text:"When this model is part of a unit that contains models with the Line (X) or Vanguard (X) rules, modify the value of X by +1."},
   "Nuncio-vox":           {text:"The unit may attempt to remove one Status token from itself at the beginning of its turn."},
   "Augury Scanner":       {text:"Ranged attacks made by models in this unit ignore the Shrouded special rule."},
+  "Incursor Pattern Command Array": {text:"This Super-heavy model is able to make the Overwatch and Return Fire reactions in response to actions made with any unit, instead of only units that contain models with the Paragon, Super-heavy, Knight, or Titan types. In addition, while this model has the Suppressed or Stunned status, it has the Auto-repair (4+) special rule."},
   "Narthecium":           {text:"If this unit must make a Characteristic Check during the Morale Sub-Phase (after the Shooting Phase), this model may make a Recovery Test. If successful, this unit gets a -2 bonus to the Characteristic Check."},
   "Machinator Array":     {text:"May use the Battlesmith rule twice each turn."},
   "Command Vox Relay":    {text:"Add +1 to a single Reserves test per turn.<br><br>At the beginning of the turn, may make an Int check — if it succeeds, may give a single unit the Line (1) rule, or a single unit the Vanguard (1) rule."},
@@ -7222,6 +7224,9 @@ const RULES = {
   "Eyes of the Warmaster": {type:"special_rule", text:"If this model joins a unit with a different Faction, the Leadership and Cool characteristics of models in that unit are not reduced as normal."},
   "Broken in Body": {type:"special_rule", text:"When an enemy model declares a Challenge, you may select whether or not this model is eligible to take part in a Challenge. If it is not, and there are no other eligible models in the combat who could accept a Challenge, the Challenge fails without penalty."},
   "Honour Above All": {type:"special_rule", text:"When any model that is in this unit or has joined this unit takes part in a Challenge, this model gains +1 to Wound during the Fight Sub-Phase following this Challenge."},
+  "Brutal Enforcement": {type:"special_rule", text:"At the start of the Move Phase, you may select one of your units with the Routed status within 12\" of this model. Immediately make a shooting attack with this model targeting that unit, using only the Banestrike Bolt Cannon. This shooting attack cannot cause Leadership Checks. Once it has been resolved, the target unit loses the Routed status."},
+  "Point Defence": {type:"special_rule", text:"When this model is the target of a Charge, it may make an additional Volley attack after making its initial Volley attack. Only a single pintle-mounted weapon may be used for this second attack. If there are any casualties as a result of this second Volley, the charging unit gets -1 to the result of its Charge roll."},
+  "Locus Strike": {type:"special_rule", text:"When making the Return Fire reaction, Turret-mounted weapons are treated as Defensive Weapons. If a weapon already counts as a Defensive Weapon, instead add +1 to Hit rolls for that weapon during this Reaction."},
   "Creed of Brutality": {type:"special_rule", text:"At the beginning of the turn, this unit may make a Leadership Check. If successful, every model in this unit gains the Impact (S) special rule until the end of this Battle Turn. If unsuccessful, this unit gains the Stunned Tactical Status. If there is a friendly Sons of Horus model within 6\" of this unit with a Weapon Skill of 5 or more, this unit may use that model's Leadership for the check."},
   "Calculating Swordsman": {type:"special_rule", text:"While this model is in a Challenge, it has access to the following special Gambit — Calculating Swordsman: if this Gambit is selected, gain a positive modifier to the Focus Roll equal to the current Battle Turn (maximum of +4)."},
   "Everywhere and Nowhere": {type:"special_rule", text:"After both players have deployed, this model may redeploy. You may swap which unit it has joined, including placing it inside a transport if needed (that transport must have enough free capacity). This model may not redeploy outside of its own deployment zone, or on a transport outside its own deployment zone."},
@@ -7248,7 +7253,7 @@ const RULES = {
   "Expendable": {type:"special_rule", text:"If an opponent would score points for killing this unit (for example, for Vanguard), reduce the number of points they score by {X}, to a minimum of 1."},
   "Explodes": {type:"special_rule", text:"When this model is killed, roll a D6. On a {X}+, this model Explodes — every unit within 6\" suffer a number of Hits equal to the base Wounds or Hull Points of the exploding model. These hits are resolved at Strength 8, AP -, Damage 1."},
   "Firing Protocols": {type:"special_rule", text:"May Shoot with {X} different weapons when shooting instead of just one."},
-  "Line": {type:"special_rule", text:"• When determining who controls an objective, this model counts as {X}+1 models towards controlling it instead of just 1.<br>• When scoring points for holding an Objective that this unit controls, score {X} extra points."},
+  "Line": {type:"special_rule", text:"• When determining who controls an objective, this model counts as {X+1} models towards controlling it instead of just 1.<br>• When scoring points for holding an Objective that this unit controls, score {X} extra points."},
   "Support Unit": {type:"special_rule", text:"This unit may only ever score a maximum of {X} points for holding an objective, no matter what that objective is worth or any other rules they might have."},
   "Vanguard": {type:"special_rule", text:"• This unit may only ever score a maximum of 1 point for holding an objective.<br>• If this unit kills an enemy unit that is controlling or contesting an objective, or helps to cause them to Fall Back from close combat, you score {X} bonus points."},
   "Void Shields": {type:"special_rule", text:"This model has {X} Void Shields. When it has Void Shields remaining, each time it suffers a Penetrating Hit from Shooting, reduce the Damage of that hit to 0 and reduce the number of Void Shields remaining by 1."},
@@ -7722,6 +7727,52 @@ const LEGION_SWAPS = [
   { legion:"Sons of Horus", type:"modelConditional", from:"Power Axe", to:"Carsoran Power Tabar", toId:"carsoran_power_tabar", costMode:"matchSource", costAdd:10 },
 ];
 
+/* Legiones Decurion upgrades — a points-costed upgrade for certain Vehicle models that grants
+ * special rules and/or wargear. No unit may take more than one (enforced via unique_group).
+ * Each entry: appliesTo[] lists the eligible unit ids and their per-unit pts (with optional
+ * config conditions), and grants{} is applied when selected. Injected as a mutually-exclusive
+ * addon on eligible models by injectDecurions(). */
+const DECURIONS = [
+  { id:"lanius", name:"Decurion Lanius", legion:"Sons of Horus", noPintle:true,
+    desc:"Legiones Decurion upgrade. The model gains a Pintle-mounted Banestrike Bolt Cannon and the Brutal Enforcement special rule. May not be taken by a model that already has any pintle-mounted weapons.",
+    pintleReason:"remove the model's pintle-mounted weapon first",
+    grants:{ specialRules:["Brutal Enforcement"], weapons:["Pintle-mounted Banestrike Bolt Cannon"] },
+    appliesTo:[
+      { unit:"a_predator", pts:25 },
+      { unit:"a_kratos",   pts:30 },
+      { unit:"a_sicaran",  pts:25, turretOptions:["punisher_rotary_cannon"],   // + default Twin Accelerator Autocannon
+        turretReason:"requires the Twin Accelerator Autocannon or Punisher Rotary Cannon" },
+    ] },
+  { id:"defender", name:"Decurion Defender", requirePintle:true, excludePintleIds:["pw_havoc_launcher"],
+    desc:"Legiones Decurion upgrade (any Legion). The model gains the Point Defence special rule. Requires a pintle-mounted weapon (a pintle-mounted havoc launcher does not qualify).",
+    pintleReason:"requires a pintle-mounted weapon (not a havoc launcher)",
+    grants:{ specialRules:["Point Defence"] },
+    appliesTo:[
+      { unit:"a_predator", pts:20 },
+      { unit:"a_sicaran",  pts:20, turretOptions:["punisher_rotary_cannon"],
+        turretReason:"requires the Twin Accelerator Autocannon or Punisher Rotary Cannon" },
+      { unit:"a_kratos",   pts:30 },
+    ] },
+  { id:"locus", name:"Decurion Locus",
+    desc:"Legiones Decurion upgrade (any Legion). The model gains an Augury Scanner and the Locus Strike special rule.",
+    grants:{ specialRules:["Locus Strike"], weapons:["Augury Scanner"] },
+    appliesTo:[
+      { unit:"a_predator", pts:30 },
+      { unit:"a_sicaran",  pts:30, turretOptions:["punisher_rotary_cannon"],
+        turretReason:"requires the Twin Accelerator Autocannon or Punisher Rotary Cannon" },
+      { unit:"a_kratos",   pts:40 },
+    ] },
+  { id:"magna", name:"Decurion Magna",
+    desc:"Legiones Decurion upgrade (any Legion). The model gains an Incursor Pattern Command Array.",
+    grants:{ weapons:["Incursor Pattern Command Array"] },
+    appliesTo:[
+      { unit:"low_fellblade", pts:60 },
+      { unit:"low_falchion",  pts:60 },
+    ] },
+];
+// Register each Decurion's description as equipment text so the wargear hover tooltip works.
+if (typeof EQUIPMENT !== "undefined") DECURIONS.forEach(d => { if (!EQUIPMENT[d.name]) EQUIPMENT[d.name] = {text:d.desc||""}; });
+
 // A unit "counts as" a legion if it adopts the army legion (generic Legion
 // Astartes units) or is that-legion-specific. Excludes Mechanicum/automata etc.
 function unitAdoptsLegion(u, legion){
@@ -7734,7 +7785,7 @@ function addonGrantedTypes(blockWg, modelCfg){
   const out=[];
   ((modelCfg&&modelCfg.addons)||[]).forEach(id=>{
     const a=((blockWg&&blockWg.addons)||[]).find(x=>x.id===id);
-    if(a&&a.grants&&Array.isArray(a.grants.types)) a.grants.types.forEach(t=>out.push(t));
+    if(a&&!a.decurionDisabled&&a.grants&&Array.isArray(a.grants.types)) a.grants.types.forEach(t=>out.push(t));
   });
   return out;
 }
@@ -7742,7 +7793,7 @@ function addonGrantedTraits(blockWg, modelCfg){
   const out=[];
   ((modelCfg&&modelCfg.addons)||[]).forEach(id=>{
     const a=((blockWg&&blockWg.addons)||[]).find(x=>x.id===id);
-    if(a&&a.grants&&Array.isArray(a.grants.traits)) a.grants.traits.forEach(t=>out.push(t));
+    if(a&&!a.decurionDisabled&&a.grants&&Array.isArray(a.grants.traits)) a.grants.traits.forEach(t=>out.push(t));
   });
   return out;
 }
@@ -7957,7 +8008,40 @@ function activeWargear(u, cfg) {
   if (cfg && cfg.champUpgrade && u.championUpgrade && u.championUpgrade.wargear) {
     base = {...base, champion: u.championUpgrade.wargear};
   }
-  return injectLegionSwaps(u, base, cfg);
+  return injectDecurions(u, injectLegionSwaps(u, base, cfg), cfg);
+}
+
+// Offer every Legiones Decurion whose appliesTo lists this unit — always shown, but greyed out
+// (decurionDisabled) with a reason when it can't currently be taken (wrong Legion, a pintle weapon
+// present, or an ineligible main weapon). A Legion "Req" pill is driven by req.legion. Disabled
+// Decurions don't count toward cost or grants (guarded at the gather sites). Clones before append.
+function injectDecurions(u, wg, cfg){
+  if(!u || !wg || typeof DECURIONS==="undefined") return wg;
+  const rows = DECURIONS.filter(d => (d.appliesTo||[]).some(a=>a.unit===u.id));
+  if(!rows.length) return wg;
+  const slots = (cfg && cfg.slots) || {};
+  const adds = rows.map(d=>{
+    const spec = d.appliesTo.find(a=>a.unit===u.id);
+    const legionOk = !d.legion || unitAdoptsLegion(u, d.legion);   // no legion = any legion
+    const pintleId = slots.pintle;                                  // chosen pintle weapon id, or undefined
+    let pintleOk = true, pintleReason = "";
+    if(d.noPintle && pintleId){ pintleOk=false; pintleReason = d.pintleReason || "remove the model's pintle-mounted weapon first"; }
+    if(d.requirePintle){                                            // must carry a qualifying pintle weapon
+      const qualifies = pintleId && !(d.excludePintleIds||[]).includes(pintleId);
+      if(!qualifies){ pintleOk=false; pintleReason = d.pintleReason || "requires a pintle-mounted weapon"; }
+    }
+    const turretOk = !spec.turretOptions || !slots.turret || spec.turretOptions.includes(slots.turret);
+    let reason="";
+    if(legionOk){                                   // legion failure is conveyed by the Req pill
+      if(!pintleOk)      reason = pintleReason;
+      else if(!turretOk) reason = spec.turretReason || "not available with the current main weapon";
+    }
+    return { id:"decurion_"+d.id, label:d.name, pts:spec.pts||0,
+      unique_group:"decurion", decurion:true, grants:d.grants, desc:d.desc,
+      req: d.legion ? {legion:d.legion} : undefined,
+      decurionDisabled:!(legionOk&&pintleOk&&turretOk), decurionReason:reason };
+  });
+  return {...wg, addons:[...(wg.addons||[]), ...adds]};
 }
 
 function defaultPerModelCfg() {
@@ -8414,6 +8498,19 @@ function equipTipHtml(name) {
     <div style="font-size:13px;">${text}</div>`;
 }
 
+// Substitute a rule's parenthetical value into its text. Supports plain {X} and simple
+// arithmetic placeholders {X+N} / {X-N} / {X*N}, which are evaluated (e.g. Line (2) → "3")
+// rather than shown literally. Non-numeric values (e.g. Impact (Strength)) pass through.
+function subRuleVal(text, val){
+  const n = parseFloat(val);
+  let out = String(text).replace(/\{X\s*([+\-*])\s*(\d+(?:\.\d+)?)\}/g, (m, op, num) => {
+    if (isNaN(n)) return val;
+    const k = parseFloat(num);
+    return String(op==='+' ? n+k : op==='-' ? n-k : n*k);
+  });
+  return out.replace(/\{X\}/g, val);
+}
+
 function ruleTipHtml(name) {
   // Resolve text for an exact name from RULES (preferred) or EQUIPMENT; blank/"..." counts as unresolved.
   function resolve(nm){
@@ -8428,7 +8525,7 @@ function ruleTipHtml(name) {
     const m = name.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
     if (m) {
       const baseText = resolve(m[1]);
-      if (baseText !== null) text = String(baseText).replace(/\{X\}/g, m[2]);
+      if (baseText !== null) text = subRuleVal(baseText, m[2]);
     }
   }
   if (text === null) text = 'Rule text not yet entered.';
@@ -8597,7 +8694,7 @@ function cp(u, cfg) {
   });
   (cfg.addons||[]).forEach(id => {
     const addon = (wg.addons||[]).find(a=>a.id===id);
-    if (addon) p += addon.ptsPerModel ? (addon.pts||0)*modelCount : (addon.pts||0);
+    if (addon && !addon.decurionDisabled) p += addon.ptsPerModel ? (addon.pts||0)*modelCount : (addon.pts||0);
   });
   // Numeric addons
   // Per-model costs (Champion + Chosen)
@@ -9030,7 +9127,7 @@ function renderWargearModal(det, slotIdx) {
     (g.powers||[]).forEach(p=>grantedPowers.push(p));
   };
   (wg.addons||[]).forEach(addon => {
-    if (addon.grants && (addon.always_on || (cfg.addons||[]).includes(addon.id))) pushGrants(addon.grants);
+    if (addon.grants && !addon.decurionDisabled && (addon.always_on || (cfg.addons||[]).includes(addon.id))) pushGrants(addon.grants);
   });
   const allTraits  = [...new Set([...dispTraits,  ...grantedTraits])];
   const allSpecial = [...new Set([...dispSpecial, ...grantedSpecial])];
@@ -9301,12 +9398,13 @@ function renderWargearModal(det, slotIdx) {
         const maxDisc = addon.maxDisciplines || 2;
         if (activeDisc >= maxDisc) { unavailable=true; reason=`max ${maxDisc} disciplines`; }
       }
+      if (addon.decurionDisabled) { unavailable=true; if(addon.decurionReason) reason=addon.decurionReason; }
       const cls = isActive?"active":unavailable?"unavailable":"available";
       const addonBadge = addon.req && addon.req.legion ? ` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${addon.req.legion}</span>` : "";
       html += `<div class="addon-row ${cls}" onclick="${!unavailable?`toggleAddon('${esc(iid)}',${slotIdx},'${addon.id}')`:""}" >
         <div style="display:flex;align-items:center;gap:8px;">
           <div class="addon-check${isActive?" on":""}"></div>
-          <span ${weaponHoverAttrs(addon.label)}>${addon.label}${addonBadge}${unavailable?` <span class="addon-reason">(${reason})</span>`:""}</span>
+          <span ${weaponHoverAttrs(addon.label)}>${addon.label}${addonBadge}${unavailable&&reason?` <span class="addon-reason">(${reason})</span>`:""}</span>
         </div>
         <span class="addon-pts">+${addon.pts} pts</span>
       </div>`;
@@ -10021,7 +10119,7 @@ function renderModal(){
       }
       // "Rewards of Treachery" co-opt slot: only faction-specific units from another Legion,
       // no [Legiones Astartes] wildcard, not Unique. Their Faction Trait becomes Alpha Legion.
-      const us = coopt ? (SU[role]||[]).filter(unitCooptEligible) : (SU[role]||[]);
+      const us = coopt ? (SU[role]||[]).filter(unitCooptEligible) : (SU[role]||[]).filter(unitLegionOk);
       const subMsg = coopt
         ? 'Co-opt: faction-specific unit from another Legion — its Faction Trait becomes Alpha Legion'
         : 'Injected slot';
@@ -10033,12 +10131,26 @@ function renderModal(){
           const minSz=u.minSize||1;const maxSz=u.maxSize||1;
           const legNote=coopt&&u.req&&u.req.legion?'<span style="font-size:12px;color:#c080c0;font-style:italic;margin-left:6px;">'+u.req.legion+'</span>':'';
           const uniqueBlock=unitUniqueBlocked(u,iid,-1);
-          const uNote=uniqueBlock?'<span style="font-size:12px;color:var(--red);font-style:italic;margin-left:6px;">— unique, already in army</span>':'';
-          const injOnclick = uniqueBlock ? '' : "assignInjectedById('" + u.id + "')";
-          const injStyle = uniqueBlock ? 'opacity:.4;cursor:not-allowed;' : '';
-          const injCls = uniqueBlock ? ' disabled' : '';
+          const allegianceBlock=unitAllegianceBlocked(u);
+          const blocked=uniqueBlock||allegianceBlock;
+          const uNote=uniqueBlock
+            ? '<span style="font-size:12px;color:var(--red);font-style:italic;margin-left:6px;">— unique, already in army</span>'
+            : (allegianceBlock
+              ? '<span style="font-size:12px;color:var(--red);font-style:italic;margin-left:6px;">— requires '+u.req.allegiance+' allegiance</span>' : '');
+          const injOnclick = blocked ? '' : "assignInjectedById('" + u.id + "')";
+          const injStyle = blocked ? 'opacity:.4;cursor:not-allowed;' : '';
+          const injCls = blocked ? ' disabled' : '';
+          let reqParts=[];
+          if(u.req&&u.req.legion) reqParts.push(u.req.legion);
+          else if(u.req&&u.req.legion_any) reqParts.push(u.req.legion_any.join(' / '));
+          if(u.req&&u.req.allegiance) reqParts.push(u.req.allegiance);
+          const reqTxt=reqParts.join(' · ');
+          const badgeStyle=allegianceBlock
+            ? 'font-size:10px;padding:1px 5px;background:var(--red);color:#fff;border-color:var(--red);'
+            : 'font-size:10px;padding:1px 5px;';
+          const legBadge=(!coopt&&reqTxt)?' <span class="ibadge" style="'+badgeStyle+'">Req: '+reqTxt+'</span>':'';
           return '<div class="uo' + injCls + '" onclick="' + injOnclick + '" style="' + injStyle + '">' +
-            '<span>' + u.name + legNote + uNote + '</span>' +
+            '<span>' + u.name + legBadge + legNote + uNote + '</span>' +
             '<span style="font-size:14px;color:var(--text-muted)">' + u.basePts + ' pts base' +
             (maxSz>minSz?' · '+minSz+'–'+maxSz+' models':'') + profileHint + '</span>' +
             '</div>';
@@ -10509,7 +10621,7 @@ function playRuleText(name){
     return (e&&e.text!=null&&String(e.text).trim()&&String(e.text).trim()!=='...')?e.text:null; };
   let text = resolve(name);
   if (text===null){ const m=name.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-    if(m){ const b=resolve(m[1]); if(b!==null) text=String(b).replace(/\{X\}/g,m[2]); } }
+    if(m){ const b=resolve(m[1]); if(b!==null) text=subRuleVal(b, m[2]); } }
   return text; // may be null
 }
 
@@ -10533,7 +10645,7 @@ function _modelGearLabels(blk, mc){
       else { if(slot.defaultChips) slot.defaultChips.forEach(add); else add(stripHint(slot.label)); }
     });
     if(pair){ if(pair.chips) pair.chips.forEach(add); else add(pair.label); }
-    (mc.addons||[]).forEach(aid=>{ const a=(blk.addons||[]).find(x=>x.id===aid); if(!a) return;
+    (mc.addons||[]).forEach(aid=>{ const a=(blk.addons||[]).find(x=>x.id===aid); if(!a||a.decurionDisabled) return;
       if(a.grants&&a.grants.weapons) a.grants.weapons.forEach(add);
       // An addon whose label is itself a weapon or piece of equipment (e.g. Grenade Harness, Augury Scanner)
       if(weaponKeyFromLabel(a.label) || (typeof EQUIPMENT!=='undefined' && EQUIPMENT[a.label])) add(a.label);
@@ -10724,7 +10836,7 @@ function playCollectRules(u, cfg, extra){
   (cfg.chosen||[]).forEach(mc=>(mc.addons||[]).forEach(a=>activeIds.add(a)));
   const blocks = wg.perModel ? [wg.champion, wg.perModel] : [wg];
   blocks.forEach(blk=>{ if(!blk)return; (blk.addons||[]).forEach(a=>{
-    if(a.grants&&a.grants.specialRules&&(a.always_on||activeIds.has(a.id))) a.grants.specialRules.forEach(r=>rules.push(r)); }); });
+    if(a.grants&&!a.decurionDisabled&&a.grants.specialRules&&(a.always_on||activeIds.has(a.id))) a.grants.specialRules.forEach(r=>rules.push(r)); }); });
   ((extra&&extra.specialRules)||[]).forEach(r=>rules.push(r));
   return [...new Set(rules)];
 }
