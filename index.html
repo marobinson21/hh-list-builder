@@ -7127,7 +7127,7 @@ const SU = {
 };
 
 const EQUIPMENT = {
-  "Stasis Grenades":      {text:"Rules/profile pending — please provide."},
+  "Stasis Grenades":      {text:"One per battle, the first time this model and any unit it has joined are successfully Charged, the Combat Initiative of all models in the Charging Unit are modified by -2 for this turn. This does not affect Combat Initiative inside a Challenge."},
   "Vexilla":              {text:"Add 1 to the Melee Combat Resolution score of the unit carrying this item."},
   "Icon of the Warmaster": {text:"When this model is part of a unit that contains models with the Line (X) or Vanguard (X) rules, modify the value of X by +1."},
   "Nuncio-vox":           {text:"The unit may attempt to remove one Status token from itself at the beginning of its turn."},
@@ -7135,17 +7135,15 @@ const EQUIPMENT = {
   "Narthecium":           {text:"If this unit must make a Characteristic Check during the Morale Sub-Phase (after the Shooting Phase), this model may make a Recovery Test. If successful, this unit gets a -2 bonus to the Characteristic Check."},
   "Machinator Array":     {text:"May use the Battlesmith rule twice each turn."},
   "Command Vox Relay":    {text:"Add +1 to a single Reserves test per turn.<br><br>At the beginning of the turn, may make an Int check — if it succeeds, may give a single unit the Line (1) rule, or a single unit the Vanguard (1) rule."},
-  "Cognis-signum":        {text:"..."},
-  "Cortex Controller":    {text:"..."},
+  "Cognis-signum":        {text:"Instead of making a shooting attack, this model may make an Intelligence Check. If passed, select a single enemy unit within Line of Sight of this model. The next time that unit would be targeted by a Shooting Attack with the Barrage special rule that would normally be out of Line of Sight of the firer, you may resolve it as if you had line of sight using the normal Blast rules."},
+  "Cortex Controller":    {text:"If this unit includes Automata, it can ignore the restrictions on Automata making Reactions."},
   "Cyber-familiar":       {text:"This model gains +2 to Intelligence checks."},
   "Icon of Allegiance":   {text:"Gains Honor by winning Challenges and Close Combat. Honor grants bonus victory points at the end of battle."},
   "Boarding Shield":      {text:"Grants a 5+ invulnerable save, the Shield trait, and the Heavy unit type."},
   "The Pythian Scales":   {text:"Gains Feel No Pain (4+) against attacks with the Poisoned (X) rule."},
-  "Jump Pack":            {text:"..."},
-  "Scimitar Jetbike":     {text:"..."},
-  "Servo-arm":            {text:"..."},
-  "Company Standard":     {text:"..."},
-  "Legion Standard":      {text:"..."},
+  "Servo-arm":            {text:"When this model uses the Battlesmith special rule to Repair, increase the amount of Hull Points or Wounds gained by the target model by 1."},
+  "Company Standard":     {text:"Adds +1 to Combat Resolution Score. This model counts as 5 models for determining Outside Support in a Challenge."},
+  "Legion Standard":      {text:"Adds +2 to Combat Resolution Score. This model counts as 6 models for determining Outside Support in a Challenge."},
   "Combat Shield":        {text:"Grants the bearer a 5+ Invulnerable Save and a bonus to Focus rolls."},
   "Saturnine Teleportation Transponder":{text:"This model gains the Deep Strike rule. If this model joins a unit of Saturnine Terminators in reserve, the entire unit also gains Deep Strike."},
   "Thermal Diffraction Field":          {text:"Reduce the Strength of all hits on this model made with Las, Plasma, Melta, and Flame weapons by -1."},
@@ -7158,8 +7156,6 @@ const EQUIPMENT = {
   "Argyrum Pattern Boarding Shield":    {text:"This model has a 5+ invulnerable save, increasing to a 4+ invulnerable save against Melee Weapons. This model gains the Shield trait and the Heavy type."},
   "Peritarch Targeter":                 {text:"When this unit makes a Shooting attack, if it remained Stationary this turn, Shrouded rolls cannot be made against that attack. Additionally, you may make an Intelligence Check for this unit. If successful, for this Shooting attack all models in the unit with a Peritarch Targeter have +1 BS."},
   "Searchlight": {text:"When Shooting, the target unit gets -1 to Shrouded rolls. This unit may never make Shrouded rolls."},
-  "Pintle-mounted Bolter": {text:"..."},
-  "Pintle-mounted Combi-bolter": {text:"..."},
   "Seal the Veil": {text:"<strong>Seal the Veil</strong> (Psychic Reaction, Curse)<br><em>Trigger:</em> When charged by a Malefic unit, before their Setup Move.<br><em>Cost:</em> 1 Reaction Point<br><em>Focus:</em> An Anathemata model you control that was the target of the charge.<br><em>Target:</em> The Malefic unit making the charge.<br><em>Duration:</em> Immediate<br><em>Effect:</em> Target makes a Resistance check. If it fails, its Setup Move is only 1\" and it drops the highest die on its Charge Roll."},
   "Breach the Veil": {text:"<strong>Breach the Veil</strong> (Psychic Power, Blessing)<br><em>Trigger:</em> Start of the Reserves subphase of your turn.<br><em>Focus:</em> An Anathemata model you control.<br><em>Target:</em> None.<br><em>Duration:</em> Until end of Reserves subphase.<br><em>Effect:</em> Make a Manifestation check. If successful, choose one unit from a Daemonic Manifestation detachment in reserves — that unit automatically passes its Reserve Roll this turn."},
   "Anathemata Discipline": {text:"Grants the following:<br>• Fear (1) special rule<br>• Void Darts psychic weapon<br>• <em>Loyalist:</em> Seal the Veil psychic power<br>• <em>Traitor:</em> Breach the Veil psychic power"},
@@ -7275,6 +7271,12 @@ const RULES = {
   "Consul-Delegatus":             {type:"special",       text:"One per army. When filling a Command slot, this model may grant an Apex unlock instead of Auxiliary only. Counts as a High Command choice for Slay the Warlord."},
   "Legiones Thallaxes":           {type:"special",       text:"Adds two slots to this Detachment that can only be filled with Thallax Cohort units (Taghmata army list)."},
   "Rapid Fire":                   {type:"weapon_keyword",text:"..."},
+  // --- Weapon traits (type:"weapon_trait") ---
+  // These are informational category pills only, shown on a weapon to indicate its damage
+  // family (Bolt, Melta, Plasma, etc.). They are NOT rules in their own right and are not
+  // expected to carry rules text, so a blank/"..." text here is INTENTIONAL, not missing
+  // data — do not flag these as unfilled. (A few, like Bolt, include a short reminder note;
+  // that's optional.) Actual mechanical rules live on the weapon's stat line / specialRules.
   "Assault":                      {type:"weapon_trait",  text:"..."},
   "Auto":                         {type:"weapon_trait",  text:"..."},
   "Bayonet":                      {type:"weapon_trait",  text:"..."},
@@ -7636,7 +7638,7 @@ function setDetKeyword(iid, kw){
 }
 function openPick(iid,i){ ST.modal={mode:"pick",iid,i}; render(); }
 function openInjectedPick(iid,ii,role,armyList,note,coopt){ ST.modal={mode:"inj_pick",iid,ii,role,armyList:armyList||null,note:note||null,coopt:!!coopt}; render(); }
-function openInjectedCustom(iid,ii){ ST.modal={mode:"inj_customise",iid,ii}; render(); }
+function openInjectedCustom(iid,ii){ ST.modalUnit={iid,i:ii,inj:true}; ST.modal={mode:"inj_customise",iid,ii}; render(); }
 function assignInjectedById(uid){
   const u=UNIT_LOOKUP[uid]; if(!u)return;
   const{iid,ii}=ST.modal;
@@ -7645,11 +7647,11 @@ function assignInjectedById(uid){
   if(!d.injectedCfgs)  d.injectedCfgs=[];
   d.injectedUnits[ii]=u;
   d.injectedCfgs[ii]=defaultCfg(u);
-  ST.modal={mode:"inj_customise",iid,ii}; saveAndRender();
+  ST.modalUnit={iid,i:ii,inj:true}; ST.modal={mode:"inj_customise",iid,ii}; saveAndRender();
 }
-function openCustom(iid,i){ ST.modal={mode:"customise",iid,i}; render(); }
+function openCustom(iid,i){ ST.modalUnit={iid,i,inj:false}; ST.modal={mode:"customise",iid,i}; render(); }
 function openPA(iid,i){ ST.modal={mode:"prime",iid,i}; render(); }
-function closeModal(){ ST.modal=null; ST.modalState={}; render(); }
+function closeModal(){ ST.modal=null; ST.modalUnit=null; ST.modalState={}; render(); }
 
 // Returns the active profile for a unit given current cfg (profile selector)
 // Returns the active type/subtype info for a unit
@@ -7968,7 +7970,7 @@ function assignById(uid){
   const{iid,i}=ST.modal;
   const d=ST.dets.find(x=>x.iid===iid);
   d.slots[i]=u; d.cfgs[i]=defaultCfg(u);
-  ST.modal={mode:"customise",iid,i}; saveAndRender();
+  ST.modalUnit={iid,i,inj:false}; ST.modal={mode:"customise",iid,i}; saveAndRender();
 }
 
 // Is a unit blocked by a unique rule already in the army?
@@ -8005,13 +8007,21 @@ function clearInjected(iid,ii){
 // This proxy transparently redirects `slots`→injectedUnits and `cfgs`→injectedCfgs so the
 // existing setters work unchanged; otherwise it returns the detachment as-is.
 function modalDet(d){
-  if(!d || !ST.modal || ST.modal.mode!=='inj_customise') return d;
+  if(!d || !ST.modal) return d;
+  const inj = (ST.modalUnit && ST.modalUnit.inj) || ST.modal.mode==='inj_customise';
+  if(!inj) return d;
   d.injectedUnits=d.injectedUnits||[]; d.injectedCfgs=d.injectedCfgs||[];
   return new Proxy(d, {
     get(t,p){ return p==='slots'?t.injectedUnits : p==='cfgs'?t.injectedCfgs : t[p]; },
     set(t,p,v){ if(p==='slots') t.injectedUnits=v; else if(p==='cfgs') t.injectedCfgs=v; else t[p]=v; return true; }
   });
 }
+// The unit currently being edited (ST.modalUnit) persists across sub-pickers. Injected-slot
+// units share the same index space as regular slots, so without this a sub-picker or a
+// mode-reset would re-address the regular slot at that index (the wrong unit). unitModalObj
+// rebuilds the unit modal in the correct mode; modalDet keys its proxy off ST.modalUnit.inj.
+function unitModalObj(iid,i){ return (ST.modalUnit && ST.modalUnit.inj) ? {mode:'inj_customise',iid,ii:i} : {mode:'customise',iid,i}; }
+function backToUnit(iid,i){ ST.modal = unitModalObj(iid,i); render(); }
 
 // Toggle an optional champion upgrade (e.g. Evocatus Intendant). Resets the champion's
 // wargear config because the upgrade swaps which slots/options are available.
@@ -8653,6 +8663,13 @@ function fmtPts(opt, modelCount) {
   return `+${opt.pts} pts`;
 }
 
+// Cost label for an as-yet-unresolved slot option. A list picker shows "Variable"
+// (the real cost depends on which item is chosen) rather than "free".
+function optPtsLabel(opt, modelCount) {
+  if (opt && opt.list) return opt.pts ? `+${opt.pts} pts + variable` : "Variable";
+  return fmtPts(opt, modelCount);
+}
+
 // Open the list sub-modal
 function openListPicker(iid, slotIdx, slotId, listKey) {
   ST.modal = {mode:"list_pick", iid, i:slotIdx, slotId, listKey};
@@ -8773,13 +8790,13 @@ function switchProfile(iid, i, profileId) {
     fresh.addonListChoices = kept;
   }
   d.cfgs[i] = fresh;
-  ST.modal = {mode:"customise", iid, i};
+  ST.modal = unitModalObj(iid,i);
   saveAndRender();
 }
 
 function handlePmSlot(iid, i, modelKey, slotId, optId) {
   setPerModelSlot(iid, i, modelKey, slotId, optId);
-  ST.modal = {mode:'customise', iid, i};
+  ST.modal = unitModalObj(iid,i);
   render();
 }
 
@@ -8851,7 +8868,7 @@ function setPerModelAddonListChoice(iid, i, modelKey, addonId, itemId) {
   if(!(newMc.addons||[]).includes(addonId)) newMc.addons=[...(newMc.addons||[]),addonId];
   if(modelKey==='champion'){ d.cfgs[i]={...cfg,champion:newMc}; }
   else { const chosen=[...(cfg.chosen||[])]; chosen[parseInt(modelKey)]=newMc; d.cfgs[i]={...cfg,chosen}; }
-  ST.modal={mode:'customise',iid,i};
+  ST.modal=unitModalObj(iid,i);
   saveAndRender();
 }
 
@@ -9207,7 +9224,7 @@ function renderWargearModal(det, slotIdx) {
           const resolvedOpt = listIsActive ? currentListItem : opt;
           const displayPts = listIsActive
             ? (currentListItem.ptsPerModel ? `+${currentListItem.pts} pts/model (${currentListItem.pts*modelCount} total)` : (currentListItem.pts?"+"+currentListItem.pts+" pts":"free"))
-            : fmtPts(opt, modelCount);
+            : optPtsLabel(opt, modelCount);
           const clickAction = isSharedUsed ? "" :
             isList ? `openListPicker('${esc(iid)}',${slotIdx},'${slot.id}','${opt.list}')` :
             `setSlotOption('${esc(iid)}',${slotIdx},'${slot.id}','${opt.id}')`;
@@ -9500,7 +9517,7 @@ function renderWargearModal(det, slotIdx) {
               const reqName = ((mwg.slots||[]).flatMap(s=>s.options||[]).find(o=>o.id===opt.requires_slot)||{}).label || opt.requires_slot;
               html2 += `<div class="slot-option disabled" style="padding:3px 8px;margin-bottom:2px;opacity:.4;cursor:not-allowed;">
                 <span>${opt.label} <span style="font-size:12px;font-style:italic;">(requires ${reqName})</span></span>
-                <span class="slot-option-pts">${opt.pts?'+'+opt.pts+' pts':'free'}</span>
+                <span class="slot-option-pts">${optPtsLabel(opt,1)}</span>
               </div>`;
               return;
             }
@@ -9522,7 +9539,7 @@ function renderWargearModal(det, slotIdx) {
               if (takenElsewhere && !effSel) {
                 html2 += `<div class="slot-option disabled" style="padding:3px 8px;margin-bottom:2px;opacity:.4;cursor:not-allowed;">
                   <span>${opt.label} <span style="font-size:12px;font-style:italic;">(taken by another model)</span></span>
-                  <span class="slot-option-pts">${opt.pts?'+'+opt.pts+' pts':'free'}</span>
+                  <span class="slot-option-pts">${optPtsLabel(opt,1)}</span>
                 </div>`;
                 return;
               }
@@ -9553,7 +9570,7 @@ function renderWargearModal(det, slotIdx) {
               }
             }
             const dispLabel = listIsActive ? currentListItem.label : opt.label;
-            const dispPts = listIsActive ? (currentListItem.pts?'+'+currentListItem.pts+' pts':'free') : (opt.pts?'+'+opt.pts+' pts':'free');
+            const dispPts = listIsActive ? (currentListItem.pts?'+'+currentListItem.pts+' pts':'free') : optPtsLabel(opt, 1);
             const listOC = "openPerModelListPicker('" + esc(iid) + "'," + slotIdx + ",'" + mkey + "','" + slot.id + "','" + opt.list + "')";
             const slotOC = "setPerModelSlot('" + esc(iid) + "'," + slotIdx + ",'" + mkey + "','" + slot.id + "','" + opt.id + "')";
             const clickAct = isList ? listOC : slotOC;
@@ -10134,7 +10151,7 @@ function renderModal(){
 
 
   if(mode==="sergeant"){
-    const det2=ST.dets.find(d=>d.iid===iid);
+    const det2=modalDet(ST.dets.find(d=>d.iid===iid));
     if(!det2)return"";
     const u=det2.slots[i]; if(!u||!u.wargear||!u.wargear.sergeant)return"";
     const cfg=det2.cfgs[i]||{};
@@ -10142,9 +10159,9 @@ function renderModal(){
     const sgtwg=u.wargear.sergeant;
     const modelCount=cfg.size||u.minSize;
     const sgtTypeStr=sgtwg.type?`${sgtwg.type}${sgtwg.subtypes&&sgtwg.subtypes.length?' ('+sgtwg.subtypes.join(', ')+')':''}` :'';
-    let html=`<div class="ov" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render()">
+    let html=`<div class="ov" onclick="backToUnit('${esc(iid)}',${i})">
       <div class="mod" onclick="event.stopPropagation()">
-      <button class="mc" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render()">✕</button>
+      <button class="mc" onclick="backToUnit('${esc(iid)}',${i})">✕</button>
       <div class="mt">Sergeant</div>
       <div class="ms">${sgtTypeStr?`<span style="color:var(--gold-dark);font-style:normal;">${sgtTypeStr}</span> · `:''}Single model</div>`;
     // No separate summary — included items shown inline in Weapon Options
@@ -10197,7 +10214,7 @@ function renderModal(){
               opt.list&&(WARGEAR_LISTS[opt.list]||{items:[]}).items.some(ii=>ii.id===currentChoice);
             const effSel=isSel||listIsActive;
             const dispLabel=listIsActive?currentListItem.label:opt.label;
-            const dispPts=listIsActive?(currentListItem.pts?'+'+currentListItem.pts+' pts':'free'):fmtPts(opt,1);
+            const dispPts=listIsActive?(currentListItem.pts?'+'+currentListItem.pts+' pts':'free'):optPtsLabel(opt,1);
             const clickAction=isSharedUsed?'':isList
               ?`openPerModelListPicker('${esc(iid)}',${i},'champion','${slot.id}','${opt.list}')`
               :`setPerModelSlot('${esc(iid)}',${i},'champion','${slot.id}','${opt.id}')`;
@@ -10241,14 +10258,14 @@ function renderModal(){
       html+=`</div>`;
     }
     html+=`<hr class="mdiv"><div style="text-align:center">
-      <button class="clrbtn" style="width:auto;padding:5px 20px;" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render();">↩ Back to unit</button>
+      <button class="clrbtn" style="width:auto;padding:5px 20px;" onclick="backToUnit('${esc(iid)}',${i});">↩ Back to unit</button>
     </div></div></div>`;
     return html;
   }
 
   if(mode==="pm_addon_list_pick"){
     const{modelKey,addonId,listKey}=ST.modal;
-    const det2=ST.dets.find(d=>d.iid===iid);
+    const det2=modalDet(ST.dets.find(d=>d.iid===iid));
     const u2=det2?det2.slots[i]:null;
     const wg2=u2?activeWargear(u2,det2.cfgs[i]||{}):{};
     const cfg2=det2?(det2.cfgs[i]||{}):{};
@@ -10258,9 +10275,9 @@ function renderModal(){
     if(!addon2)return'';
     const items=addon2.listFixed||((WARGEAR_LISTS[listKey]||{}).items||[]).filter(item=>optionVisible(item,u2||{}));
     const currentChoice=(mc2.addonListChoices||{})[addonId];
-    return `<div class="ov" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render()">
+    return `<div class="ov" onclick="backToUnit('${esc(iid)}',${i})">
       <div class="mod" onclick="event.stopPropagation()">
-      <button class="mc" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render()">✕</button>
+      <button class="mc" onclick="backToUnit('${esc(iid)}',${i})">✕</button>
       <div class="mt">${addon2.label}</div>
       <div class="ms">Select weapon for this model</div>
       ${items.map(item=>{
@@ -10274,22 +10291,22 @@ function renderModal(){
         </div>`;
       }).join('')}
       <hr class="mdiv"><div style="text-align:center">
-        <button class="clrbtn" style="width:auto;padding:5px 20px;" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render();">↩ Back</button>
+        <button class="clrbtn" style="width:auto;padding:5px 20px;" onclick="backToUnit('${esc(iid)}',${i});">↩ Back</button>
       </div></div></div>`;
   }
 
   if(mode==="permodel_list_pick"){
     const{modelKey,slotId,listKey}=ST.modal;
     const list=WARGEAR_LISTS[listKey]; if(!list)return'';
-    const det2=ST.dets.find(d=>d.iid===iid);
+    const det2=modalDet(ST.dets.find(d=>d.iid===iid));
     const u2=det2?det2.slots[i]:null;
     const cfg2=det2?(det2.cfgs[i]||{}):{};
     const mc2=modelKey==='champion'?(cfg2.champion||{}):(cfg2.chosen||[])[parseInt(modelKey)]||{};
     const items=list.items.filter(item=>optionVisible(item,u2||{}));
     const currentChoice=(mc2.slots||{})[slotId];
-    return `<div class="ov" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render()">
+    return `<div class="ov" onclick="backToUnit('${esc(iid)}',${i})">
       <div class="mod" onclick="event.stopPropagation()">
-      <button class="mc" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render()">✕</button>
+      <button class="mc" onclick="backToUnit('${esc(iid)}',${i})">✕</button>
       <div class="mt">${list.label}</div>
       <div class="ms">Select a weapon for this model</div>
       ${items.map(item=>{
@@ -10305,14 +10322,14 @@ function renderModal(){
         </div>`;
       }).join('')}
       <hr class="mdiv"><div style="text-align:center">
-        <button class="clrbtn" style="width:auto;padding:5px 20px;" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render();">↩ Back</button>
+        <button class="clrbtn" style="width:auto;padding:5px 20px;" onclick="backToUnit('${esc(iid)}',${i});">↩ Back</button>
       </div></div></div>`;
   }
 
   if(mode==="sgt_list_pick"){
     const{slotId,listKey}=ST.modal;
     const list=WARGEAR_LISTS[listKey]; if(!list)return'';
-    const det2=ST.dets.find(d=>d.iid===iid);
+    const det2=modalDet(ST.dets.find(d=>d.iid===iid));
     const u2=det2?det2.slots[i]:null;
     const sc2=det2?(det2.cfgs[i]||{}).sergeant||{}:{};
     const items=list.items.filter(item=>optionVisible(item,u2||{}));
@@ -10342,7 +10359,7 @@ function renderModal(){
     const list=WARGEAR_LISTS[listKey];
     if(!list)return"";
     // Filter by legion requirement
-    const det2=ST.dets.find(d=>d.iid===iid);
+    const det2=modalDet(ST.dets.find(d=>d.iid===iid));
     const u2=det2?det2.slots[i]:null;
     const cfg2=det2?(det2.cfgs[i]||{}):{};
     const modelCount2=cfg2.size||(u2?u2.minSize:1);
@@ -10356,14 +10373,14 @@ function renderModal(){
         const isChosen=currentChoice===item.id;
         const legBadge=item.req&&item.req.legion?` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${item.req.legion}</span>`:"";
         const ptsLabel=item.ptsPerModel?`+${item.pts} pts/model (${item.pts*modelCount2} total)`:(item.pts?"+"+item.pts+" pts":"free");
-        return `<div class="slot-option${isChosen?" selected":""}" onclick="setSlotOption('${esc(iid)}',${i},'${slotId}','${item.id}');ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render();" ${weaponHoverAttrs(item.label)}>
+        return `<div class="slot-option${isChosen?" selected":""}" onclick="setSlotOption('${esc(iid)}',${i},'${slotId}','${item.id}');backToUnit('${esc(iid)}',${i});" ${weaponHoverAttrs(item.label)}>
           <span>${item.label}${legBadge}</span>
           <span class="slot-option-pts">${ptsLabel}</span>
         </div>`;
       }).join("")}
       <hr class="mdiv">
       <div style="text-align:center">
-        <button class="clrbtn" style="width:auto;padding:5px 20px;" onclick="ST.modal={mode:'customise',iid:'${esc(iid)}',i:${i}};render();">↩ Back</button>
+        <button class="clrbtn" style="width:auto;padding:5px 20px;" onclick="backToUnit('${esc(iid)}',${i});">↩ Back</button>
       </div>
     </div></div>`;
   }
@@ -10976,11 +10993,11 @@ function attachClickHandlers() {
     const i = parseInt(el.dataset.i);
     if (act === 'pm-slot') {
       setPerModelSlot(iid, i, el.dataset.mkey, el.dataset.slotid, el.dataset.optid);
-      ST.modal = {mode:'customise', iid, i};
+      ST.modal = unitModalObj(iid,i);
       render();
     } else if (act === 'slot-opt') {
       setSlotOption(iid, i, el.dataset.slotid, el.dataset.optid);
-      ST.modal = {mode:'customise', iid, i};
+      ST.modal = unitModalObj(iid,i);
       render();
     }
   });
