@@ -11224,48 +11224,48 @@ function renderAuthModal(){
   const u=cloud.currentUser();
   if(u){
     const s=_myl();
-    const status = s.err ? `<div style="color:#f06060;font-size:13px;margin:4px 0">${esc(s.err)}</div>`
-                 : s.msg ? `<div style="color:#6fbf6f;font-size:13px;margin:4px 0">${esc(s.msg)}</div>` : "";
+    const status = s.err ? `<div style="color:#f27a7a;font-size:15px;margin:6px 0">${esc(s.err)}</div>`
+                 : s.msg ? `<div style="color:#84cf84;font-size:15px;margin:6px 0">${esc(s.msg)}</div>` : "";
     const rowsHtml = s.loading
-      ? `<div style="color:var(--gold-light);padding:14px 2px">Loading your lists…</div>`
+      ? `<div style="color:#ece5d5;font-size:16px;padding:16px 2px">Loading your lists…</div>`
       : !(s.lists&&s.lists.length)
-        ? `<div style="color:var(--gold-light);padding:14px 2px">No saved lists yet — save your current army above.</div>`
+        ? `<div style="color:#ece5d5;font-size:16px;padding:16px 2px">No saved lists yet — save your current army above.</div>`
         : s.lists.map(it=>{
             const when = it.updated_at ? new Date(it.updated_at).toLocaleDateString() : "";
             const cur  = ST.currentListId===it.id ? ` <span style="color:var(--gold)">★</span>` : "";
             if(s.renamingId===it.id){
               return `<div style="display:flex;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #2a2418">
                 <input id="myl-rename" value="${esc(it.name||"")}" onkeydown="if(event.key==='Enter')commitRename('${esc(it.id)}');if(event.key==='Escape')cancelRename()"
-                  style="flex:1;padding:6px;background:#12100c;border:1px solid var(--gold);color:#e8e0cc;border-radius:3px;font-size:14px">
+                  style="flex:1;padding:8px;background:#12100c;border:1px solid var(--gold);color:#f0ead9;border-radius:3px;font-size:16px">
                 <button class="clrbtn" style="width:auto;padding:5px 12px" onclick="commitRename('${esc(it.id)}')">Save</button>
                 <button class="clrbtn" style="width:auto;padding:5px 10px" onclick="cancelRename()">✕</button></div>`;
             }
-            const b=(fn,label,color)=>`<button onclick="${fn}('${esc(it.id)}')" style="padding:4px 9px;background:transparent;border:1px solid ${color||'var(--gold)'};color:${color||'var(--gold-light)'};border-radius:3px;cursor:pointer;font-size:12px;font-family:'Cinzel',serif">${label}</button>`;
+            const b=(fn,label,color)=>`<button onclick="${fn}('${esc(it.id)}')" style="padding:6px 12px;background:transparent;border:1px solid ${color||'var(--gold)'};color:${color||'#ece5d5'};border-radius:3px;cursor:pointer;font-size:14px;font-family:'Cinzel',serif">${label}</button>`;
             return `<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #2a2418">
               <div style="flex:1;min-width:0">
-                <div style="color:#e8e0cc;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name||"Untitled")}${cur}</div>
-                <div style="color:var(--gold-light);font-size:12px">${esc(it.legion||"")}${it.points!=null?" · "+it.points+" pts":""}${when?" · "+when:""}</div>
+                <div style="color:#f0ead9;font-size:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name||"Untitled")}${cur}</div>
+                <div style="color:#cabfa6;font-size:15px">${esc(it.legion||"")}${it.points!=null?" · "+it.points+" pts":""}${when?" · "+when:""}</div>
               </div>
               <div style="display:flex;gap:5px;flex-shrink:0">
                 ${b('loadCloudList','Load','#6fbf6f')}${b('startRename','Rename')}${b('duplicateCloudList','Duplicate')}${b('deleteCloudList','Delete','#c46060')}
               </div></div>`;
           }).join("");
     return wrap(`<div class="mt">Your Lists</div>
-      <div style="font-size:12px;color:var(--gold-light);margin-bottom:10px">Signed in as <b>${esc(u.email||"")}</b> · <a href="#" onclick="authSignOut();return false" style="color:var(--gold-light)">Sign out</a></div>
+      <div style="font-size:15px;color:#ece5d5;margin-bottom:12px">Signed in as <b>${esc(u.email||"")}</b> · <a href="#" onclick="authSignOut();return false" style="color:var(--gold);text-decoration:underline">Sign out</a></div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:2px">
         <input id="myl-name" value="${esc(_curName())}" placeholder="Army name" onkeydown="if(event.key==='Enter')saveCurrent(false)"
-          style="flex:1;padding:9px;background:#12100c;border:1px solid var(--gold);color:#e8e0cc;border-radius:3px;font-size:15px">
+          style="flex:1;padding:10px;background:#12100c;border:1px solid var(--gold);color:#f0ead9;border-radius:3px;font-size:17px">
         <button class="clrbtn" style="width:auto;padding:8px 16px" ${s.saving?'disabled':''} onclick="saveCurrent(false)">${s.saving?'…':(ST.currentListId?'Save':'Save')}</button>
         ${ST.currentListId?`<button class="clrbtn" style="width:auto;padding:8px 12px" ${s.saving?'disabled':''} onclick="saveCurrent(true)">Save as new</button>`:''}
       </div>
-      <div style="font-size:11px;color:var(--gold-light);margin-bottom:6px">${ST.currentListId?`Editing a saved list — “Save” updates it.`:`Saving will create a new list (${totalPts()} pts, ${esc(ST.legion)}).`}</div>
+      <div style="font-size:14px;color:#cabfa6;margin-bottom:8px">${ST.currentListId?`Editing a saved list — “Save” updates it.`:`Saving will create a new list (${totalPts()} pts, ${esc(ST.legion)}).`}</div>
       ${status}
       <hr class="mdiv">
       <div style="max-height:46vh;overflow-y:auto">${rowsHtml}</div>`, 560);
   }
-  const tab=(m,label)=>`<button onclick="authMode('${m}')" style="flex:1;padding:8px;background:${a.mode===m?'var(--gold)':'transparent'};color:${a.mode===m?'#1a1512':'var(--gold-light)'};border:1px solid var(--gold);cursor:pointer;font-family:'Cinzel',serif;font-size:13px;">${label}</button>`;
+  const tab=(m,label)=>`<button onclick="authMode('${m}')" style="flex:1;padding:8px;background:${a.mode===m?'var(--gold)':'transparent'};color:${a.mode===m?'#1a1512':'#ece5d5'};border:1px solid var(--gold);cursor:pointer;font-family:'Cinzel',serif;font-size:15px;">${label}</button>`;
   const enter=`onkeydown="if(event.key==='Enter')authSubmit()"`;
-  const field=(id,type,ph)=>`<input id="${id}" type="${type}" placeholder="${ph}" ${enter} autocomplete="${type==='password'?'current-password':'email'}" style="width:100%;box-sizing:border-box;padding:10px;margin:5px 0;background:#12100c;border:1px solid var(--gold);color:#e8e0cc;border-radius:3px;font-size:15px;">`;
+  const field=(id,type,ph)=>`<input id="${id}" type="${type}" placeholder="${ph}" ${enter} autocomplete="${type==='password'?'current-password':'email'}" style="width:100%;box-sizing:border-box;padding:11px;margin:6px 0;background:#12100c;border:1px solid var(--gold);color:#f0ead9;border-radius:3px;font-size:17px;">`;
   const title = a.mode==="signup"?"Create account":a.mode==="reset"?"Reset password":"Sign in";
   const cta   = a.busy?"…":(a.mode==="signup"?"Create account":a.mode==="reset"?"Send reset link":"Sign in");
   return wrap(`<div class="mt">${title}</div>
