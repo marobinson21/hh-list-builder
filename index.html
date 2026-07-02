@@ -10949,6 +10949,7 @@ function render(){
       <div class="header-btns">
         <button class="hbtn" onclick="enterPlay()">▶ Play Mode</button>
         <button class="hbtn save" onclick="toggleShare()">${ST.showShare?"▲ Hide":"⇧ Share / Import"}</button>
+        <button class="hbtn" onclick="openAuth()">${cloud.currentUser()?("👤 "+esc((cloud.currentUser().email||"Account").split("@")[0])):"👤 Sign in"}</button>
       </div>
     </div>
     ${renderSharePanel()}
@@ -10977,7 +10978,8 @@ function render(){
       ${ST.dets.map(renderCard).join("")}
       ${renderPool()}
     </div>
-    ${renderModal()}`;
+    ${renderModal()}
+    ${renderAuthModal()}`;
 }
 function attachClickHandlers() {
   const app = document.getElementById('app');
@@ -11015,6 +11017,161 @@ render = function() {
   if (ovSc != null) { const o = document.querySelector('.ov'); if (o) o.scrollTop = ovSc; }
   else { window.scrollTo(0, winSc); }
 };
+
+/* ============================================================================
+ *  CLOUD ACCOUNTS + LIST STORAGE  (Supabase, pure fetch — no SDK)
+ *  ---------------------------------------------------------------------------
+ *  SETUP (one-time, ~5 min): create a FREE Supabase project, run the SQL from
+ *  HH_ACCOUNTS_ARCHITECTURE.md (creates the `lists` table + Row Level Security),
+ *  enable Email auth, then paste your project URL + public "anon" key below.
+ *  Both values are SAFE to commit publicly: RLS guarantees a signed-in user can
+ *  only ever read/write their OWN rows. NEVER put the service_role key here.
+ * ========================================================================== */
+const SUPABASE_URL  = "https://aejklplcpxmuqjspemtm.supabase.co";   // e.g. "https://abcdefgh.supabase.co"  (Project Settings → API)
+const SUPABASE_ANON = "sb_publishable_vxr5UuzypP1Lc_nPAz9BNw_3D35PYNm";   // the public "anon" key                (Project Settings → API)
+
+const cloud = (() => {
+  const SKEY = "hh_cloud_session";
+  let session = null;                 // {access_token, refresh_token, expires_at, user}
+  const listeners = [];
+
+  const isConfigured = () => !!(SUPABASE_URL && SUPABASE_ANON);
+  const currentUser  = () => (session && session.user) ? session.user : null;
+  const onAuthChange = (cb) => { listeners.push(cb); return cb; };
+  const emit = () => listeners.forEach(cb=>{ try{ cb(currentUser()); }catch(e){ console.error(e); } });
+
+  function persist(){ try{ session ? localStorage.setItem(SKEY, JSON.stringify(session)) : localStorage.removeItem(SKEY); }catch(e){} }
+  function setSession(s){
+    session = (s && s.access_token)
+      ? { access_token:s.access_token, refresh_token:s.refresh_token,
+          expires_at: Date.now() + ((s.expires_in||3600)*1000), user:s.user||null }
+      : null;
+    persist(); emit();
+  }
+
+  // --- auth (GoTrue) ---
+  async function authFetch(path, body, method){
+    const res = await fetch(SUPABASE_URL + path, {
+      method: method||"POST",
+      headers:{ "apikey":SUPABASE_ANON, "Content-Type":"application/json" },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error_description || data.msg || data.message || ("Request failed ("+res.status+")"));
+    return data;
+  }
+  async function signUp(email, password){
+    const d = await authFetch("/auth/v1/signup", {email, password});
+    if(d.access_token) setSession(d);   // email-confirm OFF → instant session; ON → confirm first
+    return d;
+  }
+  async function signIn(email, password){
+    const d = await authFetch("/auth/v1/token?grant_type=password", {email, password});
+    setSession(d); return d;
+  }
+  const resetPassword = (email) => authFetch("/auth/v1/recover", {email});
+  async function refresh(){
+    if(!session || !session.refresh_token){ setSession(null); return null; }
+    try{ setSession(await authFetch("/auth/v1/token?grant_type=refresh_token", {refresh_token:session.refresh_token})); return session; }
+    catch(e){ setSession(null); return null; }
+  }
+  async function signOut(){
+    try{ if(session) await fetch(SUPABASE_URL+"/auth/v1/logout", {method:"POST", headers:{ "apikey":SUPABASE_ANON, "Authorization":"Bearer "+session.access_token }}); }catch(e){}
+    setSession(null);
+  }
+  async function init(){
+    try{ const raw=localStorage.getItem(SKEY); if(raw) session=JSON.parse(raw); }catch(e){ session=null; }
+    if(session){ (Date.now() > session.expires_at - 60000) ? await refresh() : emit(); }
+  }
+  async function token(){
+    if(!session) return null;
+    if(Date.now() > session.expires_at - 60000) await refresh();
+    return session ? session.access_token : null;
+  }
+
+  // --- data (PostgREST) ---
+  async function dataFetch(path, {method, body, prefer}={}){
+    let t = await token(); if(!t) throw new Error("Not signed in.");
+    const hdr = () => { const h={ "apikey":SUPABASE_ANON, "Authorization":"Bearer "+session.access_token, "Content-Type":"application/json" }; if(prefer) h["Prefer"]=prefer; return h; };
+    let res = await fetch(SUPABASE_URL+"/rest/v1"+path, { method:method||"GET", headers:hdr(), body: body?JSON.stringify(body):undefined });
+    if(res.status===401){ await refresh(); if(session){ res = await fetch(SUPABASE_URL+"/rest/v1"+path, { method:method||"GET", headers:hdr(), body: body?JSON.stringify(body):undefined }); } }
+    if(!res.ok){ const e=await res.json().catch(()=>({})); throw new Error(e.message||e.hint||("Request failed ("+res.status+")")); }
+    if(res.status===204) return null;
+    return res.json().catch(()=>null);
+  }
+  const listLists  = ()           => dataFetch("/lists?select=id,name,legion,allegiance,points,updated_at&order=updated_at.desc");
+  const loadList   = (id)         => dataFetch("/lists?id=eq."+encodeURIComponent(id)+"&select=data").then(r => (r&&r[0]) ? r[0].data : null);
+  const createList = (meta, data) => dataFetch("/lists", {method:"POST", prefer:"return=representation", body:{...meta, data}}).then(r => (r&&r[0]) ? r[0] : null);
+  const updateList = (id, meta, data) => { const b={...meta}; if(data!=null) b.data=data; return dataFetch("/lists?id=eq."+encodeURIComponent(id), {method:"PATCH", prefer:"return=representation", body:b}).then(r => (r&&r[0]) ? r[0] : null); };
+  const renameList = (id, name)   => dataFetch("/lists?id=eq."+encodeURIComponent(id), {method:"PATCH", body:{name}});
+  const deleteList = (id)         => dataFetch("/lists?id=eq."+encodeURIComponent(id), {method:"DELETE"});
+
+  return { isConfigured, currentUser, onAuthChange, init, signUp, signIn, resetPassword, signOut, refresh,
+           listLists, loadList, createList, updateList, renameList, deleteList };
+})();
+
+/* ── Auth UI ─────────────────────────────────────────────────────────────── */
+function _auth(){ if(!ST.auth) ST.auth={open:false, mode:"signin", busy:false, err:"", msg:""}; return ST.auth; }
+function openAuth(){ const a=_auth(); a.open=true; a.err=""; a.msg=""; a.busy=false; render(); }
+function closeAuth(){ const a=_auth(); a.open=false; a.err=""; a.msg=""; render(); }
+function authMode(m){ const a=_auth(); a.mode=m; a.err=""; a.msg=""; render(); }
+async function authSubmit(){
+  const a=_auth();
+  const email=((document.getElementById("auth-email")||{}).value||"").trim();
+  const pw=(document.getElementById("auth-pw")||{}).value||"";
+  a.err=""; a.msg=""; a.busy=true; render();
+  try{
+    if(a.mode==="signin"){ await cloud.signIn(email, pw); a.open=false; }
+    else if(a.mode==="signup"){
+      await cloud.signUp(email, pw);
+      if(cloud.currentUser()){ a.open=false; }
+      else { a.msg="Account created — check your email to confirm, then sign in."; a.mode="signin"; }
+    }
+    else if(a.mode==="reset"){ await cloud.resetPassword(email); a.msg="If that email exists, a reset link is on its way."; }
+  }catch(e){ a.err=e.message||"Something went wrong."; }
+  a.busy=false; render();
+}
+async function authSignOut(){ await cloud.signOut(); const a=_auth(); a.open=false; render(); }
+
+function renderAuthModal(){
+  const a=_auth(); if(!a.open) return "";
+  const wrap = (inner, w) => `<div class="ov" onclick="closeAuth()"><div class="mod" onclick="event.stopPropagation()" style="max-width:${w||420}px">
+    <button class="mc" onclick="closeAuth()">✕</button>${inner}</div></div>`;
+  if(!cloud.isConfigured()){
+    return wrap(`<div class="mt">Accounts not set up</div>
+      <div class="ms">Cloud accounts aren't configured yet.<br><span style="color:var(--gold-light);font-size:12px">(Developer: paste your Supabase URL &amp; anon key into <code>SUPABASE_URL</code> / <code>SUPABASE_ANON</code>.)</span></div>
+      <div style="text-align:center;margin-top:14px"><button class="clrbtn" style="width:auto;padding:6px 22px" onclick="closeAuth()">↩ Close</button></div>`);
+  }
+  const u=cloud.currentUser();
+  if(u){
+    return wrap(`<div class="mt">Account</div>
+      <div class="ms">Signed in as <b>${esc(u.email||"")}</b></div>
+      <hr class="mdiv">
+      <div style="color:var(--gold-light);font-size:13px;margin-bottom:14px">Saving &amp; loading your list library lands in the next update.</div>
+      <div style="text-align:center"><button class="clrbtn" style="width:auto;padding:6px 22px" onclick="authSignOut()">Sign out</button></div>`);
+  }
+  const tab=(m,label)=>`<button onclick="authMode('${m}')" style="flex:1;padding:8px;background:${a.mode===m?'var(--gold)':'transparent'};color:${a.mode===m?'#1a1512':'var(--gold-light)'};border:1px solid var(--gold);cursor:pointer;font-family:'Cinzel',serif;font-size:13px;">${label}</button>`;
+  const enter=`onkeydown="if(event.key==='Enter')authSubmit()"`;
+  const field=(id,type,ph)=>`<input id="${id}" type="${type}" placeholder="${ph}" ${enter} autocomplete="${type==='password'?'current-password':'email'}" style="width:100%;box-sizing:border-box;padding:10px;margin:5px 0;background:#12100c;border:1px solid var(--gold);color:#e8e0cc;border-radius:3px;font-size:15px;">`;
+  const title = a.mode==="signup"?"Create account":a.mode==="reset"?"Reset password":"Sign in";
+  const cta   = a.busy?"…":(a.mode==="signup"?"Create account":a.mode==="reset"?"Send reset link":"Sign in");
+  return wrap(`<div class="mt">${title}</div>
+    ${a.mode!=="reset"?`<div style="display:flex;margin:10px 0 8px">${tab('signin','Sign in')}${tab('signup','Sign up')}</div>`:''}
+    ${field('auth-email','email','Email')}
+    ${a.mode!=="reset"?field('auth-pw','password','Password'):''}
+    ${a.err?`<div style="color:#f06060;font-size:13px;margin:6px 0">${esc(a.err)}</div>`:''}
+    ${a.msg?`<div style="color:#6fbf6f;font-size:13px;margin:6px 0">${esc(a.msg)}</div>`:''}
+    <button class="clrbtn" style="width:100%;padding:11px;margin-top:8px" ${a.busy?'disabled':''} onclick="authSubmit()">${cta}</button>
+    <div style="text-align:center;margin-top:12px;font-size:12px">
+      ${a.mode==="reset"
+        ? `<a href="#" onclick="authMode('signin');return false" style="color:var(--gold-light)">← Back to sign in</a>`
+        : `<a href="#" onclick="authMode('reset');return false" style="color:var(--gold-light)">Forgot password?</a>`}
+    </div>`, 400);
+}
+
+// Restore any saved session on load, and re-render whenever auth state changes.
+cloud.onAuthChange(() => render());
+cloud.init();
 
 render();
 setupDelegatedHovers();
