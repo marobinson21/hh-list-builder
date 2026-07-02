@@ -170,6 +170,18 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
 /* Points total */
 .mpt{font-family:"Cinzel",serif;font-size:16px;color:var(--gold-dark);margin-top:.75rem;text-align:right;padding-top:.5rem;border-top:.5px solid #d4c88a;}
 .clrbtn{background:none;border:.5px solid var(--red);color:var(--red);border-radius:4px;padding:5px 12px;cursor:pointer;font-family:"Crimson Text",serif;font-size:15px;margin-top:.75rem;width:100%;}
+/* Dark theme for the account / My Lists modal (contrasts with the parchment app) */
+.mod-dark{background:var(--dark);border:1.5px solid var(--gold);color:#f0ead9;}
+.mod-dark .mt{color:var(--gold-light);}
+.mod-dark .ms{color:#d8cfbe;}
+.mod-dark .mc{color:#cabfa6;}
+.mod-dark .mc:hover{color:var(--gold-light);}
+.mod-dark .mdiv{border-top-color:#3a3222;}
+.mod-dark code{color:var(--gold-light);}
+.mod-dark .clrbtn{border:1px solid var(--gold);color:#1a1510;background:var(--gold);font-weight:600;}
+.mod-dark .clrbtn:hover{background:var(--gold-light);}
+.mod-dark .clrbtn:disabled{opacity:.55;cursor:default;}
+.mod-dark a{color:var(--gold-light);}
 .clrbtn:hover{background:#f5e5e5;}
 .wt{font-size:13px;color:var(--red);font-style:italic;margin-bottom:.5rem;}
 .po{padding:7px 10px;border-radius:4px;cursor:pointer;border:.5px solid transparent;margin-bottom:4px;transition:background .15s;}
@@ -11214,7 +11226,7 @@ async function commitRename(id){
 
 function renderAuthModal(){
   const a=_auth(); if(!a.open) return "";
-  const wrap = (inner, w) => `<div class="ov" onclick="closeAuth()"><div class="mod" onclick="event.stopPropagation()" style="max-width:${w||420}px">
+  const wrap = (inner, w) => `<div class="ov" onclick="closeAuth()"><div class="mod mod-dark" onclick="event.stopPropagation()" style="max-width:${w||420}px">
     <button class="mc" onclick="closeAuth()">✕</button>${inner}</div></div>`;
   if(!cloud.isConfigured()){
     return wrap(`<div class="mt">Accounts not set up</div>
