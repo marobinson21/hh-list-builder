@@ -281,6 +281,85 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
 <div class="app" id="app"></div>
 <script>
 /* ============================================================================
+ *  ARCHITECTURE REFERENCE  —  flag glossary, data types, and invariants
+ *  ----------------------------------------------------------------------------
+ *  Quick map of how units/wargear/rules are modelled and which engine function
+ *  enforces each behaviour. Keep this scoped to STABLE architecture (not a
+ *  changelog). When a mechanism is discovered/added, record it here.
+ *
+ *  UNIT (entries in SU[role]): {
+ *    id, name, basePts, minSize, maxSize, ptsPerModel(+N/extra model),
+ *    req:{legion, allegiance},            // hard gates: hidden if mismatch (unitLegionOk / unitAllegianceBlocked)
+ *    traits:[...], specialRules:["Rule (X)", ...], modelTypes:["Infantry","Unique",...],
+ *    stats:{M,WS,BS,S,T,W,I,A,LD,CL,WP,IN,SAV,INV},   // single-model
+ *    championStats/modelStats + championLabel/baseModelLabel + baseSizeBreakdown,  // multi-model
+ *    uniqueRule:"X",           // only one unit sharing this string per army (unitUniqueBlocked) — mutual exclusion (Fulgrim/Fulgrim Transfigured) AND 0-1 army cap on any whole squad (Dominator Cohort, Sun Killer Squad); independent of Unique-type / isUnique
+ *    unitNote:"...",           // free-text note shown on the unit for rules the engine can't enforce
+ *    primeAllTroops:{count, allowed:[...]},   // Sire-style: N filled Troops of these names -> all Prime
+ *    profiles:[{id,label,stats,subtypes,type,wargear,...}],   // profile units (active = cfg.profileId||profiles[0])
+ *    wargear:{ included_slots:[label...], pairs:[], slots:[], addons:[],
+ *              champion:{...}, perModel:{...} } }             // champion/perModel for multi-model squads
+ *    Uniform squad (no distinct leader, e.g. Inductii/Sun Killers): championLabel===baseModelLabel and champion/perModel share
+ *    an identical block — build both from one `blk()` factory. Required uniform weapon (all models same, must pick):
+ *    a slot with required:true + uniform:true (Sun Killer / Heavy-Havoc weapon).
+ *
+ *  SLOT (wargear.slots[]): { id, label(=default weapon shown when unselected), options:[...],
+ *    uniform:true       // ONE squad-wide choice; picking on any model applies to all; per-model cost (setPerModelSlot uniform branch, cp)
+ *    required:true      // must choose an option
+ *    req:{allegiance}   // slot hidden if army allegiance mismatch (filterWargearReqs)
+ *  }
+ *  OPTION (slot.options[]): { id, label, pts, list:"<WARGEAR_LISTS key>"(opens picker),
+ *    req:{legion|allegiance}(optionVisible/optionLegionOk), requires_weapon, consumes_slots:[...], swapGroup,
+ *    per5cap:"grp", per5max:N, per5size:S    // at most per5max of options sharing "grp" per S models (e.g. 1 special weapon per 4/5). Inductii: per5size:4 }
+ *  A slot whose label ends "(optional)" and is not a weapon name has NO default weapon — nothing added until an option is picked (Orchestrator melee, pintle slots).
+ *
+ *  ADDON (wargear.addons[]): { id, label, pts, ptsPerModel:true(×modelCount),
+ *    uniform:true          // squad-wide toggle shown as a per-model addon (togglePerModelAddon uniform branch)
+ *    exclusive:["id",...]  // can't be taken WITH these; SYMMETRIC — declaring on either side greys both (addonExcluded / dropExcluded)
+ *    unique_group:"g"      // at most one of this group PER UNIT across models
+ *    unique_in_unit:true   // at most one across the unit (banners, etc.)
+ *    max_in_unit:N         // at most N of THIS addon across the unit (legion-equipment "up to two": nuncio/augury each max_in_unit:2 + exclusive)
+ *    req:{legion}          // shows a "Req: <legion>" pill (does NOT hide)
+ *    req:{allegiance}      // HIDDEN entirely if army allegiance mismatch (filterWargearReqs)
+ *    grants:{types,traits,specialRules,weapons,powers}   // applied to the datasheet when selected
+ *    list:"<key>"          // addon opens a list picker
+ *  }
+ *  PAIR (wargear.pairs[]): { id, label, pts, replaces:["slotId",...], req:{legion}, sublabel }  // two-for-one weapon swap
+ *
+ *  LEGION_SWAPS[] (injectLegionSwaps; NEVER applied to Unique units — isUnique):
+ *    common: {legion, allegiance(row gate), requireTypes:["Command","Champion","Sergeant"], onlyUnit/onlyUnits}
+ *    type:"modelConditional" (weapon swap): from/fromTrait, to, toId, pts | costMode:"matchSource"+costAdd
+ *    type:"grant" (adds wargear as an addon): add, addId, pts, grants, unique_group, exclusive  (dup-guarded vs existing addon/slot-option ids)
+ *    type:"uniform" (whole-unit included-weapon swap, all models): from, to, toId, pts/model
+ *
+ *  DECURIONS[] (injectDecurions; vehicle upgrades; NEVER on Unique units): {
+ *    id, name, legion(optional -> no legion = any legion, no pill), noPintle|requirePintle|excludePintleIds,
+ *    appliesTo:[{unit, pts, turretOptions:[...], turretReason}], grants:{specialRules,weapons} }
+ *    Always shown on eligible units; greyed with a reason (decurionDisabled/decurionReason) when conditions fail;
+ *    disabled ones contribute 0 cost and no grants (guarded at every cost/grant gather site).
+ *
+ *  PA[] (Prime Advantages; paAvailable): { id, label, desc, slotRole, oncePerDet,
+ *    req:{legion,allegiance,infantryOnly,hasType,unit,profile}, grants:{types,specialRules}, statBonus }
+ *
+ *  LEGION_RITES[legion] = single {tactica,gambit,reaction} OR array of rites for a multi-rite legion:
+ *    [{id, name, allegiance(optional -> rite only shown for that allegiance), tactica:{name,text},
+ *      gambit:{name,text}, reaction:{name,text}, detachment:"<DD id>"}]
+ *    legionRites()/currentRite()/currentRiteId(); header dropdown shown only when >1 available rite;
+ *    rite-specific detachments gate via req:{rite:"id"} in ALL three detachment pool filters.
+ *
+ *  DD{} (detachments): { id, name, cat:"primary|apex|auxiliary|warlord|lordsofwar",
+ *    slots:[{r:"Role", p:isPrime}], req:{legion,allegiance,rite,any_unit}, restr:{Role:[names]}, rnote,
+ *    noUnlock:true }   // its HighCommand/Command slots grant NO Apex/Aux unlocks (getUnlocks)
+ *    Pools that must list an id to offer it: allApex, allAux, altWarlord. cat:"warlord" auto-enforces 3000pt+ & one-per-army.
+ *
+ *  RULES{} (ruleTipHtml / playRuleText): entries typed special_rule | weapon_special | weapon_trait | weapon_keyword.
+ *    Value rules use {X} (and arithmetic {X+N}/{X-N}/{X*N}) substituted from a "(N)" suffix via subRuleVal.
+ *    Prefer a single generic base ("Fear", "Officer of the Line", "Vanguard", "Duelist's Edge") over per-value keys.
+ *    weapon_trait entries are informational pills only — blank "..." text is intentional.
+ *
+ *  PERSISTENCE: serialise/deserialise round-trips {al, lg, pt, ror(riteOfWar), ds(detachments)} via LZString in the URL.
+ * ========================================================================== */
+/* ============================================================================
  *  GAME DATA  —  rules, profiles, wargear, weapons, units, detachments
  *  ----------------------------------------------------------------------------
  *  Everything from here down to the "END GAME DATA" banner is pure data
@@ -313,6 +392,9 @@ const PA = [
     req:{legion:"Ultramarines"}},
   {id:"martial_supremacy", label:"Martial Supremacy", desc:"One model in this unit gains the Champion type and the Duellist's Edge (1) special rule.",
     req:{legion:"Sons of Horus"}, slotRole:"Elites"},
+  {id:"phoenix_warden", label:"Phoenix Warden",
+    desc:"Centurion in Terminator Armour (Tartaros profile) only. Exchanges its combi-bolter and power weapon for a Phoenix Power Spear for free \u2014 select the Phoenix Power Spear pair in the model's wargear \u2014 and gains the Skill Unmatched special rule.",
+    req:{legion:"Emperor's Children", unit:"cmd_terminator_centurion", profile:"tartaros_centurion"}, grants:{specialRules:["Skill Unmatched"]}},
 ];
 
 // ── Detachment definitions ────────────────────────────────────────────────────
@@ -344,6 +426,15 @@ const DD = {
   supremacy_cadre:{id:"supremacy_cadre",name:"Supremacy Cadre",cat:"auxiliary",
     req:{legion:"Sons of Horus"},
     slots:[{r:"Troops",p:true},{r:"Troops",p:true},{r:"HeavyAssault",p:false},{r:"Elites",p:false}]},
+  primacy_wing:{id:"primacy_wing",name:"Primacy Wing",cat:"auxiliary",
+    req:{legion:"Emperor's Children",rite:"legiones_astartes"},
+    slots:[{r:"Retinue",p:false},{r:"Elites",p:false},{r:"FastAttack",p:false},{r:"FastAttack",p:false}]},
+  brotherhood_of_the_phoenix:{id:"brotherhood_of_the_phoenix",name:"Brotherhood of the Phoenix",cat:"warlord",
+    req:{legion:"Emperor's Children",allegiance:"Traitor",rite:"legiones_hereticus"},
+    restr:{Warlord:["Fulgrim Transfigured"]},
+    rnote:"Replaces the Warlord Detachment (3000+ pts army; cannot also take a Warlord Detachment). HC & Command units here do not unlock Apex/Auxiliary slots. Warlord must be Fulgrim Transfigured.",
+    noUnlock:true,
+    slots:[{r:"Warlord",p:false},{r:"HighCommand",p:true},{r:"HighCommand",p:false},{r:"HighCommand",p:false},{r:"Command",p:false}]},
   armoured_fist:   {id:"armoured_fist",   name:"Armoured Fist",   cat:"auxiliary", slots:[
     {r:"Transport",p:false},{r:"Transport",p:false},{r:"Transport",p:false},{r:"Transport",p:false},
     {r:"HeavyTransport",p:false},{r:"HeavyTransport",p:false},{r:"HeavyTransport",p:false},{r:"HeavyTransport",p:false}]},
@@ -660,6 +751,21 @@ const WEAPONS = {
   "pair_of_lightning_claws": {label:"Pair of Lightning Claws", melee:true, im:"I", am:"+2", sm:"S", ap:3, d:1, specialRules:"Rending (6+), Breaching (6+)", rules:["Power"]},
 
   "power_axe": {label:"Power Axe", melee:true, im:-1, am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (5+)", rules:["Power"]},
+  "phoenix_power_spear": {label:"Phoenix Power Spear", melee:true, im:"+1", am:"A", sm:"+1", ap:3, d:1, specialRules:"Impact (D), Breaching (6+)", rules:["Power"]},
+  "phoenix_rapier": {label:"Phoenix Rapier", melee:true, im:"I", am:"A", sm:"S", ap:3, d:1, specialRules:"Impact (D), Breaching (6+)", rules:["Power"]},
+  "palatine_blade": {label:"Palatine Blade", melee:true, im:"I", am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (5+), Duelist's Edge (1)", rules:[]},
+  "sonic_lance": {label:"Sonic Lance", range:"Template", fp:1, rs:2, ap:5, d:1, specialRules:"Template, Breaching (6+)", rules:["Sonic","Assault"]},
+  "laeran_blade": {label:"Laeran Blade", melee:true, im:"I", am:"A", sm:"S", ap:2, d:2, specialRules:"Duelist's Edge (1)", rules:[]},
+  "firebrand": {label:"Firebrand", range:15, fp:2, rs:6, ap:2, d:1, specialRules:"Shred (5+), Deflagrate (6)", rules:["Volkite","Assault"]},
+  "glory_aeterna": {label:"Glory Aeterna", melee:true, im:-2, am:"A", sm:"+2", ap:2, d:2, specialRules:"Critical Hit (6+)", rules:["Power"]},
+  "death_scream": {label:"Death Scream", range:"Template", fp:1, rs:3, ap:5, d:1, specialRules:"Template, Breaching (6+), Pinning (0)", rules:["Sonic","Assault"]},
+  "the_cacophony": {label:"The Cacophony", range:36, fp:3, rs:6, ap:5, d:1, specialRules:"Overload (1), Stun (2), Critical Hit (6+)", rules:["Sonic"]},
+  "blades_of_lucius": {label:"Blades of Lucius", melee:true, im:"I", am:"A", sm:"S", ap:2, d:2, specialRules:"Duelist's Edge (1)", rules:[]},
+  "charnabal_broadsword": {label:"Charnabal Broadsword", melee:true, im:"I", am:"A", sm:"+2", ap:"-", d:1, specialRules:"Breaching (5+), Duelist's Edge (1)", rules:["Charnabal"]},
+  "blades_of_the_phoenician": {label:"Blades of the Phoenician", profiles:[
+    {name:"Decapitating Slashes", melee:true, im:"I", am:"A", sm:"S", ap:2, d:2, specialRules:"Critical Hit (6+), Duelist's Edge (1)", rules:[]},
+    {name:"Sundering Blows", melee:true, im:-2, am:3, sm:"+5", ap:2, d:4, specialRules:"\u2014", rules:[]},
+  ]},
   "power_maul": {label:"Power Maul", melee:true, im:-1, am:"A", sm:"+2", ap:3, d:1, specialRules:"Breaching (6+)", rules:["Power"]},
   "power_lance": {label:"Power Lance", melee:true, im:"+1", am:"A", sm:"S", ap:3, d:1, specialRules:"Precision (6+)", rules:["Power"]},
   "heavy_chainsword": {label:"Heavy Chainsword", melee:true, im:-1, am:"A", sm:"+2", ap:4, d:1, specialRules:"Shred (6+)", rules:["Chain"]},
@@ -672,6 +778,7 @@ const WEAPONS = {
   "saturnine_war_axe": {label:"Saturnine War Axe", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:2, specialRules:"Reaping Blow (2)", rules:["Power"]},
   "saturnine_concussion_hammer": {label:"Saturnine Concussion Hammer", melee:true, im:-3, am:"A", sm:"x2", ap:2, d:3, specialRules:"Critical Hit (6+)", rules:["Power"]},
   "saturnine_disruption_fist": {label:"Saturnine Disruption Fist", melee:true, im:-2, am:"A", sm:"+2", ap:2, d:3, specialRules:"—", rules:["Power"]},
+  "paired_saturnine_disruption_fists": {label:"Paired Saturnine Disruption Fists", melee:true, im:-2, am:"+1", sm:"+2", ap:2, d:3, specialRules:"—", rules:["Power"]},
   "hand_flamer": {label:"Hand Flamer", range:"Template", fp:1, rs:3, ap:"-", d:1, specialRules:"Template, Pistol", rules:["Assault", "Flame"]},
   "volkite_serpenta": {label:"Volkite Serpenta", range:10, fp:2, rs:5, ap:5, d:1, specialRules:"Pistol, Deflagrate (5)", rules:["Assault", "Volkite"]},
   "combi_bolter": {label:"Combi-bolter", range:24, fp:4, rs:4, ap:5, d:1, specialRules:"—", rules:["Bolt"]},
@@ -934,6 +1041,18 @@ const WEAPONS = {
 
 const SU = {
   HighCommand:[
+    {
+      id:"hc_eidolon", name:"Lord Commander Eidolon", basePts:215, minSize:1, maxSize:1,
+      req:{legion:"Emperor's Children", allegiance:"Traitor"}, uniqueRule:"Lord Commander Eidolon",
+      traits:["Traitor","Emperor's Children","Master of the Legion"],
+      specialRules:["Impact (A)","Bulky (2)","Deep Strike"],
+      modelTypes:["Infantry","Unique","Command","Antigrav"],
+      stats:{M:12,WS:6,BS:5,S:4,T:4,W:4,I:5,A:5,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Glory Aeterna","Archeotech Pistol","Sonic Shriekers","Death Scream","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
     {
       id:"hc_horus_aximand", name:"'Little' Horus Aximand", basePts:170, minSize:1, maxSize:1,
       req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Horus Aximand",
@@ -1274,6 +1393,30 @@ const SU = {
   ],
   Command:[
     {
+      id:"cmd_lucius", name:"Captain Lucius", basePts:215, minSize:1, maxSize:1,
+      req:{legion:"Emperor's Children", allegiance:"Traitor"}, uniqueRule:"Captain Lucius",
+      traits:["Traitor","Emperor's Children"],
+      specialRules:["The Faultless Blade"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:7,BS:5,S:4,T:4,W:3,I:6,A:5,LD:9,CL:8,WP:8,IN:7,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Blades of Lucius","Bolt Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[{id:"sonic_shriekers", label:"Sonic Shriekers", pts:15}],
+      }
+    },
+    {
+      id:"cmd_tarvitz", name:"Saul Tarvitz", basePts:215, minSize:1, maxSize:1,
+      req:{legion:"Emperor's Children", allegiance:"Loyalist"}, uniqueRule:"Saul Tarvitz",
+      traits:["Loyalist","Emperor's Children","Master of the Legion"],
+      specialRules:["Hatred (Traitor)","Officer of the Line (2)","A Brother Betrayed"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:6,BS:5,S:4,T:4,W:3,I:5,A:4,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Charnabal Broadsword","Nemesis Bolter","Bolt Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
       id:"cmd_dark_emissary", name:"Dark Emissary", basePts:90, minSize:1, maxSize:1,
       req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Dark Emissary",
       traits:["Traitor","Sons of Horus"],
@@ -1537,6 +1680,8 @@ const SU = {
             pairs:[
               {id:"lightning_claws", label:"Pair of Lightning Claws", pts:5,
                replaces:["combi_bolter","power_weapon"], sublabel:"Replaces combi-bolter & power weapon"},
+              {id:"phoenix_power_spear", label:"Phoenix Power Spear", pts:0, req:{legion:"Emperor's Children"},
+               replaces:["combi_bolter","power_weapon"], sublabel:"Replaces combi-bolter & power weapon (Phoenix Warden)"},
             ],
             slots:[
               { id:"combi_bolter", label:"Combi-bolter", options:[
@@ -3407,6 +3552,95 @@ const SU = {
   ],
   Retinue:[
     {
+      id:"ret_saturnine_command", name:"Saturnine Terminator Command Squad", basePts:160, minSize:2, maxSize:6, ptsPerModel:60,
+      traits:["[Allegiance]","[Legiones Astartes]"],
+      specialRules:["Bulky (4)","Explodes (6+)","Implacable Advance","Slow and Purposeful"],
+      championLabel:"Saturnine Chosen Champion", baseModelLabel:"Saturnine Chosen",
+      baseSizeBreakdown:"1 Saturnine Chosen Champion + 1 Saturnine Chosen",
+      championStats:{M:5,WS:5,BS:4,S:4,T:6,W:3,I:3,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      modelStats:{M:5,WS:5,BS:4,S:4,T:6,W:3,I:3,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      wargear:(()=>{ const slots=()=>[
+            { id:"fists", label:"Paired Saturnine Disruption Fists", options:[
+              {id:"plasma_bombard",             label:"Saturnine Disruption Fist & Plasma Bombard",             pts:10, chips:["Plasma Bombard","Saturnine Disruption Fist"]},
+              {id:"twin_heavy_disintegrator",   label:"Saturnine Disruption Fist & Twin Heavy Disintegrator",   pts:20, chips:["Twin Heavy Disintegrator","Saturnine Disruption Fist"]},
+              {id:"saturnine_war_axe",          label:"Saturnine Disruption Fist & Saturnine War Axe",          pts:10, chips:["Saturnine War Axe","Saturnine Disruption Fist"]},
+              {id:"saturnine_concussion_hammer",label:"Saturnine Disruption Fist & Saturnine Concussion Hammer",pts:20, chips:["Saturnine Concussion Hammer","Saturnine Disruption Fist"]},
+            ]},
+            { id:"extra", label:"Additional Weapon (optional)", options:[
+              {id:"particle_shredder", label:"Particle Shredder", pts:5},
+              {id:"plasma_blaster",    label:"Plasma Blaster",    pts:10},
+            ]},
+          ];
+        return {
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{
+          modelTypes:["Infantry","Champion","Sergeant","Heavy"],
+          included_slots:["Thermal Diffraction Field","Saturnine Teleport Synchroniser"],
+          pairs:[], slots:slots(), addons:[],
+        },
+        perModel:{
+          modelTypes:["Infantry","Heavy"],
+          included_slots:["Thermal Diffraction Field","Saturnine Teleport Synchroniser"],
+          pairs:[], slots:slots(),
+          addons:[ {id:"legion_standard", label:"Legion Standard", pts:20, unique_in_unit:true} ],
+        },
+      }; })()
+    },
+    {
+      id:"ret_augur_command_control", name:"Augur Command and Control Squad", basePts:80, minSize:4, maxSize:4,
+      traits:["[Allegiance]","[Legiones Astartes]","Smokescreen"],
+      specialRules:["Support Unit (2)","Battlefield Coordinators"],
+      modelTypes:["Infantry"],
+      championLabel:"Command and Control Legionary", baseModelLabel:"Command and Control Legionary",
+      baseSizeBreakdown:"4 Command and Control Legionaries",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:2,I:4,A:2,LD:8,CL:8,WP:7,IN:8,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:2,I:4,A:2,LD:8,CL:8,WP:7,IN:8,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Bolt Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[],
+        slots:[
+          { id:"weapon", label:"Bolter", options:[
+            {id:"special_weapon", label:"Legion Special Weapon", pts:0, list:"special_weapons", per5cap:"cc_special", per5max:1, per5size:4},
+          ]},
+        ],
+        addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
+      id:"ret_phoenix_terminators", name:"Phoenix Terminator Squad", basePts:200, minSize:5, maxSize:10, ptsPerModel:35,
+      req:{legion:"Emperor's Children"},
+      traits:["[Allegiance]","Emperor's Children"],
+      specialRules:["Bulky (2)","Skill Unmatched"],
+      modelTypes:["Infantry"],
+      championLabel:"Phoenix Champion", baseModelLabel:"Phoenix Terminator",
+      baseSizeBreakdown:"1 Phoenix Champion + 4 Phoenix Terminators",
+      championStats:{M:7,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:9,CL:9,WP:7,IN:7,SAV:"2+",INV:"5+"},
+      modelStats:{M:7,WS:5,BS:4,S:4,T:5,W:2,I:4,A:2,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{
+          modelTypes:["Infantry","Champion","Sergeant"],
+          included_slots:["Phoenix Power Spear"],
+          pairs:[], slots:[],
+          addons:[
+            {id:"grenade_harness", label:"Grenade Harness", pts:5, unique_in_unit:true},
+            {id:"sonic_shriekers", label:"Sonic Shriekers", pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_lance"]},
+            {id:"sonic_lance",     label:"Sonic Lance",     pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_shriekers"]},
+          ],
+        },
+        perModel:{
+          modelTypes:["Infantry"],
+          included_slots:["Phoenix Power Spear"],
+          pairs:[], slots:[],
+          addons:[
+            {id:"sonic_shriekers", label:"Sonic Shriekers", pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_lance"]},
+            {id:"sonic_lance",     label:"Sonic Lance",     pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_shriekers"]},
+          ],
+        },
+      }
+    },
+    {
       id:"ret_soh_chieftain_squad", name:"Sons of Horus Chieftain Squad", basePts:155, minSize:5, maxSize:10, ptsPerModel:25,
       req:{legion:"Sons of Horus"},
       traits:["[Allegiance]","Sons of Horus","Shield"],
@@ -3951,6 +4185,153 @@ const SU = {
   ],
   Elites:[
     {
+      id:"e_palatine_blade_squad", name:"Palatine Blade Squad", basePts:165, minSize:5, maxSize:10, ptsPerModel:28,
+      req:{legion:"Emperor's Children"},
+      traits:["[Allegiance]","Emperor's Children"],
+      specialRules:["Vanguard (3)"],
+      modelTypes:["Infantry"],
+      championLabel:"Palatine Prefector", baseModelLabel:"Palatine Warrior",
+      baseSizeBreakdown:"1 Palatine Prefector + 4 Palatine Warriors",
+      championStats:{M:7,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"\u2014"},
+      modelStats:{M:7,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"\u2014"},
+      wargear:{
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{
+          modelTypes:["Infantry","Champion","Sergeant"],
+          included_slots:["Frag Grenades","Krak Grenades"],
+          pairs:[],
+          slots:[
+            { id:"melee", label:"Palatine Blade", options:[
+              {id:"power_weapon",       label:"Power Weapon",        pts:0, list:"power_weapons"},
+              {id:"phoenix_rapier",     label:"Phoenix Rapier",      pts:0},
+              {id:"phoenix_power_spear",label:"Phoenix Power Spear", pts:0},
+            ]},
+            { id:"pistol", label:"Bolt Pistol", options:[
+              {id:"legion_pistol", label:"Legion Pistol", pts:0, list:"legion_pistols"},
+            ]},
+          ],
+          addons:[
+            {id:"sonic_shriekers", label:"Sonic Shriekers", pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_lance"]},
+            {id:"sonic_lance",     label:"Sonic Lance",     pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_shriekers"]},
+          ],
+        },
+        perModel:{
+          modelTypes:["Infantry"],
+          included_slots:["Bolt Pistol","Frag Grenades","Krak Grenades"],
+          pairs:[],
+          slots:[
+            { id:"melee", label:"Palatine Blade", options:[
+              {id:"power_weapon",       label:"Power Weapon",        pts:0, list:"power_weapons"},
+              {id:"phoenix_rapier",     label:"Phoenix Rapier",      pts:0},
+              {id:"phoenix_power_spear",label:"Phoenix Power Spear", pts:0},
+            ]},
+          ],
+          addons:[
+            {id:"sonic_shriekers", label:"Sonic Shriekers", pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_lance"]},
+            {id:"sonic_lance",     label:"Sonic Lance",     pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_shriekers"]},
+          ],
+        },
+      }
+    },
+    {
+      id:"e_sun_killers", name:"Sun Killer Squad", basePts:65, minSize:5, maxSize:20, ptsPerModel:10,
+      req:{legion:"Emperor's Children"}, uniqueRule:"Sun Killer Squad",
+      traits:["[Allegiance]","Emperor's Children"],
+      specialRules:["Heedless","Designated Quarry"],
+      modelTypes:["Infantry"],
+      championLabel:"Novaetor", baseModelLabel:"Sun Killer",
+      baseSizeBreakdown:"1 Novaetor + 4 Sun Killers",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:9,CL:9,WP:7,IN:7,SAV:"3+",INV:"—"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:8,CL:8,WP:7,IN:7,SAV:"3+",INV:"—"},
+      wargear:{
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{
+          modelTypes:["Infantry","Sergeant"],
+          included_slots:["Bolt Pistol","Frag Grenades","Krak Grenades"],
+          pairs:[],
+          slots:[
+            { id:"weapon", label:"Sun Killer Weapon (same for all)", required:true, uniform:true, options:[
+              {id:"volkite_culverin", label:"Volkite Culverin", pts:15},
+              {id:"plasma_cannon",    label:"Plasma Cannon",    pts:25},
+              {id:"multi_melta",      label:"Multi-melta",      pts:25},
+              {id:"lascannon",        label:"Lascannon",        pts:25},
+            ]},
+            { id:"sgt_melee", label:"Sergeant Melee (optional)", options:[
+              {id:"sergeant_melee", label:"Legion Sergeant Melee", pts:0, list:"sergeant_melee"},
+            ]},
+          ],
+          addons:[],
+        },
+        perModel:{
+          modelTypes:["Infantry"],
+          included_slots:["Bolt Pistol","Frag Grenades","Krak Grenades"],
+          pairs:[],
+          slots:[
+            { id:"weapon", label:"Sun Killer Weapon (same for all)", required:true, uniform:true, options:[
+              {id:"volkite_culverin", label:"Volkite Culverin", pts:15},
+              {id:"plasma_cannon",    label:"Plasma Cannon",    pts:25},
+              {id:"multi_melta",      label:"Multi-melta",      pts:25},
+              {id:"lascannon",        label:"Lascannon",        pts:25},
+            ]},
+          ],
+          addons:[
+            {id:"vexilla",        label:"Vexilla",        pts:10, unique_in_unit:true},
+            {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["nuncio_vox"]},
+            {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["augury_scanner"]},
+          ],
+        },
+      }
+    },
+    {
+      id:"e_palatine_blade_aquilae", name:"Palatine Blade Aquilae Squad", basePts:195, minSize:5, maxSize:10, ptsPerModel:33,
+      req:{legion:"Emperor's Children"},
+      traits:["[Allegiance]","Emperor's Children"],
+      specialRules:["Vanguard (3)","Bulky (2)","Deep Strike"],
+      modelTypes:["Infantry","Antigrav"],
+      championLabel:"Palatine Prefector with Jump Pack", baseModelLabel:"Palatine Warrior with Jump Pack",
+      baseSizeBreakdown:"1 Palatine Prefector + 4 Palatine Warriors (with Jump Packs)",
+      championStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"—"},
+      modelStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"—"},
+      wargear:{
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{
+          modelTypes:["Infantry","Champion","Sergeant","Antigrav"],
+          included_slots:["Frag Grenades","Krak Grenades"],
+          pairs:[],
+          slots:[
+            { id:"melee", label:"Palatine Blade", options:[
+              {id:"power_weapon",       label:"Power Weapon",        pts:0, list:"power_weapons"},
+              {id:"phoenix_rapier",     label:"Phoenix Rapier",      pts:0},
+              {id:"phoenix_power_spear",label:"Phoenix Power Spear", pts:0},
+            ]},
+            { id:"pistol", label:"Bolt Pistol", options:[
+              {id:"legion_pistol", label:"Legion Pistol", pts:0, list:"legion_pistols"},
+            ]},
+          ],
+          addons:[
+            {id:"sonic_shriekers", label:"Sonic Shriekers", pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_lance"]},
+            {id:"sonic_lance",     label:"Sonic Lance",     pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_shriekers"]},
+          ],
+        },
+        perModel:{
+          modelTypes:["Infantry","Antigrav"],
+          included_slots:["Bolt Pistol","Frag Grenades","Krak Grenades"],
+          pairs:[],
+          slots:[
+            { id:"melee", label:"Palatine Blade", options:[
+              {id:"power_weapon",       label:"Power Weapon",        pts:0, list:"power_weapons"},
+              {id:"phoenix_rapier",     label:"Phoenix Rapier",      pts:0},
+              {id:"phoenix_power_spear",label:"Phoenix Power Spear", pts:0},
+            ]},
+          ],
+          addons:[
+            {id:"sonic_shriekers", label:"Sonic Shriekers", pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_lance"]},
+            {id:"sonic_lance",     label:"Sonic Lance",     pts:5, uniform:true, req:{allegiance:"Traitor"}, exclusive:["sonic_shriekers"]},
+          ],
+        },
+      }
+    },
+    {
       id:"e_justaerin_terminator_squad", name:"Justaerin Terminator Squad",
       basePts:275, minSize:5, maxSize:10, ptsPerModel:50,
       req:{legion:"Sons of Horus"},
@@ -4480,6 +4861,36 @@ const SU = {
   ],
   Troops:[
     {
+      id:"t_ec_inductii", name:"Emperor's Children Inductii Squad", basePts:100, minSize:10, maxSize:20, ptsPerModel:9,
+      req:{legion:"Emperor's Children"},
+      traits:["[Allegiance]","Emperor's Children"],
+      specialRules:["Vanguard (2)","Perfection Embodied","Inductii"],
+      modelTypes:["Infantry"],
+      championLabel:"Inductii", baseModelLabel:"Inductii",
+      baseSizeBreakdown:"10 Inductii",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Frag Grenades","Krak Grenades"],
+        pairs:[],
+        slots:[
+          { id:"melee", label:"Chainsword", options:[
+            {id:"charnabal_sabre",  label:"Charnabal Sabre",  pts:5},
+            {id:"heavy_chainsword", label:"Heavy Chainsword", pts:5,  per5cap:"ind_melee", per5max:1, per5size:4},
+            {id:"power_weapon",     label:"Power Weapon",     pts:10, list:"power_weapons", per5cap:"ind_melee", per5max:1, per5size:4},
+          ]},
+          { id:"pistol", label:"Bolt Pistol", options:[
+            {id:"legion_pistol", label:"Legion Pistol", pts:0, list:"legion_pistols", per5cap:"ind_pistol", per5max:1, per5size:4},
+          ]},
+        ],
+        addons:[
+          {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["nuncio_vox"]},
+          {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["augury_scanner"]},
+        ],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
       id:"t_soh_inductii", name:"Sons of Horus Inductii Squad", basePts:100, minSize:10, maxSize:20, ptsPerModel:9,
       req:{legion:"Sons of Horus"},
       traits:["[Allegiance]","Sons of Horus"],
@@ -4753,9 +5164,6 @@ const SU = {
             ]},
           ],
           addons:[
-            {id:"vexilla",        label:"Vexilla",        pts:10, unique_in_unit:true},
-            {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, exclusive:["augury_scanner"]},
-            {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, exclusive:["nuncio_vox"]},
           ],
         },
         champion:{
@@ -4806,9 +5214,6 @@ const SU = {
             ]},
           ],
           addons:[
-            {id:"vexilla",        label:"Vexilla",        pts:10, unique_in_unit:true},
-            {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, exclusive:["augury_scanner"]},
-            {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, exclusive:["nuncio_vox"]},
           ],
         },
         champion:{
@@ -4886,6 +5291,38 @@ const SU = {
     },
   ],
   Support:[
+    {
+      id:"sup_kakophoni", name:"Kakophoni Squad", basePts:150, minSize:5, maxSize:10, ptsPerModel:25,
+      req:{legion:"Emperor's Children", allegiance:"Traitor"},
+      traits:["Traitor","Emperor's Children"],
+      specialRules:[],
+      modelTypes:["Infantry"],
+      championLabel:"Orchestrator", baseModelLabel:"Chora",
+      baseSizeBreakdown:"1 Orchestrator + 4 Chora",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:10,CL:9,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:9,CL:8,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      wargear:{
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{
+          modelTypes:["Infantry","Sergeant"],
+          included_slots:["The Cacophony","Sonic Shriekers","Bolt Pistol","Frag Grenades","Krak Grenades"],
+          pairs:[],
+          slots:[
+            { id:"melee", label:"Melee Weapon (optional)", options:[
+              {id:"chainsword",   label:"Chainsword",   pts:2},
+              {id:"power_weapon", label:"Power Weapon", pts:10, list:"power_weapons"},
+              {id:"power_fist",   label:"Power Fist",   pts:15},
+            ]},
+          ],
+          addons:[],
+        },
+        perModel:{
+          modelTypes:["Infantry"],
+          included_slots:["The Cacophony","Sonic Shriekers","Bolt Pistol","Frag Grenades","Krak Grenades"],
+          pairs:[], slots:[], addons:[],
+        },
+      }
+    },
     {
       id:"sup_iron_havocs", name:"Iron Warriors Iron Havocs", basePts:135, minSize:5, maxSize:10, ptsPerModel:25,
       req:{legion:"Iron Warriors"},
@@ -5126,6 +5563,18 @@ const SU = {
     },
   ],
   WarEngine:[
+    {
+      id:"we_rylanor", name:"Rylanor the Unyielding", basePts:180, minSize:1, maxSize:1,
+      req:{legion:"Emperor's Children", allegiance:"Loyalist"}, uniqueRule:"Rylanor the Unyielding",
+      traits:["Loyalist","Emperor's Children","Smokescreen"],
+      specialRules:["Bulky (6)","Explodes (5+)","Implacable Advance","Vengeful Hate"],
+      modelTypes:["Walker","Unique"],
+      stats:{M:8,WS:4,BS:4,S:7,T:7,W:6,I:4,A:4,LD:12,CL:12,WP:7,IN:5,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:["Kheres Assault Cannon","Gravis Power Fist","Heavy Flamer"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
     {
       id:"we_castra_ferrum", name:"Castra Ferrum Dreadnought", basePts:115, minSize:1, maxSize:1,
       traits:["[Allegiance]","[Legiones Astartes]","Smokescreen"],
@@ -7085,6 +7534,31 @@ const SU = {
       }
     },
     {
+      id:"wl_fulgrim", name:"Fulgrim", basePts:425, minSize:1, maxSize:1,
+      req:{legion:"Emperor's Children", allegiance:"Traitor"}, uniqueRule:"Fulgrim",
+      primeAllTroops:{count:4, allowed:["Tactical Squad","Assault Squad"]},
+      traits:["Traitor","Emperor's Children","Master of the Legion"],
+      specialRules:["Sire of the Emperor's Children","Bulky (4)","Sublime Swordsman","Eternal Warrior (2)"],
+      modelTypes:["Paragon","Unique"],
+      stats:{M:8,WS:8,BS:6,S:6,T:6,W:6,I:8,A:6,LD:12,CL:10,WP:10,IN:10,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Laeran Blade","Firebrand"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"wl_fulgrim_transfigured", name:"Fulgrim Transfigured", basePts:600, minSize:1, maxSize:1,
+      req:{legion:"Emperor's Children", allegiance:"Traitor"}, uniqueRule:"Fulgrim",
+      traits:["Traitor","Emperor's Children","Master of the Legion"],
+      specialRules:["Bulky (7)","Scion of Corruption","Avatar of Perfection","Deep Strike","Eternal Warrior (2)","Fear (2)"],
+      modelTypes:["Paragon","Unique","Antigrav","Malefic"],
+      stats:{M:14,WS:8,BS:6,S:7,T:7,W:7,I:8,A:7,LD:12,CL:10,WP:12,IN:8,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Blades of the Phoenician"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
       id:"wl_horus_ascended", name:"Horus Ascended", basePts:850, minSize:1, maxSize:1,
       req:{legion:"Sons of Horus", allegiance:"Traitor"}, uniqueRule:"Horus",
       traits:["Traitor","Sons of Horus","Master of the Legion"],
@@ -7145,6 +7619,7 @@ const EQUIPMENT = {
   "Icon of the Warmaster": {text:"When this model is part of a unit that contains models with the Line (X) or Vanguard (X) rules, modify the value of X by +1."},
   "Nuncio-vox":           {text:"The unit may attempt to remove one Status token from itself at the beginning of its turn."},
   "Augury Scanner":       {text:"Ranged attacks made by models in this unit ignore the Shrouded special rule."},
+  "Sonic Shriekers":      {text:"When this model\u2019s unit makes a Charge Move, the target of the Charge cannot make Reactions until the Charge Procedure has been completed."},
   "Incursor Pattern Command Array": {text:"This Super-heavy model is able to make the Overwatch and Return Fire reactions in response to actions made with any unit, instead of only units that contain models with the Paragon, Super-heavy, Knight, or Titan types. In addition, while this model has the Suppressed or Stunned status, it has the Auto-repair (4+) special rule."},
   "Narthecium":           {text:"If this unit must make a Characteristic Check during the Morale Sub-Phase (after the Shooting Phase), this model may make a Recovery Test. If successful, this unit gets a -2 bonus to the Characteristic Check."},
   "Machinator Array":     {text:"May use the Battlesmith rule twice each turn."},
@@ -7210,6 +7685,18 @@ const RULES = {
   "Sire of the Iron Warriors": {type:"special_rule", text:"If this is an Iron Warriors army:<br>• If four or more Troops slots in your Primary Detachment are filled with Tactical Squad and/or Breacher Squad units, then all of those slots are considered Prime Slots.<br>• All Iron Warriors Infantry in the army gain the Expendable (1) rule until the end of the first Battle Turn. If they already have Expendable, increase the value by 1."},
   "Sire of the Alpha Legion": {type:"special_rule", text:"If this is an Alpha Legion army:<br>• If four or more Troops slots in your Primary Detachment are filled with Tactical Squad and/or Assault Squad units, then all of those slots are considered Prime Slots.<br>• For all Alpha Legion models in your army, when you make a Reserves Roll for that unit, on a 5+ that unit can deploy as if it has the Outflank rule."},
   "Sire of the Ultramarines": {type:"special_rule", text:"If this is an Ultramarines army:<br>• If four or more Troops slots in your Primary Detachment are filled, including at least two Assault Squad units and at least two Tactical Squad units, then all of those slots are considered Prime Slots.<br>• Until the end of the first Battle Turn, all Ultramarines Infantry in the army may hold, claim, and contest objectives even while under the effects of a Tactical Status."},
+  "Sire of the Emperor's Children": {type:"special_rule", text:"If this is an Emperor's Children army:<br>• If four or more Troops slots in your Primary Detachment are filled with Tactical Squad units and/or Assault Squad units, then all of those slots are considered Prime Slots.<br>• All Emperor's Children units in your army gain +1 Combat Resolution Point if all models in that unit are not within your Deployment Zone at the end of the Close Combat. If this Mission does not have specific Deployment Zones, then they must not be within 12\" of your Battlefield Edge."},
+  "Sublime Swordsman": {type:"special_rule", text:"When taking part in a Challenge, if you have Challenge Advantage, modify this model's Attacks characteristic by +1 for each point that its Base Initiative Characteristic is higher than its opponent's Base Initiative Characteristic."},
+  "Scion of Corruption": {type:"special_rule", text:"Fulgrim Transfigured cannot be included in the same Army as Fulgrim."},
+  "Avatar of Perfection": {type:"special_rule", text:"This model must always declare a Challenge if eligible to do so. In addition, this model may use the Heroic Intervention Advanced Reaction without spending a Reaction Point."},
+  "Fear": {type:"special_rule", text:"When an Enemy Unit is within 12\" of this model, it reduces its Leadership, Willpower, Cool, and Intelligence by {X}. If a unit would be affected by multiple instances of Fear, they do not stack: use the highest value."},
+  "Heedless": {type:"special_rule", text:"A unit that includes any models with this rule cannot control or contest any objective marker."},
+  "Designated Quarry": {type:"special_rule", text:"Once per battle, before making a Shooting Attack in your Shooting Phase, if this unit did not move in the previous Movement Phase it may select an enemy Vehicle as its Designated Quarry. This unit gets +1 BS against that unit for this Phase."},
+  "Perfection Embodied": {type:"special_rule", text:"When this unit makes a Check to avoid gaining a Tactical Status, roll an extra die. If this check is made during the Morale Sub-Phase (after shooting), discard the highest die. If this check is made during the Resolution Sub-Phase (end of Close Combat), discard the lowest die."},
+  "Vengeful Hate": {type:"special_rule", text:"This model is considered to be eligible to take part in a Challenge if Locked in Combat with Fulgrim or Fulgrim Transfigured. If either of those models are the Challenger, Rylanor must accept the Challenge."},
+  "Battlefield Coordinators": {type:"special_rule", text:"Once per turn, if this unit is within 18\" of a unit making a Reaction, this unit may make an Intelligence Check (with a -1 modifier if this unit has Line of Sight to the Reacting unit). If successful, that Reaction costs 1 fewer Reaction Points."},
+  "The Faultless Blade": {type:"special_rule", text:"If the Paragon of Excellence Gambit is selected for this model, add a +4 modifier to the Focus Roll instead of +2."},
+  "A Brother Betrayed": {type:"special_rule", text:"While this model is in a Challenge with an enemy model with the Emperor's Children, World Eaters, Sons of Horus, or Death Guard traits, you may select the following Gambit:<br>• <b>Bite of the Betrayed</b> — This Gambit may only be selected on the first round of a Challenge. When this Gambit is selected, until this Challenge ends, modify this model's Weapon Skill, Strength, and Toughness by +1."},
   "Sire of the Dark Angels": {type:"special_rule", text:"Rules text pending — please provide."},
   "The Lion's Choler": {type:"special_rule", text:"Rules text pending — please provide."},
   "Sword of the Order": {type:"weapon_special", text:"Rules text pending — please provide."},
@@ -7226,6 +7713,7 @@ const RULES = {
   "Honour Above All": {type:"special_rule", text:"When any model that is in this unit or has joined this unit takes part in a Challenge, this model gains +1 to Wound during the Fight Sub-Phase following this Challenge."},
   "Brutal Enforcement": {type:"special_rule", text:"At the start of the Move Phase, you may select one of your units with the Routed status within 12\" of this model. Immediately make a shooting attack with this model targeting that unit, using only the Banestrike Bolt Cannon. This shooting attack cannot cause Leadership Checks. Once it has been resolved, the target unit loses the Routed status."},
   "Point Defence": {type:"special_rule", text:"When this model is the target of a Charge, it may make an additional Volley attack after making its initial Volley attack. Only a single pintle-mounted weapon may be used for this second attack. If there are any casualties as a result of this second Volley, the charging unit gets -1 to the result of its Charge roll."},
+  "Skill Unmatched": {type:"special_rule", text:"At the end of the Charge sub-phase, if this model and/or its unit is Locked in Combat, you may select one of the following. Every model in the unit with this rule must select the same option:<br>• <b>The Perfect Strike</b> — This model's WS is considered 1 point higher for determining the roll needed to Hit an opponent during a Challenge or Close Combat this turn. This does not affect the calculation of the opponent's to-Hit roll on you.<br>• <b>The Perfect Guard</b> — This model's WS is considered 1 point higher for determining the roll needed for opponents to Hit this model during a Challenge or Close Combat this turn. This does not affect the calculation of your to-Hit roll against the opponent."},
   "Locus Strike": {type:"special_rule", text:"When making the Return Fire reaction, Turret-mounted weapons are treated as Defensive Weapons. If a weapon already counts as a Defensive Weapon, instead add +1 to Hit rolls for that weapon during this Reaction."},
   "Creed of Brutality": {type:"special_rule", text:"At the beginning of the turn, this unit may make a Leadership Check. If successful, every model in this unit gains the Impact (S) special rule until the end of this Battle Turn. If unsuccessful, this unit gains the Stunned Tactical Status. If there is a friendly Sons of Horus model within 6\" of this unit with a Weapon Skill of 5 or more, this unit may use that model's Leadership for the check."},
   "Calculating Swordsman": {type:"special_rule", text:"While this model is in a Challenge, it has access to the following special Gambit — Calculating Swordsman: if this Gambit is selected, gain a positive modifier to the Focus Roll equal to the current Battle Turn (maximum of +4)."},
@@ -7295,6 +7783,7 @@ const RULES = {
   // data — do not flag these as unfilled. (A few, like Bolt, include a short reminder note;
   // that's optional.) Actual mechanical rules live on the weapon's stat line / specialRules.
   "Assault":                      {type:"weapon_trait",  text:"..."},
+  "Sonic":                        {type:"weapon_trait",  text:"..."},
   "Auto":                         {type:"weapon_trait",  text:"..."},
   "Bayonet":                      {type:"weapon_trait",  text:"..."},
   "Bolt":                         {type:"weapon_trait",  text:"Weapons with the Bolt trait cause an immediate additional hit on an unmodified To Wound roll of a 6."},
@@ -7349,7 +7838,7 @@ const RULES = {
   "Command":     {type:"unit_type",    text:"May join and leave units. May issue and accept challenges. When joined to a unit, may use its mental stats for all checks for that unit."},
   "Heavy": {type:"unit_type", text:"Gains +1 Cool for checks to avoid gaining Tactical Statuses. May not Rush. Does not add its Initiative to Movement to determine how far its Set-Up move is during Charges."},
   "Slow and Purposeful": {type:"special_rule", text:"After winning close combat, may never choose to Pursue the enemy."},
-  "Officer of the Line (2)": {type:"special_rule", text:"When filling a Command slot, this model unlocks 2 Auxiliary Detachments instead of just 1."},
+  "Officer of the Line": {type:"special_rule", text:"When filling a Command slot, this model unlocks {X} Auxiliary Detachments instead of just 1."},
   "Light Transport": {type:"special_rule", text:"Cannot carry models with the Bulky special rule."},
   "Auto-repair (5+)": {type:"special_rule", text:"When making a repair test, this model passes on a 5+ rather than the normal 6."},
   "Mobile Command Vehicle": {type:"special_rule", text:"When this model makes a Characteristic Check, it can use the stats of a model Embarked inside it."},
@@ -7360,7 +7849,6 @@ const RULES = {
   "Psyker": {type:"weapon_trait", text:""},
   "Anathemata": {type:"weapon_trait", text:""},
   "Anathemata Discipline": {type:"special_rule", text:"Grants the following:<br>• Fear (1) special rule<br>• Void Darts psychic weapon<br>• <em>Loyalist:</em> Seal the Veil psychic power<br>• <em>Traitor:</em> Breach the Veil psychic power"},
-  "Fear (1)": {type:"special_rule", text:"A unit within 12\" of this model reduces its mental stats by 1."},
   "Battlesmith (2)": {type:"special_rule", text:"Before or after this model moves, pick one friendly Vehicle, Automata, or Walker within 6\". Make an Int check — if successful, choose one:<br>• Repair: Target regains 2 wounds or hull points.<br>• Restore: Remove up to 2 Statuses from the target."},
   "Battlesmith (3)": {type:"special_rule", text:"Before or after this model moves, pick one friendly Vehicle, Automata, or Walker within 6\". Make an Int check — if successful, choose one:<br>• Repair: Target regains 3 wounds or hull points.<br>• Restore: Remove up to 3 Statuses from the target."},
   "Never Back Down": {type:"special_rule", text:"Must always accept Challenges."},
@@ -7388,7 +7876,6 @@ const RULES = {
   "Battlesmith (1)": {type:"special_rule", text:"Before or after this model moves, pick one friendly Vehicle, Automata, or Walker within 6\". Make an Int check — if successful, either: Repair (target regains 1 wound or hull point) or Restore (remove up to 1 Status from the target)."},
   "Feel No Pain (5+)": {type:"special_rule", text:"May negate wounds inflicted on failed saves by rolling a 5+."},
   "Master of Automata": {type:"special_rule", text:"This unit can be accompanied by a unit of Battle-automata."},
-  "Vanguard (3)": {type:"special_rule", text:"May only ever score 1 point for an objective, regardless of its worth. However, if they kill an enemy unit on an objective or make it Fall Back from Combat, they score 3 victory points."},
 };
 
 // ── Army lists ───────────────────────────────────────────────────────────────
@@ -7433,7 +7920,7 @@ registerUnits(SU);
 function serialise(state) {
   const data = {
     v:2,
-    al:state.allegiance, lg:state.legion, pt:state.pts,
+    al:state.allegiance, lg:state.legion, pt:state.pts, ror:state.riteOfWar||null,
     ds:state.dets.map(d=>({
       did:d.did, pa:d.pa, pax:d.paExtra||{}, kw:d.keyword||null,
       sl:d.slots.map((u,i)=>u?{uid:u.id,cfg:d.cfgs[i]}:null),
@@ -7464,7 +7951,7 @@ function deserialise(code) {
         injectedUnits:(d.iu||[]).map(s=>s?UNIT_LOOKUP[s.uid]||null:null),
         injectedCfgs:(d.ic||[]).map(c=>c||{})};
     }).filter(Boolean);
-    return {allegiance:data.al,legion:data.lg,pts:data.pt,dets,modal:null};
+    return {allegiance:data.al,legion:data.lg,pts:data.pt,riteOfWar:data.ror||null,dets,modal:null};
   } catch(e){return null;}
 }
 
@@ -7484,7 +7971,7 @@ function currentCode(){ return serialise(ST); }
 
 // ── App state ────────────────────────────────────────────────────────────────
 let ST = {
-  allegiance:"Loyalist", legion:"Iron Warriors", pts:3000,
+  allegiance:"Loyalist", legion:"Iron Warriors", pts:3000, riteOfWar:null,
   dets:[{iid:"p0",did:"crusade_primary",slots:Array(10).fill(null),cfgs:Array(10).fill(null).map(()=>({})),pa:{}}],
   modal:null, showShare:false,
 };
@@ -7581,6 +8068,7 @@ function getUnlocks(){
   let ao=0,ax=0;
   ST.dets.forEach(det=>{
     const def=DD[det.did]; if(!def)return;
+    if(def.noUnlock) return;   // e.g. Brotherhood of the Phoenix — its HC/Command slots grant no Apex/Aux unlocks
     def.slots.forEach((s,i)=>{
       if(!det.slots[i])return;
       if(det.pa[i]==="special_assignment")return;
@@ -7725,6 +8213,12 @@ const LEGION_SWAPS = [
   // priced at the power axe's own cost +5 (axe) / +10 (tabar), per the graviton-hammer pattern.
   { legion:"Sons of Horus", type:"modelConditional", from:"Power Axe", to:"Carsoran Power Axe",   toId:"carsoran_power_axe",   costMode:"matchSource", costAdd:5 },
   { legion:"Sons of Horus", type:"modelConditional", from:"Power Axe", to:"Carsoran Power Tabar", toId:"carsoran_power_tabar", costMode:"matchSource", costAdd:10 },
+  { legion:"Emperor's Children", type:"modelConditional", requireTypes:["Command","Champion","Sergeant"],
+    fromTrait:"Power", to:"Phoenix Power Spear", toId:"phoenix_power_spear", pts:10 },
+  { legion:"Emperor's Children", allegiance:"Traitor", type:"grant", requireTypes:["Command","Champion"],
+    add:"Sonic Shriekers", addId:"sonic_shriekers", pts:15, exclusive:["sonic_lance"] },
+  { legion:"Emperor's Children", allegiance:"Traitor", type:"grant", requireTypes:["Command","Champion"],
+    add:"Sonic Lance", addId:"sonic_lance", pts:10, exclusive:["sonic_shriekers"] },
 ];
 
 /* Legiones Decurion upgrades — a points-costed upgrade for certain Vehicle models that grants
@@ -7877,20 +8371,28 @@ function paOncePerDetTaken(a, det, slotIdx){
   return Object.keys(pa).some(k => String(k)!==String(slotIdx) && pa[k]===a.id);
 }
 
-function paAvailable(a, u){
+function paAvailable(a, u, cfg){
   if(!a.req) return true;
-  // Allegiance is army-wide state, so it gates regardless of slot occupancy.
   if(a.req.allegiance && ST.allegiance !== a.req.allegiance) return false;
-  // Unit-composition clauses require a unit in the slot to evaluate.
   if(a.req.legion){ if(!u || !unitAdoptsLegion(u, a.req.legion)) return false; }
   if(a.req.infantryOnly){ if(!u || !unitInfantryOnly(u)) return false; }
   if(a.req.hasType){ if(!u || !unitHasType(u, a.req.hasType)) return false; }
+  if(a.req.unit){ if(!u || u.id !== a.req.unit) return false; }
+  if(a.req.profile){ if(!u || !u.profiles) return false; const active=(cfg&&cfg.profileId)||u.profiles[0].id; if(active!==a.req.profile) return false; }
   return true;
 }
 
+// A Unique unit may never take anything not printed on its own datasheet, so Legion-wide
+// wargear swaps/grants (and Decurions) are never offered to Unique units.
+function isUnique(u){
+  if(!u) return false;
+  if((u.modelTypes||[]).includes("Unique")) return true;
+  return (u.profiles||[]).some(p=>(p.subtypes||[]).includes("Unique")||p.type==="Unique"||(p.modelTypes||[]).includes("Unique"));
+}
 function injectLegionSwaps(u, wg, cfg){
-  if(!u || !wg || !ST.legion) return wg;
+  if(!u || !wg || !ST.legion || isUnique(u)) return wg;
   const rows = LEGION_SWAPS.filter(r=>unitAdoptsLegion(u, r.legion)
+    && (!r.allegiance || ST.allegiance===r.allegiance)
     && (!r.onlyUnit || r.onlyUnit===u.id)
     && (!r.onlyUnits || r.onlyUnits.includes(u.id)));
   if(!rows.length) return wg;
@@ -7983,8 +8485,9 @@ function injectLegionSwaps(u, wg, cfg){
         // Optional ADDED wargear (not a swap) for qualifying models, via the addon
         // mechanism: "may be given <item> for +N points per model".
         if((r.requireTypes||[]).some(t=>types.includes(t))){
-          if(!blk.addons.some(a=>a.id===r.addId)){
-            blk.addons.push({ id:r.addId, label:r.add, pts:r.pts||0, legionSwap:true, req:{legion:r.legion}, grants:r.grants||undefined });
+          const inSlots = (blk.slots||[]).some(sl=>(sl.options||[]).some(o=>o.id===r.addId));
+          if(!blk.addons.some(a=>a.id===r.addId) && !inSlots){
+            blk.addons.push({ id:r.addId, label:r.add, pts:r.pts||0, legionSwap:true, req:{legion:r.legion}, grants:r.grants||undefined, unique_group:r.unique_group||undefined, exclusive:r.exclusive||undefined });
             touched=true;
           }
         }
@@ -8008,15 +8511,28 @@ function activeWargear(u, cfg) {
   if (cfg && cfg.champUpgrade && u.championUpgrade && u.championUpgrade.wargear) {
     base = {...base, champion: u.championUpgrade.wargear};
   }
-  return injectDecurions(u, injectLegionSwaps(u, base, cfg), cfg);
+  return filterWargearReqs(injectDecurions(u, injectLegionSwaps(u, base, cfg), cfg));
 }
 
 // Offer every Legiones Decurion whose appliesTo lists this unit — always shown, but greyed out
 // (decurionDisabled) with a reason when it can't currently be taken (wrong Legion, a pintle weapon
 // present, or an ineligible main weapon). A Legion "Req" pill is driven by req.legion. Disabled
 // Decurions don't count toward cost or grants (guarded at the gather sites). Clones before append.
+// Hide addons and slots gated to a specific allegiance when the army's allegiance doesn't
+// match (e.g. Traitor-only unit upgrades). Removed entirely so they are neither shown nor counted.
+function filterWargearReqs(wg){
+  if(!wg) return wg;
+  const bad = x => x && x.req && x.req.allegiance && x.req.allegiance !== ST.allegiance;
+  const blks=[wg, wg.champion, wg.perModel].filter(Boolean);
+  if(!blks.some(b=>(b.addons||[]).some(bad)||(b.slots||[]).some(bad))) return wg;
+  const clean = blk => ({...blk, addons:(blk.addons||[]).filter(x=>!bad(x)), slots:(blk.slots||[]).filter(x=>!bad(x))});
+  const out=clean(wg);
+  if(wg.champion) out.champion=clean(wg.champion);
+  if(wg.perModel) out.perModel=clean(wg.perModel);
+  return out;
+}
 function injectDecurions(u, wg, cfg){
-  if(!u || !wg || typeof DECURIONS==="undefined") return wg;
+  if(!u || !wg || typeof DECURIONS==="undefined" || isUnique(u)) return wg;
   const rows = DECURIONS.filter(d => (d.appliesTo||[]).some(a=>a.unit===u.id));
   if(!rows.length) return wg;
   const slots = (cfg && cfg.slots) || {};
@@ -8217,6 +8733,26 @@ function setSlotOption(iid,i,slotId,optId){
   saveAndRender();
 }
 
+// Symmetric mutual exclusion for addons: addon X conflicts with a selected addon Y (Y != X) when
+// X lists Y in its `exclusive`, OR Y lists X in its `exclusive`. Declaring it on either side is
+// enough. `selIds` = currently selected addon ids; `defs` = the block's addon definitions.
+function addonExcluded(addon, selIds, defs){
+  return (selIds||[]).some(sid=>{
+    if(sid===addon.id) return false;
+    if((addon.exclusive||[]).includes(sid)) return true;
+    const other=(defs||[]).find(a=>a.id===sid);
+    return !!(other && (other.exclusive||[]).includes(addon.id));
+  });
+}
+// When toggling an addon on, drop every addon it is mutually exclusive with (either direction).
+function dropExcluded(addon, addons, defs){
+  return addons.filter(id=>{
+    if(id===addon.id) return true;
+    if((addon.exclusive||[]).includes(id)) return false;
+    const other=(defs||[]).find(a=>a.id===id);
+    return !(other && (other.exclusive||[]).includes(addon.id));
+  });
+}
 function toggleAddon(iid,i,addonId){
   const d=modalDet(ST.dets.find(x=>x.iid===iid));
   const cfg=d.cfgs[i]||{}; const u=d.slots[i];
@@ -8227,7 +8763,7 @@ function toggleAddon(iid,i,addonId){
   if(addons.includes(addonId)){
     addons=addons.filter(id=>id!==addonId);
   } else {
-    if(addon.exclusive) addons=addons.filter(id=>!addon.exclusive.includes(id));
+    addons=dropExcluded(addon, addons, wg.addons);
     addons.push(addonId);
   }
   // Clear slots that are now inactive due to addon state change
@@ -8989,6 +9525,26 @@ function openPerModelAddonListPicker(iid, i, modelKey, addonId, listKey) {
 function togglePerModelAddon(iid, i, modelKey, addonId) {
   const d = ST.dets.find(x=>x.iid===iid);
   const cfg = d.cfgs[i]||{};
+  const u = d.slots[i];
+  const wg = activeWargear(u, cfg);
+  const findA = blk => ((blk&&blk.addons)||[]).find(a=>a.id===addonId);
+  const addonDef = findA(modelKey==='champion'?wg.champion:wg.perModel) || findA(wg.champion) || findA(wg.perModel);
+  // Uniform addon: one squad-wide selection. Toggling it on any model applies to every model
+  // (champion + all rank-and-file); presented as a per-model addon but behaves as "same for all".
+  if(addonDef && addonDef.uniform){
+    const clicked = modelKey==='champion' ? (cfg.champion||{}) : (cfg.chosen||[])[parseInt(modelKey)]||{};
+    const turnOn = !((clicked.addons)||[]).includes(addonId);
+    const apply = (m, blk) => {
+      m = m || {slots:{}, addons:[], pairExchange:null};
+      let addons=[...(m.addons||[])];
+      if(turnOn){ addons=dropExcluded(addonDef, addons, (blk&&blk.addons)||[]); if(!addons.includes(addonId)) addons.push(addonId); }
+      else { addons=addons.filter(x=>x!==addonId); }
+      return {...m, addons};
+    };
+    d.cfgs[i]={...cfg, champion:apply(cfg.champion, wg.champion), chosen:(cfg.chosen||[]).map(m=>apply(m, wg.perModel))};
+    saveAndRender();
+    return;
+  }
   const mc = modelKey==='champion' ? (cfg.champion||{}) : (cfg.chosen||[])[parseInt(modelKey)];
   if(!mc) return;
   let addons=[...(mc.addons||[])];
@@ -9057,7 +9613,7 @@ function toggleSgtAddon(iid, i, addonId) {
   if (addons.includes(addonId)) {
     addons = addons.filter(id=>id!==addonId);
   } else {
-    if (addon.exclusive) addons = addons.filter(id=>!addon.exclusive.includes(id));
+    addons = dropExcluded(addon, addons, u.wargear.sergeant.addons);
     addons.push(addonId);
   }
   d.cfgs[i] = {...cfg, sergeant:{...sc, addons}};
@@ -9307,6 +9863,7 @@ function renderWargearModal(det, slotIdx) {
         </div>`;
       // Pair exchanges for this slot — always visible so player can toggle
       (wg.pairs||[]).forEach(pair => {
+        if (pair.req && pair.req.legion && !unitAdoptsLegion(u, pair.req.legion)) return;
         if (!(pair.replaces||[]).includes(slot.id)) return;
         const isPairSel = cfg.pairExchange === pair.id;
         const pairWA = weaponHoverAttrs(pair.label);
@@ -9398,6 +9955,7 @@ function renderWargearModal(det, slotIdx) {
         const maxDisc = addon.maxDisciplines || 2;
         if (activeDisc >= maxDisc) { unavailable=true; reason=`max ${maxDisc} disciplines`; }
       }
+      if (!unavailable && !isActive && addonExcluded(addon, cfg.addons, wg.addons)) { unavailable=true; reason="mutually exclusive"; }
       if (addon.decurionDisabled) { unavailable=true; if(addon.decurionReason) reason=addon.decurionReason; }
       const cls = isActive?"active":unavailable?"unavailable":"available";
       const addonBadge = addon.req && addon.req.legion ? ` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${addon.req.legion}</span>` : "";
@@ -9759,10 +10317,8 @@ function renderWargearModal(det, slotIdx) {
             unavail=true; unavailReason='incompatible with pair exchange';
           }
           // exclusive
-          if (!unavail && addon.exclusive) {
-            if (addon.exclusive.some(sid => (mc.addons||[]).includes(sid))) {
-              unavail=true; unavailReason='mutually exclusive';
-            }
+          if (!unavail && !isActive && addonExcluded(addon, mc.addons, mwg.addons)) {
+            unavail=true; unavailReason='mutually exclusive';
           }
           if (addon.list || addon.listFixed) {
             // List-based per-model addon (e.g. legion pistol upgrade, special weapon)
@@ -10032,10 +10588,12 @@ function pbtn(did,cat){
 
 function renderPool(){
   const allApex=["combat_retinue","officer_cadre","army_vanguard","linebreaker_echelon","hammer_of_olympia"];
-  const allAux=["armoured_fist","tactical_support","armoured_support","heavy_support","combat_pioneer","shock_assault","first_strike","apothecarion_detachment","techmarine_covenant","daemonic_manifestation","dreadnought_talon","recon_demi_company","maelstrom_sentry_battery","storm_battery","veteran_cadre","ironfire_cohort","headhunter_leviathal","planetfall_speartip","primus_demi_company","supremacy_cadre"];
+  const allAux=["armoured_fist","tactical_support","armoured_support","heavy_support","combat_pioneer","shock_assault","first_strike","apothecarion_detachment","techmarine_covenant","daemonic_manifestation","dreadnought_talon","recon_demi_company","maelstrom_sentry_battery","storm_battery","veteran_cadre","ironfire_cohort","headhunter_leviathal","planetfall_speartip","primus_demi_company","supremacy_cadre","primacy_wing"];
+  const altWarlord=["brotherhood_of_the_phoenix"];   // alternative Warlord detachments, gated by req (legion/allegiance/rite)
   function reqMet(d){
     if(!d.req)return true;
     if(d.req.legion&&d.req.legion!==ST.legion)return false;
+    if(d.req.rite&&d.req.rite!==currentRiteId())return false;
     if(d.req.allegiance&&d.req.allegiance!==ST.allegiance)return false;
     if(d.req.any_unit){
       // Requires one of the listed unit IDs to be present in any detachment
@@ -10049,6 +10607,7 @@ function renderPool(){
     if(!d.req)return true;
     if(d.req.allegiance&&d.req.allegiance!==ST.allegiance)return false;
     if(d.req.legion&&d.req.legion!==ST.legion)return false;
+    if(d.req.rite&&d.req.rite!==currentRiteId())return false;
     return true;
   });
   const xi=allAux.filter(id=>{
@@ -10056,6 +10615,7 @@ function renderPool(){
     if(!d.req)return true;
     if(d.req.allegiance&&d.req.allegiance!==ST.allegiance)return false;
     if(d.req.legion&&d.req.legion!==ST.legion)return false;
+    if(d.req.rite&&d.req.rite!==currentRiteId())return false;
     return true;
   });
   const wE=!!ST.dets.find(d=>DD[d.did].cat==="warlord");
@@ -10067,7 +10627,7 @@ function renderPool(){
   return `<div class="pool-area">
     <div><div class="sec-title">Add Apex Detachment</div><div class="pool">${ai.map(id=>pbtn(id,"apex")).join("")}</div></div>
     <div><div class="sec-title">Add Auxiliary Detachment</div><div class="pool">${xi.map(id=>pbtn(id,"auxiliary")).join("")}</div></div>
-    <div><div class="sec-title">Special Detachments</div><div class="pool">${!wE?pbtn("warlord_det","warlord"):""}${!lE?pbtn("lords_of_war","lordsofwar"):""}</div></div>
+    <div><div class="sec-title">Special Detachments</div><div class="pool">${!wE?pbtn("warlord_det","warlord"):""}${!wE?altWarlord.filter(id=>reqMet(DD[id])).map(id=>pbtn(id,"warlord")).join(""):""}${!lE?pbtn("lords_of_war","lordsofwar"):""}</div></div>
   </div>`;
 }
 
@@ -10195,7 +10755,7 @@ function renderModal(){
     return `<div class="ov" onclick="closeModal()"><div class="mod" onclick="event.stopPropagation()">
       <button class="mc" onclick="closeModal()">✕</button>
       <div class="mt">Prime Advantage</div><div class="ms">${rn} slot</div>
-      ${PA.filter(a=>(det.slots[i]||a.id==="special_assignment") && (a.id!=="special_assignment"||isSA) && (a.id!=="rewards_of_treachery"||isSA) && (a.id!=="logisticae"||isSA) && (!a.slotRole || (def.slots[i]&&def.slots[i].r===a.slotRole)) && !paOncePerDetTaken(a, det, i) && paAvailable(a, det.slots[i])).map(a=>{
+      ${PA.filter(a=>(det.slots[i]||a.id==="special_assignment") && (a.id!=="special_assignment"||isSA) && (a.id!=="rewards_of_treachery"||isSA) && (a.id!=="logisticae"||isSA) && (!a.slotRole || (def.slots[i]&&def.slots[i].r===a.slotRole)) && !paOncePerDetTaken(a, det, i) && paAvailable(a, det.slots[i], det.cfgs[i])).map(a=>{
         const isLog=a.id==="logistical"||a.id==="rewards_of_treachery"||a.id==="logisticae";
         const roleSuffix=isLog&&logRole?" ("+logRole.replace(/([A-Z])/g," $1").trim()+")":"";
         const reqBadge=a.req||a.slotRole?(()=>{const parts=[];if(a.req&&a.req.legion)parts.push(a.req.legion);if(a.req&&a.req.allegiance)parts.push(a.req.allegiance);if(a.req&&a.req.infantryOnly)parts.push("Infantry only");if(a.slotRole)parts.push(a.slotRole+" slot");return parts.length?` <span class="ibadge">Req: ${parts.join(" · ")}</span>`:"";})():"";
@@ -10529,6 +11089,19 @@ const PLAY_ROLE_ORDER = ['Warlord','HighCommand','Command','Retinue','Elites','T
 // }
 // Entries are entered per-legion as their text is provided (like unit data).
 const LEGION_RITES = {
+  // Emperor's Children — two Rites of War (header dropdown appears once the 2nd is entered).
+  "Emperor's Children": [
+    { id:"legiones_astartes", name:"Legiones Astartes",
+      tactica:  {name:"Flawless Execution", text:"On a turn in which this unit made a Charge Move, models in the unit gain +1 Combat Initiative until the end of the Phase."},
+      gambit:   {name:"Paragon of Excellence", text:"This Gambit can only be selected in the first round of a Challenge. When this Gambit is selected, during the Focus Step of this round your model gains +2 to the Focus Roll."},
+      reaction: {name:"Perfect Counter", text:"<b>Restriction:</b> Once per battle.<br><b>Trigger:</b> When your unit is the target of an enemy Charge, after the Set Up Move but prior to Volley Fire.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> The Charging Unit.<br><b>Effect:</b> Make a Charge Roll for your unit. If that Charge Roll would be enough to move any model from your unit into Base Contact with a model from the enemy unit, then your unit immediately makes a Charge Move and the units are now Locked in Combat. The enemy unit does not count as having made a successful charge, and your unit does. If the Charge Roll is not far enough, continue the Charge Phase as normal."},
+      detachment: "primacy_wing" },
+    { id:"legiones_hereticus", name:"Legiones Hereticus", allegiance:"Traitor",
+      tactica:  {name:"Lords of Profligacy", text:"After a Shooting Attack targeting your non-Vehicle unit is resolved, you may choose for your unit to become Stupefied. While a unit is Stupefied:<br>• When a unit becomes Stupefied, remove all other Tactical Statuses from it.<br>• This unit has the Feel No Pain (6+) rule.<br>• Models in this unit have +1 Strength.<br>• This unit cannot gain Tactical Statuses.<br>• This unit may not make Reactions.<br>• This unit makes all Shooting Attacks as Snap Shots.<br>• At the end of this unit's Controlling Player's turn, they must make a Cool check for this unit. If it is passed, this unit is no longer Stupefied."},
+      gambit:   {name:"The Broken Mirror", text:"When this Gambit is selected, this model gains double the normal modifier for Outside Support during the Focus Step. If the unit this model is part of is Stupefied, add an additional +1."},
+      reaction: {name:"Twisted Desire", text:"<b>Trigger:</b> When one of your units is Charged by an opponent, after the charge is declared but prior to the Set Up Move.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> Your unit being charged.<br><b>Effect:</b> Your unit becomes Stupefied, and until the end of the Assault Phase this unit gains the Feel No Pain (5+) rule."},
+      detachment: "brotherhood_of_the_phoenix" },
+  ],
   "Sons of Horus": {
     tactica: {
       name: "Death Dealers",
@@ -10642,7 +11215,7 @@ function _modelGearLabels(blk, mc){
       if(typeof slotConsumedBy==='function' && slotConsumedBy(blk, mc, slot.id)) return; // consumed by a two-handed weapon
       const chosen=(mc.slots||{})[slot.id];
       if(chosen){ const opt=resolveOption(slot,chosen); if(opt){ if(opt.chips) opt.chips.forEach(add); else add(opt.label||chosen); } }
-      else { if(slot.defaultChips) slot.defaultChips.forEach(add); else add(stripHint(slot.label)); }
+      else { if(slot.defaultChips) slot.defaultChips.forEach(add); else { const dl=stripHint(slot.label); if(weaponKeyFromLabel(dl) || (typeof EQUIPMENT!=="undefined" && EQUIPMENT[dl])) add(dl); } }
     });
     if(pair){ if(pair.chips) pair.chips.forEach(add); else add(pair.label); }
     (mc.addons||[]).forEach(aid=>{ const a=(blk.addons||[]).find(x=>x.id===aid); if(!a||a.decurionDisabled) return;
@@ -10940,8 +11513,17 @@ function renderPlayTopbar(left){
     <button class="pm-back" onclick="exitPlay()">✎ Builder</button></div>`;
 }
 
+// Rites of War: a legion's LEGION_RITES entry may be a single rite object (most legions) or an
+// array of rites (e.g. Emperor's Children, which has two). legionRites() normalises to an array;
+// currentRite() returns the selected one (ST.riteOfWar), defaulting to the first. When a legion
+// has more than one rite, a selector appears in the header and each rite gates its unique
+// detachment via req.rite (see the detachment pool filters).
+function legionRites(legion){ const r=LEGION_RITES[legion]; const all=!r?[]:(Array.isArray(r)?r:[r]); return all.filter(x=>!x.allegiance||x.allegiance===ST.allegiance); }
+function currentRite(legion){ const rs=legionRites(legion); if(!rs.length)return null; if(rs.length===1)return rs[0]; return rs.find(x=>x.id===ST.riteOfWar)||rs[0]; }
+function currentRiteId(){ const c=currentRite(ST.legion); return c?c.id:null; }
+
 function renderRiteOfWar(){
-  const rite = LEGION_RITES[ST.legion] || {};
+  const rite = currentRite(ST.legion) || {};
   const open = !!ST.riteOpen;
   const sub = ST.riteSub || {};
   const entry = (key, label, e) => {
@@ -11084,9 +11666,13 @@ function render(){
           <option${ST.allegiance==="Traitor"?" selected":""}>Traitor</option>
         </select></div>
       <div class="cg"><span class="cl">Legion</span>
-        <select onchange="ST.legion=this.value;saveAndRender()">
+        <select onchange="ST.legion=this.value;ST.riteOfWar=null;saveAndRender()">
           ${["Dark Angels","Emperor's Children","Iron Warriors","White Scars","Space Wolves","Imperial Fists","Night Lords","Blood Angels","Iron Hands","World Eaters","Ultramarines","Death Guard","Thousand Sons","Sons of Horus","Word Bearers","Salamanders","Raven Guard","Alpha Legion"].map(L=>`<option${ST.legion===L?" selected":""}>${L}</option>`).join("")}
         </select></div>
+      ${(()=>{const rites=legionRites(ST.legion);if(rites.length<2)return"";const cur=currentRite(ST.legion);return `<div class="cg"><span class="cl">Rite of War</span>
+        <select onchange="ST.riteOfWar=this.value;saveAndRender()">
+          ${rites.map(r=>`<option value="${esc(r.id)}"${cur&&cur.id===r.id?" selected":""}>${esc(r.name||r.id)}</option>`).join("")}
+        </select></div>`;})()}
       <div class="cg"><span class="cl">Points Limit</span>
         <input type="number" value="${ST.pts}" min="500" max="10000" step="500"
           onchange="ST.pts=parseInt(this.value)||3000;saveAndRender()" style="width:90px"/></div>
@@ -11151,8 +11737,8 @@ render = function() {
  *  Both values are SAFE to commit publicly: RLS guarantees a signed-in user can
  *  only ever read/write their OWN rows. NEVER put the service_role key here.
  * ========================================================================== */
-const SUPABASE_URL  = "https://aejklplcpxmuqjspemtm.supabase.co";   // e.g. "https://abcdefgh.supabase.co"  (Project Settings → API)
-const SUPABASE_ANON = "sb_publishable_vxr5UuzypP1Lc_nPAz9BNw_3D35PYNm";   // the public "anon" key                (Project Settings → API)
+const SUPABASE_URL  = "";   // e.g. "https://abcdefgh.supabase.co"  (Project Settings → API)
+const SUPABASE_ANON = "";   // the public "anon" key                (Project Settings → API)
 
 const cloud = (() => {
   const SKEY = "hh_cloud_session";
