@@ -75,6 +75,30 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
 .slot-name{font-family:"Crimson Text",serif;font-size:15px;font-weight:600;color:var(--text-main);text-align:center;line-height:1.15;margin-top:5px;width:88px;word-break:break-word;}
 .slot-pts{font-size:13px;color:var(--red);text-align:center;margin-top:1px;line-height:1.1;}
 .pool-area{margin-top:.5rem;}
+/* ── Army groups ─────────────────────────────────────────────────────────── */
+.grp{margin-bottom:1.25rem;}
+.grp-primary{border:1.5px solid var(--gold);border-radius:8px;padding:.85rem;background:rgba(198,166,100,.045);}
+.grp-members{margin-left:1.5rem;padding-left:1rem;border-left:2px solid rgba(198,166,100,.28);}
+.grp-ally{border:1.5px solid var(--blue);border-radius:8px;padding:.85rem;background:rgba(26,58,92,.05);}
+.grp-ally .grp-members{border-left-color:rgba(26,58,92,.45);}
+.grp-low{border:1.5px solid var(--gold-dark);border-radius:8px;padding:.85rem;background:rgba(198,166,100,.06);}
+.low-head{border-bottom-color:rgba(138,110,42,.4);}
+.low-title{color:var(--gold-dark);}
+.badge.ball{background:var(--blue);color:#f5f0e4;}
+.pri-head{border-bottom-color:rgba(198,166,100,.45);}
+.pri-title{color:var(--gold-dark);}
+.grp-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.65rem;padding-bottom:.5rem;border-bottom:1px solid rgba(26,58,92,.35);}
+.grp-title{font-family:"Cinzel",serif;font-size:15px;color:var(--blue);letter-spacing:.04em;font-weight:600;}
+.grp-sub{font-family:inherit;font-size:12px;color:var(--text-muted);letter-spacing:0;}
+.grp-ctrls{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;}
+.grp-ctrls select{font-size:12px;padding:2px 4px;min-width:auto;}
+.grp-ctrls .cl{font-size:11px;color:var(--text-muted);margin-left:.35rem;}
+.grp-unlocks,.grp-pts{font-size:12px;color:var(--blue);margin-left:.35rem;font-weight:600;}
+.pool-ally{opacity:.95;}
+.add-ally{margin:.5rem 0 1.25rem;}
+.ally-btn{border-color:var(--blue)!important;color:var(--blue)!important;}
+.ally-btn:hover{background:var(--blue)!important;color:#f5f0e4!important;}
+.warnbar{margin:.4rem 0;padding:.5rem .75rem;border:1px solid rgba(240,150,90,.5);background:rgba(240,150,90,.1);border-radius:6px;color:#f0b070;font-size:13px;}
 .sec-title{font-family:"Cinzel",serif;font-size:14px;color:var(--gold-dark);margin-bottom:.5rem;letter-spacing:.05em;}
 .pool{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;}
 .pb{background:var(--card-bg);border:.5px solid var(--gold);border-radius:4px;padding:5px 10px;font-family:"Crimson Text",serif;font-size:15px;cursor:pointer;color:var(--text-main);transition:background .15s;position:relative;}
@@ -239,6 +263,14 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
 .pm-react-h:active{background:var(--slot-empty);}
 .pm-react-chev{color:var(--blue);font-size:15px;}
 .pm-react-t{padding:0 12px 10px;font-size:16px;color:var(--text-main);line-height:1.4;}
+.pm-pill.ally{background:var(--blue);color:#f0ead9;border-color:var(--blue);}
+.pm-grp{margin-bottom:1rem;}
+.pm-grp.ally{border-left:3px solid var(--blue);padding-left:.5rem;}
+.pm-grp-h{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;padding:.5rem .25rem .35rem;border-bottom:1.5px solid var(--gold);margin-bottom:.4rem;}
+.pm-grp-h.ally{border-bottom-color:var(--blue);}
+.pm-grp-name{font-family:"Cinzel",serif;font-size:15px;color:var(--gold-light);letter-spacing:.04em;}
+.pm-grp-h.ally .pm-grp-name{color:#8fb8e0;}
+.pm-grp-meta{font-size:12px;color:var(--text-muted);}
 .pm-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 .pm-rite-sub{border-top:1px solid var(--slot-empty);}
 .pm-rite-subh{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card-bg);padding:11px 14px;cursor:pointer;}
@@ -392,6 +424,10 @@ const PA = [
     req:{legion:"Ultramarines"}},
   {id:"martial_supremacy", label:"Martial Supremacy", desc:"One model in this unit gains the Champion type and the Duellist's Edge (1) special rule.",
     req:{legion:"Sons of Horus"}, slotRole:"Elites"},
+  {id:"paladin_hekatonystika", label:"Paladin of Hekatonystika",
+    desc:"Centurion, Centurion with Jump Pack, or Centurion in Terminator Armour only. Once per army. +1 Weapon Skill; must exchange its bolter for a Terranic greatsword for free (a Centurion in Terminator Armour exchanges its power weapon instead); and joins one of the Legion's Orders \u2014 both are selected in the model's wargear.",
+    req:{legion:"Dark Angels", unit:["cmd_centurion","cmd_terminator_centurion"]}, oncePerArmy:true,
+    statBonus:{scope:"lead", deltas:{WS:1}, cap:10}},
   {id:"phoenix_warden", label:"Phoenix Warden",
     desc:"Centurion in Terminator Armour (Tartaros profile) only. Exchanges its combi-bolter and power weapon for a Phoenix Power Spear for free \u2014 select the Phoenix Power Spear pair in the model's wargear \u2014 and gains the Skill Unmatched special rule.",
     req:{legion:"Emperor's Children", unit:"cmd_terminator_centurion", profile:"tartaros_centurion"}, grants:{specialRules:["Skill Unmatched"]}},
@@ -407,7 +443,7 @@ const DD = {
   combat_retinue:  {id:"combat_retinue",  name:"Combat Retinue",  cat:"apex", slots:[{r:"Retinue",p:true},{r:"Retinue",p:false},{r:"Retinue",p:false}]},
   officer_cadre:   {id:"officer_cadre",   name:"Officer Cadre",   cat:"apex", slots:[{r:"Command",p:true},{r:"Command",p:false}]},
   army_vanguard:   {id:"army_vanguard",   name:"Army Vanguard",   cat:"apex", slots:[{r:"Elites",p:true},{r:"Elites",p:false},{r:"Elites",p:false}]},
-  linebreaker_echelon:{id:"linebreaker_echelon",name:"Linebreaker Echelon",cat:"apex",
+  linebreaker_echelon:{id:"linebreaker_echelon",name:"Linebreaker Echelon",cat:"apex",req:{list:"Legiones Astartes"},
     keyword_choice:["Saturnine","Cataphractii","Tartaros"], keyword_roles:["Retinue","HeavyAssault"],
     slots:[{r:"HeavyAssault",p:true},{r:"HeavyAssault",p:false},{r:"Retinue",p:false},{r:"WarEngine",p:false}]},
   hammer_of_olympia:{id:"hammer_of_olympia",name:"The Hammer of Olympia",cat:"apex",
@@ -426,6 +462,30 @@ const DD = {
   supremacy_cadre:{id:"supremacy_cadre",name:"Supremacy Cadre",cat:"auxiliary",
     req:{legion:"Sons of Horus"},
     slots:[{r:"Troops",p:true},{r:"Troops",p:true},{r:"HeavyAssault",p:false},{r:"Elites",p:false}]},
+  ironwing_gauntlet:{id:"ironwing_gauntlet",name:"Ironwing Gauntlet",cat:"auxiliary",
+    req:{legion:"Dark Angels"},
+    slots:[{r:"HeavyTransport",p:false},{r:"HeavyTransport",p:false},{r:"Armour",p:false},{r:"Armour",p:false}]},
+  deathwing_conclave:{id:"deathwing_conclave",name:"Deathwing Conclave",cat:"auxiliary",
+    req:{legion:"Dark Angels"},
+    slots:[{r:"Retinue",p:true},{r:"Elites",p:false},{r:"HeavyAssault",p:false}]},
+  dreadwing_cadre:{id:"dreadwing_cadre",name:"Dreadwing Cadre",cat:"auxiliary",
+    req:{legion:"Dark Angels"},
+    restr:{Support:["Dreadwing Interemptors","Rapier Battery"]},
+    rnote:"Support: Dreadwing Interemptor or Rapier Battery units only.",
+    slots:[{r:"Support",p:true},{r:"Support",p:false},{r:"Support",p:false}]},
+  ravenwing_lance:{id:"ravenwing_lance",name:"Ravenwing Lance",cat:"auxiliary",
+    req:{legion:"Dark Angels"},
+    restr:{Recon:["Outrider Squadron"]},
+    rnote:"Recon: Outrider Squadron units only.",
+    slots:[{r:"FastAttack",p:true},{r:"FastAttack",p:false},{r:"Recon",p:false},{r:"Recon",p:false}]},
+  stormwing_muster:{id:"stormwing_muster",name:"Stormwing Muster",cat:"auxiliary",
+    req:{legion:"Dark Angels"},
+    slots:[{r:"Troops",p:true},{r:"Troops",p:true},{r:"Transport",p:false},{r:"Transport",p:false}]},
+  firewing_echelon:{id:"firewing_echelon",name:"Firewing Echelon",cat:"auxiliary",
+    req:{legion:"Dark Angels"},
+    restr:{Elites:["Seeker Squad"]},
+    rnote:"Elites: Seeker Squad units only.",
+    slots:[{r:"Recon",p:true},{r:"Recon",p:false},{r:"Elites",p:false},{r:"Elites",p:false}]},
   primacy_wing:{id:"primacy_wing",name:"Primacy Wing",cat:"auxiliary",
     req:{legion:"Emperor's Children",rite:"legiones_astartes"},
     slots:[{r:"Retinue",p:false},{r:"Elites",p:false},{r:"FastAttack",p:false},{r:"FastAttack",p:false}]},
@@ -444,21 +504,29 @@ const DD = {
   combat_pioneer:  {id:"combat_pioneer",  name:"Combat Pioneer",  cat:"auxiliary", slots:[{r:"Recon",p:false},{r:"Recon",p:false}]},
   shock_assault:   {id:"shock_assault",   name:"Shock Assault",   cat:"auxiliary", slots:[{r:"HeavyAssault",p:false},{r:"HeavyAssault",p:false}]},
   first_strike:    {id:"first_strike",    name:"First Strike",    cat:"auxiliary", slots:[{r:"FastAttack",p:false},{r:"FastAttack",p:false}]},
+  allied_detachment:{id:"allied_detachment",name:"Allied Detachment",cat:"allied",
+    slots:[{r:"Command",p:true},{r:"Command",p:false},{r:"Troops",p:false},{r:"Troops",p:false},{r:"Troops",p:false},{r:"Troops",p:false}]},
   warlord_det:     {id:"warlord_det",     name:"Warlord Detachment",    cat:"warlord",    slots:[{r:"Warlord",p:false},{r:"Retinue",p:false},{r:"HeavyTransport",p:false}]},
   lords_of_war:    {id:"lords_of_war",    name:"Lord of War Detachment",cat:"lordsofwar", slots:[{r:"LordOfWar",p:false},{r:"LordOfWar",p:false}]},
   ironfire_cohort: {id:"ironfire_cohort", name:"The Ironfire Cohort", cat:"auxiliary",
     req:{legion:"Iron Warriors"}, restr:{Armour:["Arquitor Bombard"]}, rnote:"Armour: Arquitor Bombard only.",
     slots:[{r:"Armour",p:true},{r:"Armour",p:false},{r:"Support",p:false},{r:"Support",p:false}]},
-  veteran_cadre:   {id:"veteran_cadre",   name:"Veteran Cadre",   cat:"auxiliary", req:{any_unit:["cmd_legion_champion","cmd_terminator_legion_champion","cmd_legion_champion_jump","cmd_mounted_legion_champion"]}, max_per_unit_any:["cmd_legion_champion","cmd_terminator_legion_champion","cmd_legion_champion_jump","cmd_mounted_legion_champion"], slots:[{r:"Retinue",p:false},{r:"Elites",p:false},{r:"HeavyTransport",p:false}]},
-  dreadnought_talon:{id:"dreadnought_talon",name:"Dreadnought Talon",cat:"auxiliary",req:{any_unit:["cmd_mortificator","cmd_terminator_mortificator"]},restr:{WarEngine:["Contemptor Dreadnought"]},rnote:"War-Engine: Contemptor Dreadnought units only.",slots:[{r:"WarEngine",p:false},{r:"WarEngine",p:false},{r:"WarEngine",p:false}]},
-  storm_battery:   {id:"storm_battery",   name:"Storm Battery",   cat:"auxiliary", req:{any_unit:["cmd_siege_breaker","cmd_mounted_siege_breaker","cmd_terminator_siege_breaker","cmd_siege_breaker_jump"]}, restr:{Support:["Rapier Battery"],Armour:["Arquitor Bombard","Vindicator Siege Tank"]},rnote:"Support: Rapier Battery only. Armour: Arquitor Bombard or Vindicator Siege Tank only.",slots:[{r:"Support",p:false},{r:"Support",p:false},{r:"Armour",p:false},{r:"Armour",p:false}]},
-  recon_demi_company:{id:"recon_demi_company",name:"Recon Demi-Company",cat:"auxiliary",req:{any_unit:["cmd_vigilator"]},max_per_unit_any:["cmd_vigilator"],restr:{Recon:["Reconnaissance Squad"]},rnote:"Recon: Reconnaissance Squad units only.",slots:[{r:"Recon",p:false},{r:"Recon",p:false},{r:"Recon",p:false},{r:"FastAttack",p:false}]},
+  veteran_cadre:   {id:"veteran_cadre",   name:"Veteran Cadre",   cat:"auxiliary", req:{list:"Legiones Astartes",any_unit:["cmd_legion_champion","cmd_terminator_legion_champion","cmd_legion_champion_jump","cmd_mounted_legion_champion"]}, max_per_unit_any:["cmd_legion_champion","cmd_terminator_legion_champion","cmd_legion_champion_jump","cmd_mounted_legion_champion"], slots:[{r:"Retinue",p:false},{r:"Elites",p:false},{r:"HeavyTransport",p:false}]},
+  dreadnought_talon:{id:"dreadnought_talon",name:"Dreadnought Talon",cat:"auxiliary",req:{list:"Legiones Astartes",any_unit:["cmd_mortificator","cmd_terminator_mortificator"]},restr:{WarEngine:["Contemptor Dreadnought"]},rnote:"War-Engine: Contemptor Dreadnought units only.",slots:[{r:"WarEngine",p:false},{r:"WarEngine",p:false},{r:"WarEngine",p:false}]},
+  storm_battery:   {id:"storm_battery",   name:"Storm Battery",   cat:"auxiliary", req:{list:"Legiones Astartes",any_unit:["cmd_siege_breaker","cmd_mounted_siege_breaker","cmd_terminator_siege_breaker","cmd_siege_breaker_jump"]}, restr:{Support:["Rapier Battery"],Armour:["Arquitor Bombard","Vindicator Siege Tank"]},rnote:"Support: Rapier Battery only. Armour: Arquitor Bombard or Vindicator Siege Tank only.",slots:[{r:"Support",p:false},{r:"Support",p:false},{r:"Armour",p:false},{r:"Armour",p:false}]},
+  recon_demi_company:{id:"recon_demi_company",name:"Recon Demi-Company",cat:"auxiliary",req:{list:"Legiones Astartes",any_unit:["cmd_vigilator"]},max_per_unit_any:["cmd_vigilator"],restr:{Recon:["Reconnaissance Squad"]},rnote:"Recon: Reconnaissance Squad units only.",slots:[{r:"Recon",p:false},{r:"Recon",p:false},{r:"Recon",p:false},{r:"FastAttack",p:false}]},
   planetfall_speartip:{id:"planetfall_speartip",name:"Planetfall Speartip",cat:"auxiliary",req:{any_unit:["cmd_master_of_descent"]},restr:{Retinue:["Praetorian Command Squad with Jump Packs"],Elites:["Veteran Assault Squad"]},rnote:"Retinue: Praetorian Command Squad with Jump Packs only. Elites: Veteran Assault Squad only. Once per army.",slots:[{r:"Retinue",p:false},{r:"Elites",p:true},{r:"Elites",p:true}]},
-  maelstrom_sentry_battery:{id:"maelstrom_sentry_battery",name:"Maelstrom Sentry Battery",cat:"auxiliary",req:{any_unit:["cmd_master_of_signals","cmd_master_of_signals_jump","cmd_mounted_master_of_signals"]},max_per_unit_any:["cmd_master_of_signals","cmd_master_of_signals_jump","cmd_mounted_master_of_signals"],restr:{Support:["Araknae Quad Accelerator Platform"],Recon:["Tarantula Sentry Gun"]},rnote:"Support: Araknae Quad Accelerator Platform only. Recon: Tarantula Sentry Gun only.",slots:[{r:"Support",p:false},{r:"Support",p:false},{r:"Recon",p:false},{r:"Recon",p:false},{r:"Recon",p:false}]},
-  apothecarion_detachment:{id:"apothecarion_detachment",name:"Apothecarion Delegation",cat:"auxiliary",restr:{Support:["Apothecary"]},rnote:"Support: Apothecary units only.",slots:[{r:"Support",p:true},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false}]},
-  techmarine_covenant:{id:"techmarine_covenant",name:"Techmarine Covenant",cat:"auxiliary",restr:{Support:["Techmarine"]},rnote:"Support: Techmarine units only.",slots:[{r:"Support",p:true},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false}]},
+  maelstrom_sentry_battery:{id:"maelstrom_sentry_battery",name:"Maelstrom Sentry Battery",cat:"auxiliary",req:{list:"Legiones Astartes",any_unit:["cmd_master_of_signals","cmd_master_of_signals_jump","cmd_mounted_master_of_signals"]},max_per_unit_any:["cmd_master_of_signals","cmd_master_of_signals_jump","cmd_mounted_master_of_signals"],restr:{Support:["Araknae Quad Accelerator Platform"],Recon:["Tarantula Sentry Gun"]},rnote:"Support: Araknae Quad Accelerator Platform only. Recon: Tarantula Sentry Gun only.",slots:[{r:"Support",p:false},{r:"Support",p:false},{r:"Recon",p:false},{r:"Recon",p:false},{r:"Recon",p:false}]},
+  apothecarion_detachment:{id:"apothecarion_detachment",name:"Apothecarion Delegation",cat:"auxiliary",req:{list:"Legiones Astartes"},restr:{Support:["Apothecary"]},rnote:"Support: Apothecary units only.",slots:[{r:"Support",p:true},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false}]},
+  techmarine_covenant:{id:"techmarine_covenant",name:"Techmarine Covenant",cat:"auxiliary",req:{list:"Legiones Astartes"},restr:{Support:["Techmarine"]},rnote:"Support: Techmarine units only.",slots:[{r:"Support",p:true},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false}]},
   daemonic_manifestation:{id:"daemonic_manifestation",name:"Daemonic Manifestation",cat:"auxiliary",
-    req:{allegiance:"Traitor", any_unit:["cmd_esoterist","cmd_terminator_esoterist","cmd_esoterist_jump","cmd_mounted_esoterist"]}, max_per_unit_any:["cmd_esoterist","cmd_terminator_esoterist","cmd_esoterist_jump","cmd_mounted_esoterist"], restr:{HeavyAssault:["Ruinstorm Daemon Brute"]}, rnote:"Heavy Assault: Ruinstorm Daemon Brute units only (coming soon).", slotArmyList:true, slots:[{r:"HeavyAssault",p:false},{r:"HeavyAssault",p:false},{r:"HeavyAssault",p:false}]},
+    req:{list:"Legiones Astartes", allegiance:"Traitor", any_unit:["cmd_esoterist","cmd_terminator_esoterist","cmd_esoterist_jump","cmd_mounted_esoterist"]},
+    max_per_unit_any:["cmd_esoterist","cmd_terminator_esoterist","cmd_esoterist_jump","cmd_mounted_esoterist"],
+    // Its slots are filled from ANOTHER army list (see slotList) rather than the host group's.
+    slotList:"Daemons of the Ruinstorm",
+    restr:{HeavyAssault:["Ruinstorm Daemon Brutes"]},
+    rnote:"Heavy Assault: Ruinstorm Daemon Brutes only.",
+    slots:[{r:"HeavyAssault",p:false},{r:"HeavyAssault",p:false},{r:"HeavyAssault",p:false}]},
 };
 
 const WARGEAR_LISTS = {
@@ -715,6 +783,37 @@ const WEAPONS = {
   "argean_power_sword":  {label:"Argean Power Sword", melee:true, im:"I", am:"A", sm:"S", ap:3, d:1, specialRules:"Breaching (5+)", rules:["Power"]},
   "the_lion_sword":      {label:"The Lion Sword", melee:true, im:"I", am:"A", sm:"+2", ap:2, d:3, specialRules:"—", rules:["Power","Sword of the Order"]},
   "the_fusil_actinaeus": {label:"The Fusil Actinaeus", range:18, fp:2, rs:7, ap:3, d:2, specialRules:"Breaching (4+)", rules:["Assault","Plasma"]},
+  "excindio_claws": {label:"Excindio Claws", melee:true, im:"I", am:"A", sm:"+1", ap:3, d:2, specialRules:"Breaching (5+), Reaping Blow (2)", rules:["Power"]},
+  "irad_cleanser": {label:"Irad Cleanser", range:"Template", fp:1, rs:2, ap:5, d:1, specialRules:"Template, Phage (T), Poisoned (2+), Panic (1)", rules:["Rad"]},
+  "athanax_phosphex_canister_launcher": {label:"Athanax Phosphex Canister Launcher", range:24, fp:1, rs:6, ap:4, d:1, specialRules:"Blast (3in), Barrage (2), Pinning (3), Poisoned (2+), Phage (T)", rules:["Rad"]},
+  "tyrhenius_nerve_induction_shredder": {label:"Tyrhenius Nerve Induction Shredder", range:18, fp:10, rs:1, ap:"-", d:1, specialRules:"Poisoned (2+), Panic (1)", rules:["Assault"]},
+  "magaron_atomantic_pulse_cannon": {label:"Magaron Atomantic Pulse Cannon", range:24, fp:3, rs:8, ap:2, d:1, specialRules:"Armourbane, Shock (Suppressed)", rules:["Assault"]},
+  "cytheron_graviton_flux_projector": {label:"Cytheron Graviton Flux Projector", range:"Template", fp:1, rs:7, ap:4, d:2, specialRules:"Template, Breaching (5+), Shock (Pinned), Pinning (3)", rules:["Assault","Graviton"]},
+  "plasma_incinerator": {label:"Plasma Incinerator", profiles:[
+    {name:"Sustained Fire", range:"Template", fp:1, rs:5, ap:4, d:2, specialRules:"Template, Breaching (6+)", rules:["Plasma"]},
+    {name:"Maximal Fire",   range:"Template", fp:1, rs:6, ap:4, d:2, specialRules:"Template, Breaching (5+), Overload (1)", rules:["Plasma"]},
+  ]},
+  "plasma_caster":      {label:"Plasma Caster", profiles:[
+    {name:"Sustained Fire", range:"Template", fp:1, rs:4, ap:4, d:1, specialRules:"Template, Breaching (6+)", rules:["Plasma"]},
+    {name:"Maximal Fire",   range:"Template", fp:1, rs:4, ap:4, d:1, specialRules:"Template, Breaching (5+), Overload (1)", rules:["Plasma"]},
+  ]},
+  "calibanite_charge_blade": {label:"Calibanite Charge-blade", profiles:[
+    {name:"Uncharged", melee:true, im:"+2", am:"A", sm:"S",  ap:4, d:1, specialRules:"\u2014", rules:["Sword of the Order"]},
+    {name:"Charged",   melee:true, im:-1,   am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (6+)", rules:["Sword of the Order"]},
+  ]},
+  "enigmatus_missile_launcher": {label:"Enigmatus Missile Launcher", profiles:[
+    {name:"Frag Missile",   range:24, fp:1, rs:3, ap:6,   d:1, specialRules:"Blast (3\")", rules:["Assault"]},
+    {name:"Krak Missile",   range:24, fp:1, rs:6, ap:4,   d:2, specialRules:"\u2014", rules:["Assault"]},
+    {name:"Stasis Missile", range:24, fp:1, rs:4, ap:"-", d:2, specialRules:"Blast (3\"), Stun (3)", rules:["Assault","Stasis"]},
+  ]},
+  "calibanite_warblade": {label:"Calibanite Warblade", melee:true, im:"I", am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (5+)", rules:["Sword of the Order"]},
+  "terranic_greatsword": {label:"Terranic Greatsword", melee:true, im:-1, am:"A", sm:"+2", ap:3, d:2, specialRules:"Breaching (5+)", rules:["Sword of the Order"]},
+  "the_death_of_worlds": {label:"The Death of Worlds", melee:true, im:-2, am:"A", sm:"+5", ap:2, d:3, specialRules:"—", rules:[]},
+  "plasma_burner":      {label:"Plasma Burner", profiles:[
+    {name:"Sustained Fire", range:"Template", fp:1, rs:5, ap:4, d:1, specialRules:"Template, Breaching (6+)", rules:["Plasma"]},
+    {name:"Maximal Fire",   range:"Template", fp:1, rs:6, ap:4, d:1, specialRules:"Template, Breaching (5+), Overload (1)", rules:["Plasma"]},
+  ]},
+  "the_blade":          {label:"The Blade", melee:true, im:"I", am:"A", sm:"+2", ap:2, d:2, specialRules:"Duelist's Edge (2)", rules:["Power","Sword of the Order"]},
   "the_wolf_blade":      {label:"The Wolf Blade", melee:true, im:"I", am:"A", sm:"S", ap:3, d:1, specialRules:"Shred (4+), Breaching (4+), Reaping Blow (2)", rules:["Chain","Sword of the Order"]},
   "the_warmasters_talon": {label:"The Warmaster's Talon", profiles:[
     {name:"Ranged", range:24, fp:5, rs:5, ap:3, d:1, specialRules:"Breaching (6+)", rules:["Bolt","Assault"]},
@@ -753,6 +852,9 @@ const WEAPONS = {
   "power_axe": {label:"Power Axe", melee:true, im:-1, am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (5+)", rules:["Power"]},
   "phoenix_power_spear": {label:"Phoenix Power Spear", melee:true, im:"+1", am:"A", sm:"+1", ap:3, d:1, specialRules:"Impact (D), Breaching (6+)", rules:["Power"]},
   "phoenix_rapier": {label:"Phoenix Rapier", melee:true, im:"I", am:"A", sm:"S", ap:3, d:1, specialRules:"Impact (D), Breaching (6+)", rules:["Power"]},
+  "sovereign_blade": {label:"Sovereign Blade", melee:true, im:"I", am:"A", sm:"S", ap:2, d:2, specialRules:"Phage (S), Reaping Blow (1)", rules:["Immaterial"]},
+  "sovereign_greatblade": {label:"Sovereign Greatblade", melee:true, im:-2, am:"A", sm:"+3", ap:2, d:3, specialRules:"Phage (S), Reaping Blow (2)", rules:["Immaterial"]},
+  "immaterial_armaments": {label:"Immaterial Armaments", melee:true, im:"I", am:"A", sm:"S", ap:3, d:2, specialRules:"Breaching (5+)", rules:["Immaterial"]},
   "palatine_blade": {label:"Palatine Blade", melee:true, im:"I", am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (5+), Duelist's Edge (1)", rules:[]},
   "sonic_lance": {label:"Sonic Lance", range:"Template", fp:1, rs:2, ap:5, d:1, specialRules:"Template, Breaching (6+)", rules:["Sonic","Assault"]},
   "laeran_blade": {label:"Laeran Blade", melee:true, im:"I", am:"A", sm:"S", ap:2, d:2, specialRules:"Duelist's Edge (1)", rules:[]},
@@ -1041,6 +1143,69 @@ const WEAPONS = {
 
 const SU = {
   HighCommand:[
+    {
+      id:"hc_marduk_sedras", name:"Marduk Sedras", basePts:225, minSize:1, maxSize:1,
+      req:{legion:"Dark Angels", allegiance:"Loyalist"}, uniqueRule:"Marduk Sedras",
+      traits:["Loyalist","Dark Angels","Master of the Legion"],
+      specialRules:["Ancient of War","Bulky (2)","Implacable Advance","Slow and Purposeful"],
+      modelTypes:["Infantry","Unique","Command","Heavy"],
+      stats:{M:6,WS:6,BS:5,S:4,T:5,W:5,I:5,A:5,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Plasma Burner","Phosphex Bombs","The Death of Worlds"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"hc_corswain", name:"Corswain", basePts:220, minSize:1, maxSize:1,
+      req:{legion:"Dark Angels", allegiance:"Loyalist"}, uniqueRule:"Corswain",
+      traits:["Loyalist","Dark Angels","Master of the Legion"],
+      specialRules:[],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:7,BS:5,S:4,T:4,W:4,I:5,A:5,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Bolter","Bolt Pistol","The Blade","Armour of the Forest","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"hc_ruinstorm_sovereign", name:"Ruinstorm Daemon Sovereign",
+      list:"Daemons of the Ruinstorm",
+      basePts:350, minSize:1, maxSize:1,
+      req:{allegiance:"Traitor"},
+      traits:["Traitor","Champion of the Ruinstorm","[\u00c6theric Dominion]"],
+      profiles:[
+        { id:"sovereign", label:"Sovereign", pts:0,
+          stats:{M:7,WS:6,BS:5,S:7,T:6,W:7,I:5,A:5,LD:9,CL:9,WP:9,IN:7,SAV:"3+",INV:"4+"},
+          type:"Infantry", subtypes:["Champion","Malefic"],
+          specialRules:["Bulky (7)","Eternal Warrior (1)","Fear (1)"],
+          wargear:{
+            included_slots:[],
+            pairs:[],
+            slots:[
+              { id:"blade", label:"Sovereign Blade", options:[
+                {id:"sovereign_greatblade", label:"Sovereign Greatblade", pts:15},
+              ]},
+            ],
+            addons:[],
+          }
+        },
+        { id:"sovereign_wings", label:"Sovereign with Wings", pts:40,
+          stats:{M:12,WS:6,BS:5,S:7,T:6,W:7,I:5,A:5,LD:9,CL:9,WP:9,IN:7,SAV:"3+",INV:"4+"},
+          type:"Infantry", subtypes:["Champion","Malefic","Antigrav"],
+          specialRules:["Bulky (8)","Eternal Warrior (1)","Fear (1)"],
+          wargear:{
+            included_slots:[],
+            pairs:[],
+            slots:[
+              { id:"blade", label:"Sovereign Blade", options:[
+                {id:"sovereign_greatblade", label:"Sovereign Greatblade", pts:15},
+              ]},
+            ],
+            addons:[],
+          }
+        },
+      ],
+    },
     {
       id:"hc_eidolon", name:"Lord Commander Eidolon", basePts:215, minSize:1, maxSize:1,
       req:{legion:"Emperor's Children", allegiance:"Traitor"}, uniqueRule:"Lord Commander Eidolon",
@@ -1539,6 +1704,16 @@ const SU = {
                 {id:"combi_weapon",      label:"Combi-weapon",           pts:0, list:"combi_weapons"},
                 {id:"shotgun",           label:"Astartes Shotgun",       pts:2},
                 {id:"volkite_charger",   label:"Volkite Charger",        pts:2},
+                {id:"terranic_greatsword", label:"Terranic Greatsword",  pts:0, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}},
+              ]},
+              // Paladin of Hekatonystika: the model joins one of the Legion's Orders.
+              { id:"order", label:"Order (select one)", required:true, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}, options:[
+                {id:"augurs_of_weakness",  label:"Augurs of Weakness",  pts:0, grants:{specialRules:["Augurs of Weakness"]}},
+                {id:"icons_of_resolve",    label:"Icons of Resolve",    pts:0, grants:{specialRules:["Icons of Resolve"]}},
+                {id:"slayers_of_kings",    label:"Slayers of Kings",    pts:0, grants:{specialRules:["Slayers of Kings"]}},
+                {id:"hunters_of_beasts",   label:"Hunters of Beasts",   pts:0, grants:{specialRules:["Hunters of Beasts"]}},
+                {id:"reapers_of_hosts",    label:"Reapers of Hosts",    pts:0, grants:{specialRules:["Reapers of Hosts"]}},
+                {id:"breakers_of_witches", label:"Breakers of Witches", pts:0, grants:{specialRules:["Breakers of Witches"]}},
               ]},
               { id:"pistol", label:"Bolt Pistol", options:[
                 {id:"officer_wargear",   label:"Legion Officer Wargear", pts:0, shared:true, list:"officer_wargear"},
@@ -1570,6 +1745,16 @@ const SU = {
                 {id:"combi_weapon",      label:"Combi-weapon",           pts:0, list:"combi_weapons"},
                 {id:"shotgun",           label:"Astartes Shotgun",       pts:2},
                 {id:"volkite_charger",   label:"Volkite Charger",        pts:2},
+                {id:"terranic_greatsword", label:"Terranic Greatsword",  pts:0, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}},
+              ]},
+              // Paladin of Hekatonystika: the model joins one of the Legion's Orders.
+              { id:"order", label:"Order (select one)", required:true, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}, options:[
+                {id:"augurs_of_weakness",  label:"Augurs of Weakness",  pts:0, grants:{specialRules:["Augurs of Weakness"]}},
+                {id:"icons_of_resolve",    label:"Icons of Resolve",    pts:0, grants:{specialRules:["Icons of Resolve"]}},
+                {id:"slayers_of_kings",    label:"Slayers of Kings",    pts:0, grants:{specialRules:["Slayers of Kings"]}},
+                {id:"hunters_of_beasts",   label:"Hunters of Beasts",   pts:0, grants:{specialRules:["Hunters of Beasts"]}},
+                {id:"reapers_of_hosts",    label:"Reapers of Hosts",    pts:0, grants:{specialRules:["Reapers of Hosts"]}},
+                {id:"breakers_of_witches", label:"Breakers of Witches", pts:0, grants:{specialRules:["Breakers of Witches"]}},
               ]},
               { id:"pistol", label:"Bolt Pistol", options:[
                 {id:"officer_wargear",   label:"Legion Officer Wargear", pts:0, shared:true, list:"officer_wargear"},
@@ -1665,6 +1850,17 @@ const SU = {
               { id:"power_weapon", label:"Power Weapon", options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
+                // Paladin of Hekatonystika: a Centurion in Terminator Armour exchanges its
+                // POWER WEAPON (it carries no bolter) for a Terranic greatsword, for free.
+                {id:"terranic_greatsword", label:"Terranic Greatsword", pts:0, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}},
+              ]},
+              { id:"order", label:"Order (select one)", required:true, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}, options:[
+                {id:"augurs_of_weakness",  label:"Augurs of Weakness",  pts:0, grants:{specialRules:["Augurs of Weakness"]}},
+                {id:"icons_of_resolve",    label:"Icons of Resolve",    pts:0, grants:{specialRules:["Icons of Resolve"]}},
+                {id:"slayers_of_kings",    label:"Slayers of Kings",    pts:0, grants:{specialRules:["Slayers of Kings"]}},
+                {id:"hunters_of_beasts",   label:"Hunters of Beasts",   pts:0, grants:{specialRules:["Hunters of Beasts"]}},
+                {id:"reapers_of_hosts",    label:"Reapers of Hosts",    pts:0, grants:{specialRules:["Reapers of Hosts"]}},
+                {id:"breakers_of_witches", label:"Breakers of Witches", pts:0, grants:{specialRules:["Breakers of Witches"]}},
               ]},
             ],
             addons:[],
@@ -1691,6 +1887,17 @@ const SU = {
               { id:"power_weapon", label:"Power Weapon", options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
+                // Paladin of Hekatonystika: a Centurion in Terminator Armour exchanges its
+                // POWER WEAPON (it carries no bolter) for a Terranic greatsword, for free.
+                {id:"terranic_greatsword", label:"Terranic Greatsword", pts:0, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}},
+              ]},
+              { id:"order", label:"Order (select one)", required:true, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}, options:[
+                {id:"augurs_of_weakness",  label:"Augurs of Weakness",  pts:0, grants:{specialRules:["Augurs of Weakness"]}},
+                {id:"icons_of_resolve",    label:"Icons of Resolve",    pts:0, grants:{specialRules:["Icons of Resolve"]}},
+                {id:"slayers_of_kings",    label:"Slayers of Kings",    pts:0, grants:{specialRules:["Slayers of Kings"]}},
+                {id:"hunters_of_beasts",   label:"Hunters of Beasts",   pts:0, grants:{specialRules:["Hunters of Beasts"]}},
+                {id:"reapers_of_hosts",    label:"Reapers of Hosts",    pts:0, grants:{specialRules:["Reapers of Hosts"]}},
+                {id:"breakers_of_witches", label:"Breakers of Witches", pts:0, grants:{specialRules:["Breakers of Witches"]}},
               ]},
             ],
             addons:[],
@@ -1853,6 +2060,16 @@ const SU = {
                 {id:"combi_weapon",      label:"Combi-weapon",           pts:0, list:"combi_weapons"},
                 {id:"shotgun",           label:"Astartes Shotgun",       pts:2},
                 {id:"volkite_charger",   label:"Volkite Charger",        pts:2},
+                {id:"terranic_greatsword", label:"Terranic Greatsword",  pts:0, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}},
+              ]},
+              // Paladin of Hekatonystika: the model joins one of the Legion's Orders.
+              { id:"order", label:"Order (select one)", required:true, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}, options:[
+                {id:"augurs_of_weakness",  label:"Augurs of Weakness",  pts:0, grants:{specialRules:["Augurs of Weakness"]}},
+                {id:"icons_of_resolve",    label:"Icons of Resolve",    pts:0, grants:{specialRules:["Icons of Resolve"]}},
+                {id:"slayers_of_kings",    label:"Slayers of Kings",    pts:0, grants:{specialRules:["Slayers of Kings"]}},
+                {id:"hunters_of_beasts",   label:"Hunters of Beasts",   pts:0, grants:{specialRules:["Hunters of Beasts"]}},
+                {id:"reapers_of_hosts",    label:"Reapers of Hosts",    pts:0, grants:{specialRules:["Reapers of Hosts"]}},
+                {id:"breakers_of_witches", label:"Breakers of Witches", pts:0, grants:{specialRules:["Breakers of Witches"]}},
               ]},
               { id:"pistol", label:"Bolt Pistol", options:[
                 {id:"officer_wargear",   label:"Legion Officer Wargear", pts:0, shared:true, list:"officer_wargear"},
@@ -1882,6 +2099,16 @@ const SU = {
                 {id:"combi_weapon",      label:"Combi-weapon",           pts:0, list:"combi_weapons"},
                 {id:"shotgun",           label:"Astartes Shotgun",       pts:2},
                 {id:"volkite_charger",   label:"Volkite Charger",        pts:2},
+                {id:"terranic_greatsword", label:"Terranic Greatsword",  pts:0, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}},
+              ]},
+              // Paladin of Hekatonystika: the model joins one of the Legion's Orders.
+              { id:"order", label:"Order (select one)", required:true, req:{legion:"Dark Angels", pa:"paladin_hekatonystika"}, options:[
+                {id:"augurs_of_weakness",  label:"Augurs of Weakness",  pts:0, grants:{specialRules:["Augurs of Weakness"]}},
+                {id:"icons_of_resolve",    label:"Icons of Resolve",    pts:0, grants:{specialRules:["Icons of Resolve"]}},
+                {id:"slayers_of_kings",    label:"Slayers of Kings",    pts:0, grants:{specialRules:["Slayers of Kings"]}},
+                {id:"hunters_of_beasts",   label:"Hunters of Beasts",   pts:0, grants:{specialRules:["Hunters of Beasts"]}},
+                {id:"reapers_of_hosts",    label:"Reapers of Hosts",    pts:0, grants:{specialRules:["Reapers of Hosts"]}},
+                {id:"breakers_of_witches", label:"Breakers of Witches", pts:0, grants:{specialRules:["Breakers of Witches"]}},
               ]},
               { id:"pistol", label:"Bolt Pistol", options:[
                 {id:"officer_wargear",   label:"Legion Officer Wargear", pts:0, shared:true, list:"officer_wargear"},
@@ -3552,6 +3779,115 @@ const SU = {
   ],
   Retinue:[
     {
+      id:"ret_da_deathwing_companion_det", name:"Deathwing Companion Detachment",
+      basePts:175, minSize:5, maxSize:10, ptsPerModel:30,
+      req:{legion:"Dark Angels"},
+      traits:["[Allegiance]","Dark Angels"],
+      specialRules:["Eternal Warrior (1)","Companions"],
+      modelTypes:["Infantry"],
+      championLabel:"Deathwing Oathbearer", baseModelLabel:"Deathwing Companion",
+      baseSizeBreakdown:"1 Deathwing Oathbearer + 4 Deathwing Companions",
+      championStats:{M:7,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:8,IN:8,SAV:"2+",INV:"5+"},
+      modelStats:{M:7,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:9,CL:8,WP:8,IN:8,SAV:"2+",INV:"\u2014"},
+      wargear:(()=>{ const common=()=>({
+        included_slots:["Frag Grenades","Krak Grenades"],
+        pairs:[],
+        slots:[
+          { id:"melee", label:"Calibanite Warblade", options:[
+            {id:"power_fist",          label:"Power Fist",          pts:5},
+            {id:"terranic_greatsword", label:"Terranic Greatsword", pts:5},
+          ]},
+          { id:"bolter", label:"Bolter", options:[
+            {id:"cytheron_aegis", label:"Cytheron Pattern Aegis", pts:10},
+            {id:"combi_weapon",   label:"Legion Combi-weapon",    pts:0, list:"combi_weapons"},
+          ]},
+          { id:"pistol", label:"Bolt Pistol", options:[
+            {id:"plasma_pistol", label:"Plasma Pistol", pts:10},
+          ]},
+        ],
+        addons:[
+          {id:"melta_bombs",   label:"Melta Bombs",   pts:25},
+          {id:"bayonet",       label:"Bayonet",       pts:1, requires_slot_default:"bolter", exclusive:["chain_bayonet"]},
+          {id:"chain_bayonet", label:"Chain Bayonet", pts:2, requires_slot_default:"bolter", exclusive:["bayonet"]},
+        ],
+      });
+      const champ=common(); const pm=common();
+      pm.addons=[...pm.addons, {id:"vexilla", label:"Vexilla", pts:10, unique_in_unit:true}];
+      return {
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{ modelTypes:["Infantry","Sergeant"], ...champ },
+        perModel:{ modelTypes:["Infantry"], ...pm },
+      }; })()
+    },
+    {
+      id:"ret_da_deathwing_companions_tartaros", name:"Dark Angels Tartaros Terminator Deathwing Companions",
+      basePts:240, minSize:5, maxSize:5,
+      req:{legion:"Dark Angels"},
+      traits:["[Allegiance]","Dark Angels"],
+      specialRules:["Bulky (2)","Implacable Advance","Eternal Warrior (1)","Companions"],
+      modelTypes:["Infantry"],
+      championLabel:"Tartaros Oathbearer", baseModelLabel:"Tartaros Companion",
+      baseSizeBreakdown:"1 Tartaros Oathbearer + 4 Tartaros Companions",
+      championStats:{M:7,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:9,CL:8,WP:8,IN:8,SAV:"2+",INV:"5+"},
+      modelStats:{M:7,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:8,CL:8,WP:8,IN:8,SAV:"2+",INV:"5+"},
+      wargear:(()=>{ const common=()=>({
+        pairs:[
+          {id:"lightning_claws", label:"Pair of Lightning Claws", pts:5,
+           replaces:["combi","melee"], sublabel:"Replaces combi-bolter & Calibanite warblade"},
+        ],
+        slots:[
+          { id:"combi", label:"Combi-bolter", options:[
+            {id:"combi_weapon", label:"Legion Combi-weapon", pts:0, list:"combi_weapons"},
+          ]},
+          { id:"melee", label:"Calibanite Warblade", options:[
+            {id:"terranic_greatsword", label:"Terranic Greatsword", pts:5},
+            {id:"power_fist",          label:"Power Fist",          pts:10},
+            {id:"thunder_hammer",      label:"Thunder Hammer",      pts:10},
+          ]},
+        ],
+      });
+      return {
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{ modelTypes:["Infantry","Sergeant"], included_slots:[], ...common(),
+          addons:[{id:"grenade_harness", label:"Grenade Harness", pts:5, unique_in_unit:true}] },
+        perModel:{ modelTypes:["Infantry"], included_slots:[], ...common(), addons:[] },
+      }; })()
+    },
+    {
+      id:"ret_da_deathwing_companions", name:"Dark Angels Cataphractii Terminator Deathwing Companions",
+      basePts:240, minSize:5, maxSize:5,
+      req:{legion:"Dark Angels"},
+      traits:["[Allegiance]","Dark Angels"],
+      specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful","Eternal Warrior (1)","Companions"],
+      modelTypes:["Infantry","Heavy"],
+      championLabel:"Cataphractii Oathbearer", baseModelLabel:"Cataphractii Companion",
+      baseSizeBreakdown:"1 Cataphractii Oathbearer + 4 Cataphractii Companions",
+      championStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:9,CL:8,WP:8,IN:8,SAV:"2+",INV:"4+"},
+      modelStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:8,CL:8,WP:8,IN:8,SAV:"2+",INV:"4+"},
+      wargear:(()=>{ const common=()=>({
+        pairs:[
+          {id:"lightning_claws", label:"Pair of Lightning Claws", pts:5,
+           replaces:["combi","melee"], sublabel:"Replaces combi-bolter & Calibanite warblade"},
+        ],
+        slots:[
+          { id:"combi", label:"Combi-bolter", options:[
+            {id:"combi_weapon", label:"Legion Combi-weapon", pts:0, list:"combi_weapons"},
+          ]},
+          { id:"melee", label:"Calibanite Warblade", options:[
+            {id:"terranic_greatsword", label:"Terranic Greatsword", pts:5},
+            {id:"power_fist",          label:"Power Fist",          pts:10},
+            {id:"thunder_hammer",      label:"Thunder Hammer",      pts:10},
+          ]},
+        ],
+      });
+      return {
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{ modelTypes:["Infantry","Sergeant","Heavy"], included_slots:[], ...common(),
+          addons:[{id:"grenade_harness", label:"Grenade Harness", pts:5, unique_in_unit:true}] },
+        perModel:{ modelTypes:["Infantry","Heavy"], included_slots:[], ...common(), addons:[] },
+      }; })()
+    },
+    {
       id:"ret_saturnine_command", name:"Saturnine Terminator Command Squad", basePts:160, minSize:2, maxSize:6, ptsPerModel:60,
       traits:["[Allegiance]","[Legiones Astartes]"],
       specialRules:["Bulky (4)","Explodes (6+)","Implacable Advance","Slow and Purposeful"],
@@ -4184,6 +4520,86 @@ const SU = {
     },
   ],
   Elites:[
+    {
+      id:"e_da_inner_circle_exemplars", name:"Inner Circle Knights Cenobium",
+      basePts:275, minSize:5, maxSize:10, ptsPerModel:50,
+      req:{legion:"Dark Angels"},
+      traits:["[Allegiance]","Dark Angels"],
+      specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful"],
+      modelTypes:["Infantry","Heavy"],
+      championLabel:"Order Preceptor", baseModelLabel:"Order Cenobite",
+      baseSizeBreakdown:"1 Order Preceptor + 4 Order Cenobites",
+      championStats:{M:6,WS:6,BS:4,S:4,T:5,W:2,I:4,A:3,LD:9,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      modelStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      wargear:(()=>{ const meleeSlot=()=>({ id:"melee", label:"Terranic Greatsword", options:[
+            {id:"thunder_hammer", label:"Thunder Hammer", pts:10},
+          ]});
+      return {
+        included_slots:[], pairs:[], addons:[],
+        // The Cenobium is drawn from one of the Legion's secretive Orders — pick one; it
+        // grants that Order's special rule to the unit (see playCollectRules slot grants).
+        slots:[
+          { id:"order", label:"Order (select one)", required:true, options:[
+            {id:"augurs_of_weakness",  label:"Augurs of Weakness",  pts:0, grants:{specialRules:["Augurs of Weakness"]}},
+            {id:"icons_of_resolve",    label:"Icons of Resolve",    pts:0, grants:{specialRules:["Icons of Resolve"]}},
+            {id:"slayers_of_kings",    label:"Slayers of Kings",    pts:0, grants:{specialRules:["Slayers of Kings"]}},
+            {id:"hunters_of_beasts",   label:"Hunters of Beasts",   pts:0, grants:{specialRules:["Hunters of Beasts"]}},
+            {id:"reapers_of_hosts",    label:"Reapers of Hosts",    pts:0, grants:{specialRules:["Reapers of Hosts"]}},
+            {id:"breakers_of_witches", label:"Breakers of Witches", pts:0, grants:{specialRules:["Breakers of Witches"]}},
+          ]},
+        ],
+        champion:{ modelTypes:["Infantry","Sergeant","Heavy"],
+          included_slots:["Plasma Caster","Grenade Harness"],
+          pairs:[], slots:[meleeSlot()], addons:[] },
+        perModel:{ modelTypes:["Infantry","Heavy"],
+          included_slots:["Plasma Caster"],
+          pairs:[], slots:[meleeSlot()], addons:[] },
+      }; })()
+    },
+    {
+      id:"e_da_inner_circle_broken_claws", name:"Inner Circle Knight Cenobium \u2013 Order of the Broken Claws",
+      basePts:285, minSize:5, maxSize:10, ptsPerModel:55,
+      req:{legion:"Dark Angels"},
+      traits:["[Allegiance]","Dark Angels"],
+      specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful","Order of the Broken Claws"],
+      modelTypes:["Infantry","Heavy"],
+      championLabel:"Order Preceptor", baseModelLabel:"Order Cenobite",
+      baseSizeBreakdown:"1 Order Preceptor + 4 Order Cenobites",
+      championStats:{M:6,WS:6,BS:4,S:4,T:5,W:2,I:4,A:3,LD:9,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      modelStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      wargear:(()=>{ const meleeSlot=()=>({ id:"melee", label:"Terranic Greatsword", options:[
+            {id:"thunder_hammer", label:"Thunder Hammer", pts:10},
+          ]});
+      return {
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{ modelTypes:["Infantry","Sergeant","Heavy"],
+          included_slots:["Plasma Caster","Grenade Harness"],
+          pairs:[], slots:[meleeSlot()], addons:[] },
+        perModel:{ modelTypes:["Infantry","Heavy"],
+          included_slots:["Plasma Caster"],
+          pairs:[], slots:[meleeSlot()], addons:[] },
+      }; })()
+    },
+    {
+      id:"e_da_firewing_enigmatus_cabal", name:"Dark Angels Firewing Enigmatus Cabal",
+      basePts:90, minSize:3, maxSize:3,
+      req:{legion:"Dark Angels"},
+      traits:["[Allegiance]","Dark Angels","Smokescreen"],
+      specialRules:["Outflank","Bulky (2)","Deep Strike","Vanguard (2)","Marked For Death (1)"],
+      modelTypes:["Infantry","Champion","Antigrav"],
+      championLabel:"Firewing Enigmatii", baseModelLabel:"Firewing Enigmatii",
+      baseSizeBreakdown:"3 Firewing Enigmatii",
+      championStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry","Champion","Antigrav"],
+        included_slots:["Calibanite Charge-blade","Needle Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[],
+        addons:[
+          {id:"enigmatus_missile_launcher", label:"Enigmatus Missile Launcher", pts:15, unique_in_unit:true},
+        ],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
     {
       id:"e_palatine_blade_squad", name:"Palatine Blade Squad", basePts:165, minSize:5, maxSize:10, ptsPerModel:28,
       req:{legion:"Emperor's Children"},
@@ -4861,6 +5277,27 @@ const SU = {
   ],
   Troops:[
     {
+      id:"t_da_inductii", name:"Dark Angels Inductii Squad", basePts:90, minSize:10, maxSize:20, ptsPerModel:9,
+      req:{legion:"Dark Angels"},
+      traits:["[Allegiance]","Dark Angels"],
+      specialRules:["Line (1)","Inductii"],
+      modelTypes:["Infantry"],
+      championLabel:"Inductii", baseModelLabel:"Inductii",
+      baseSizeBreakdown:"10 Inductii",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Volkite Charger","Bolt Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[],
+        addons:[
+          {id:"vexilla",        label:"Vexilla",        pts:10, unique_in_unit:true},
+          {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["nuncio_vox"]},
+          {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["augury_scanner"]},
+        ],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
       id:"t_ec_inductii", name:"Emperor's Children Inductii Squad", basePts:100, minSize:10, maxSize:20, ptsPerModel:9,
       req:{legion:"Emperor's Children"},
       traits:["[Allegiance]","Emperor's Children"],
@@ -5292,6 +5729,40 @@ const SU = {
   ],
   Support:[
     {
+      id:"sup_da_dreadwing_interemptors", name:"Dreadwing Interemptors",
+      basePts:125, minSize:2, maxSize:7, ptsPerModel:20,
+      req:{legion:"Dark Angels"},
+      traits:["[Allegiance]","Dark Angels"],
+      specialRules:["Bitter Duty","Support Unit (1)"],
+      modelTypes:["Infantry"],
+      championLabel:"Interemptor Praefectus", baseModelLabel:"Interemptor",
+      baseSizeBreakdown:"1 Interemptor Praefectus + 1 Interemptor",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:9,CL:8,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:8,CL:8,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{ const weaponSlot=()=>({ id:"weapon", label:"Plasma Burner", options:[
+            {id:"destroyer_missile_launcher", label:"Destroyer Missile Launcher", pts:15, per5cap:"int_special", per5max:1, per5size:5},
+            {id:"plasma_incinerator",         label:"Plasma Incinerator",         pts:15, per5cap:"int_special", per5max:1, per5size:5},
+          ]});
+      return {
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{ modelTypes:["Infantry","Sergeant"],
+          included_slots:["Bolt Pistol","Frag Grenades","Krak Grenades","Rad Grenades"],
+          pairs:[], slots:[weaponSlot()],
+          addons:[
+            {id:"melta_bombs",    label:"Melta Bombs",    pts:10},
+            {id:"phosphex_bombs", label:"Phosphex Bombs", pts:10},
+          ] },
+        perModel:{ modelTypes:["Infantry"],
+          included_slots:["Bolt Pistol","Frag Grenades","Krak Grenades","Rad Grenades"],
+          pairs:[], slots:[weaponSlot()],
+          addons:[
+            {id:"vexilla",        label:"Vexilla",        pts:10, unique_in_unit:true},
+            {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["nuncio_vox"]},
+            {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["augury_scanner"]},
+          ] },
+      }; })()
+    },
+    {
       id:"sup_kakophoni", name:"Kakophoni Squad", basePts:150, minSize:5, maxSize:10, ptsPerModel:25,
       req:{legion:"Emperor's Children", allegiance:"Traitor"},
       traits:["Traitor","Emperor's Children"],
@@ -5563,6 +6034,51 @@ const SU = {
     },
   ],
   WarEngine:[
+    {
+      id:"we_da_excindio", name:"Dark Angels Excindio Battle-automata",
+      basePts:180, minSize:1, maxSize:1,
+      req:{legion:"Dark Angels"},
+      uniqueRule:"Dark Angels Excindio Battle-automata",   // 0-1 per army
+      noAllied:true,                                       // may not be taken in an Allied Detachment
+      traits:["[Allegiance]"],
+      specialRules:["Bulky (6)","Explodes (5+)","Firing Protocols (3)","Eternal Warrior (1)",
+                    "Hatred (Infantry, Cavalry, Walker, Automata)","Vengeful Rage"],
+      modelTypes:["Artificia","Champion"],
+      stats:{M:7,WS:5,BS:5,S:7,T:7,W:8,I:4,A:4,LD:10,CL:10,WP:10,IN:10,SAV:"3+",INV:"5+"},
+      wargear:{
+        included_slots:["Excindio Claws"],
+        pairs:[],
+        slots:[
+          { id:"guns", label:"Two Combi-bolters", options:[
+            {id:"two_graviton_guns",  label:"Two Graviton Guns",  pts:20, chips:["Graviton Gun","Graviton Gun"]},
+            {id:"two_plasma_guns",    label:"Two Plasma Guns",    pts:20, chips:["Plasma Gun","Plasma Gun"]},
+            {id:"two_irad_cleansers", label:"Two Irad Cleansers", pts:30, chips:["Irad Cleanser","Irad Cleanser"]},
+          ]},
+          { id:"special", label:"Additional Weapon (optional)", options:[
+            {id:"athanax_phosphex_canister_launcher", label:"Athanax Phosphex Canister Launcher", pts:15},
+            {id:"tyrhenius_nerve_induction_shredder", label:"Tyrhenius Nerve Induction Shredder", pts:15},
+            {id:"magaron_atomantic_pulse_cannon",     label:"Magaron Atomantic Pulse Cannon",     pts:30},
+            {id:"cytheron_graviton_flux_projector",   label:"Cytheron Graviton Flux Projector",   pts:20},
+          ]},
+        ],
+        addons:[
+          {id:"hunter_killer_missile",   label:"Hunter-Killer Missile",   pts:5},
+          {id:"hunter_killer_missile_2", label:"Hunter-Killer Missile (2nd)", pts:5, grants:{weapons:["Hunter-Killer Missile"]}},
+        ],
+      }
+    },
+    {
+      id:"we_telemechrus", name:"Honoured Telemechrus", basePts:170, minSize:1, maxSize:1,
+      req:{legion:"Ultramarines", allegiance:"Loyalist"}, uniqueRule:"Honoured Telemechrus",
+      traits:["Loyalist","Ultramarines","Smokescreen"],
+      specialRules:["Bulky (6)","Explodes (5+)","Implacable Advance","Hatred (Word Bearers)"],
+      modelTypes:["Walker","Unique"],
+      stats:{M:8,WS:4,BS:4,S:7,T:7,W:6,I:4,A:4,LD:12,CL:10,WP:7,IN:5,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:["Kheres Assault Cannon","Gravis Power Fist","Combi-bolter"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
     {
       id:"we_rylanor", name:"Rylanor the Unyielding", basePts:180, minSize:1, maxSize:1,
       req:{legion:"Emperor's Children", allegiance:"Loyalist"}, uniqueRule:"Rylanor the Unyielding",
@@ -6020,6 +6536,24 @@ const SU = {
     },
   ],
   HeavyAssault:[
+    {
+      id:"ha_ruinstorm_daemon_brute", name:"Ruinstorm Daemon Brutes",
+      list:"Daemons of the Ruinstorm",
+      basePts:120, minSize:3, maxSize:9, ptsPerModel:40,
+      req:{allegiance:"Traitor"},
+      traits:["Traitor","[\u00c6theric Dominion]"],
+      specialRules:["Bulky (4)","Fear (1)","Impact (A)"],
+      modelTypes:["Infantry","Malefic"],
+      championLabel:"Brute", baseModelLabel:"Brute",
+      baseSizeBreakdown:"3 Brutes",
+      championStats:{M:7,WS:4,BS:2,S:5,T:5,W:4,I:3,A:4,LD:8,CL:7,WP:7,IN:5,SAV:"4+",INV:"5+"},
+      modelStats:{M:7,WS:4,BS:2,S:5,T:5,W:4,I:3,A:4,LD:8,CL:7,WP:7,IN:5,SAV:"4+",INV:"5+"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry","Malefic"],
+        included_slots:["Immaterial Armaments"],
+        pairs:[], slots:[], addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
     {
       id:"ha_reaver_attack_squad", name:"Reaver Attack Squad",
       basePts:135, minSize:5, maxSize:20, ptsPerModel:22,
@@ -7503,6 +8037,7 @@ const SU = {
     {
       id:"wl_lion", name:"Lion El'Jonson", basePts:460, minSize:1, maxSize:1,
       req:{legion:"Dark Angels", allegiance:"Loyalist"}, uniqueRule:"Lion El'Jonson",
+      primeAllTroops:{count:4, require:{"Tactical Squad":1,"Assault Squad":1,"Breacher Squad":1}},
       traits:["Loyalist","Dark Angels","Master of the Legion"],
       specialRules:["Sire of the Dark Angels","Bulky (4)","The Lion's Choler","Eternal Warrior (2)"],
       modelTypes:["Paragon","Unique"],
@@ -7619,6 +8154,8 @@ const EQUIPMENT = {
   "Icon of the Warmaster": {text:"When this model is part of a unit that contains models with the Line (X) or Vanguard (X) rules, modify the value of X by +1."},
   "Nuncio-vox":           {text:"The unit may attempt to remove one Status token from itself at the beginning of its turn."},
   "Augury Scanner":       {text:"Ranged attacks made by models in this unit ignore the Shrouded special rule."},
+  "Cytheron Pattern Aegis": {text:"This model gains a 5+ invulnerable save and the Shield trait. In addition, this unit may declare the Shieldwall! Advanced Reaction even if the majority of its models do not have the Shield trait."},
+  "Armour of the Forest": {text:"When this model is fighting a Challenge, reduce the Damage characteristic of any Wound inflicted on it by 1 (to a minimum of 1)."},
   "Sonic Shriekers":      {text:"When this model\u2019s unit makes a Charge Move, the target of the Charge cannot make Reactions until the Charge Procedure has been completed."},
   "Incursor Pattern Command Array": {text:"This Super-heavy model is able to make the Overwatch and Return Fire reactions in response to actions made with any unit, instead of only units that contain models with the Paragon, Super-heavy, Knight, or Titan types. In addition, while this model has the Suppressed or Stunned status, it has the Auto-repair (4+) special rule."},
   "Narthecium":           {text:"If this unit must make a Characteristic Check during the Morale Sub-Phase (after the Shooting Phase), this model may make a Recovery Test. If successful, this unit gets a -2 bonus to the Characteristic Check."},
@@ -7697,9 +8234,20 @@ const RULES = {
   "Battlefield Coordinators": {type:"special_rule", text:"Once per turn, if this unit is within 18\" of a unit making a Reaction, this unit may make an Intelligence Check (with a -1 modifier if this unit has Line of Sight to the Reacting unit). If successful, that Reaction costs 1 fewer Reaction Points."},
   "The Faultless Blade": {type:"special_rule", text:"If the Paragon of Excellence Gambit is selected for this model, add a +4 modifier to the Focus Roll instead of +2."},
   "A Brother Betrayed": {type:"special_rule", text:"While this model is in a Challenge with an enemy model with the Emperor's Children, World Eaters, Sons of Horus, or Death Guard traits, you may select the following Gambit:<br>• <b>Bite of the Betrayed</b> — This Gambit may only be selected on the first round of a Challenge. When this Gambit is selected, until this Challenge ends, modify this model's Weapon Skill, Strength, and Toughness by +1."},
-  "Sire of the Dark Angels": {type:"special_rule", text:"Rules text pending — please provide."},
-  "The Lion's Choler": {type:"special_rule", text:"Rules text pending — please provide."},
-  "Sword of the Order": {type:"weapon_special", text:"Rules text pending — please provide."},
+  "Sire of the Dark Angels": {type:"special_rule", text:"If this is a Dark Angels army:<br>• If four or more Troops slots in your Primary Detachment are filled with at least one Tactical Squad, at least one Assault Squad, and at least one Breacher Squad, then all of those slots are considered Prime Slots.<br>• Gain +1 to Reserve Rolls for Dark Angels Outrider Squadron units or Dark Angels Scimitar Jetbike Squadron units."},
+  "Augurs of Weakness": {type:"special_rule", text:"When making attacks against a unit that contains at least one Vehicle, this model gains the Armourbane rule."},
+  "Icons of Resolve": {type:"special_rule", text:"When part of a unit that is successfully Charged by an enemy unit, this model's Leadership is set to 10 until the end of the Assault Phase."},
+  "Slayers of Kings": {type:"special_rule", text:"When this model is Locked in Combat with an enemy unit that contains at least one model with a Weapon Skill of 6 or higher, this model may set its Attacks to 1. If it does, then its Terranic greatsword gains the Critical Hit (6+) rule until this combat ends."},
+  "Hunters of Beasts": {type:"special_rule", text:"When this model is Locked in Combat with an enemy unit that contains at least one model with a Toughness of 6 or higher, increase the Damage of all Wounds caused by this model by +1."},
+  "Reapers of Hosts": {type:"special_rule", text:"When this model is Locked in Combat with an enemy unit that outnumbers its unit, it gains +1 Attacks."},
+  "Breakers of Witches": {type:"special_rule", text:"When this model is Locked in Combat with an enemy unit that contains at least one Malefic or Psyker model, it gains +1 to Hit and +1 to Wound."},
+  "Vengeful Rage": {type:"special_rule", text:"When this model has 4 or fewer Wounds remaining, then during your Shooting Phase it <i>must</i> have a Shooting Attack made for it. This attack must target the nearest visible model, enemy or ally, and must use all weapons that are within range."},
+  "Order of the Broken Claws": {type:"special_rule", text:"When this model is Locked in Combat with an enemy unit that has at least one model with the Walker, Automata, or Malefic types:<br>• This model gains +1 Toughness.<br>• When making any Leadership, Cool, Willpower, or Intelligence checks, this model may ignore any negative modifiers."},
+  "Marked For Death": {type:"special_rule", text:"Prior to the battle, after declaring Reserves but prior to deploying armies, select 1 unit from the Opposing Player's army. That unit is the 'Marked' unit. Once per battle, if this unit scores Victory Points as a result of the Vanguard (X) rule for routing or destroying any Marked unit, score an extra {X} points."},
+  "Companions": {type:"special_rule", text:"While this unit is joined by a Dark Angels Paragon or Command model, Precision Wounds caused by a Shooting Attack on this unit cannot be allocated to that model."},
+  "Ancient of War": {type:"special_rule", text:"While this model is part of a Dark Angels unit, all models in that unit gain the Hatred (Traitor) special rule."},
+  "The Lion's Choler": {type:"special_rule", text:"When this model is in a Challenge, if it has 2 or fewer Wounds remaining, it has access to the following special Gambit:<br>• <b>The Lion's Choler</b> — When this Gambit is selected, this model adds +2 to the Focus Roll for this Challenge Round, and does not suffer the normal -1 modifier for each Wound it has lost."},
+  "Sword of the Order":           {type:"weapon_trait",  text:"..."},
   "Malefic": {type:"special_rule", text:"• If this unit would gain a Tactical Status, instead it suffers D3 automatic wounds with AP 2 Damage 1. No saving throws of any kind may be made against these wounds.<br>• Not affected by any rules that would negatively modify their Leadership, Cool, Willpower, or Intelligence.<br>• May never join or be joined by a model or unit that does not also have the Malefic type."},
   "Master of War": {type:"special_rule", text:"While this model is on the Battlefield, you have +1 Reaction Allotment each turn."},
   "The Warmaster Ascended": {type:"special_rule", text:"This model cannot be included in the same army as Horus Lupercal."},
@@ -7784,6 +8332,8 @@ const RULES = {
   // that's optional.) Actual mechanical rules live on the weapon's stat line / specialRules.
   "Assault":                      {type:"weapon_trait",  text:"..."},
   "Sonic":                        {type:"weapon_trait",  text:"..."},
+  "Immaterial":                   {type:"weapon_trait",  text:"..."},
+  "Stasis":                       {type:"weapon_trait",  text:"..."},
   "Auto":                         {type:"weapon_trait",  text:"..."},
   "Bayonet":                      {type:"weapon_trait",  text:"..."},
   "Bolt":                         {type:"weapon_trait",  text:"Weapons with the Bolt trait cause an immediate additional hit on an unmodified To Wound roll of a 6."},
@@ -7820,6 +8370,7 @@ const RULES = {
   "Skirmish":                     {type:"unit_type",      text:"Has a unit coherency range of 3\" instead of 2\"."},
   "Antigrav":                     {type:"unit_type",      text:"May ignore terrain and models as it moves."},
   "Specialist":                   {type:"unit_type",      text:"This model may join and leave units that it shares a type with."},
+  "Artificia": {type:"unit_type", text:"• This model cannot gain any Cybertheurgic Statuses, but can gain Tactical Statuses or any other kind of status effects.<br>• When targeting this model, Poisoned only triggers on a natural 6."},
   "Automata": {type:"unit_type", text:"• Cannot gain tactical statuses.<br>• May not make reactions.<br>• When targeting this model, Poisoned only triggers on a natural 6.<br>• May never contest objectives."},
   "Flyer": {type:"unit_type", text:"Operates under its own set of complex rules that represent this model dropping in from the skies, performing a bombing run or drop mission, and soaring back up — see the main rulebook for details."},
   "Paragon": {type:"unit_type", text:"• May join and leave Infantry units, and embark on transports, as if it was Infantry.<br>• May issue and accept Challenges.<br>• Units it has joined may use its Characteristics for any Characteristic Checks it makes.<br>• Counts as a number of models equal to its base number of wounds for determining how many models are on your side in a Close Combat.<br>• When this model makes an attack, all Hits made by this model are allocated to a defending model by the Attacker rather than the Defender."},
@@ -7879,14 +8430,47 @@ const RULES = {
 };
 
 // ── Army lists ───────────────────────────────────────────────────────────────
+// The registry of army lists. `label` is the value stored on a group/unit as its
+// army list; `factions` are the sub-factions selectable within it (the 18 Legions for
+// Legiones Astartes). A list with no factions simply renders no faction dropdown.
+// Adding an army list here makes it selectable for the primary army, for allied
+// detachments, and for the Lord of War detachment.
 const ARMY_LISTS = {
-  legiones_astartes: { id:"legiones_astartes", label:"Legiones Astartes" },
+  legiones_astartes: { id:"legiones_astartes", label:"Legiones Astartes",
+    factions:["Dark Angels","Emperor's Children","Iron Warriors","White Scars","Space Wolves",
+      "Imperial Fists","Night Lords","Blood Angels","Iron Hands","World Eaters","Ultramarines","Death Guard",
+      "Thousand Sons","Sons of Horus","Word Bearers","Salamanders","Raven Guard","Alpha Legion"] },
   daemons_ruinstorm: { id:"daemons_ruinstorm", label:"Daemons of the Ruinstorm",
+    // Ruinstorm factions are "Aetheric Domains" — mechanically the same as a Legion
+    // (grants, swaps, rites, and unit gating all key off the group's faction).
+    factionLabel:"Aetheric Domain",
+    allegiance:"Traitor",        // this army list may only ever be Traitor
+    factions:["Encroaching Ruin","Heedless Slaughter","Putrid Corruption","Rapturous Sensation",
+      "Formless Distortion","Infernal Tempest","Ravenous Dissolution","Malevolent Artifice"],
     units:{
       HeavyAssault:[]
     }
   },
 };
+// A list is offered once it has content. `factions` may be empty — such a list simply
+// renders no faction dropdown (its units are gated by army list alone).
+function listHasUnits(label){ return Object.values(SU).flat().some(u=>(u.list||DEFAULT_LIST)===label); }
+function ARMY_LIST_NAMES(){ return Object.values(ARMY_LISTS).filter(l=>(l.factions||[]).length || listHasUnits(l.label)).map(l=>l.label); }
+// A list may lock the army's allegiance (e.g. Daemons of the Ruinstorm are always Traitor).
+function LIST_ALLEGIANCE(label){ const l=Object.values(ARMY_LISTS).find(x=>x.label===label); return (l&&l.allegiance)||null; }
+// Display name for a list's faction axis ("Legion", "Aetheric Domain", ...).
+function FACTION_LABEL(label){ const l=Object.values(ARMY_LISTS).find(x=>x.label===label); return (l&&l.factionLabel)||"Legion"; }
+function FACTIONS_FOR(label){ const l=Object.values(ARMY_LISTS).find(x=>x.label===label); return (l&&l.factions)||[]; }
+// The army's allegiance is forced when the PRIMARY list locks it (Ruinstorm => Traitor).
+function lockedAllegiance(){ return LIST_ALLEGIANCE(primaryGroup().list); }
+// An army list whose allegiance is locked (e.g. Ruinstorm = Traitor) can only be used
+// — as the primary army, as an ally, or for the Lord of War — when the army's allegiance
+// matches. A Loyalist army can never ally in Daemons of the Ruinstorm.
+function listAllowedForArmy(label){ const lock=LIST_ALLEGIANCE(label); return !lock || lock===ST.allegiance; }
+// Lists selectable for a non-primary group (ally / Lord of War).
+function LISTS_FOR_GROUP(g){
+  return ARMY_LIST_NAMES().filter(L => (g && g.kind==="primary") ? true : listAllowedForArmy(L));
+}
 
 // ── Unit lookup ───────────────────────────────────────────────────────────────
 const UNIT_LOOKUP = {};
@@ -7918,11 +8502,14 @@ registerUnits(SU);
 
 // ── Serialise / deserialise ──────────────────────────────────────────────────
 function serialise(state) {
+  const pg=(state.groups||[]).find(g=>g.kind==="primary")||(state.groups||[])[0]||{};
   const data = {
-    v:2,
-    al:state.allegiance, lg:state.legion, pt:state.pts, ror:state.riteOfWar||null,
+    v:3,
+    al:state.allegiance, pt:state.pts,
+    lg:pg.faction||null, ror:pg.riteOfWar||null,   // legacy mirrors of the primary group (v<=2 readers)
+    gs:(state.groups||[]).map(g=>({gid:g.gid, k:g.kind, li:g.list, fa:g.faction, ror:g.riteOfWar||null})),
     ds:state.dets.map(d=>({
-      did:d.did, pa:d.pa, pax:d.paExtra||{}, kw:d.keyword||null,
+      did:d.did, grp:d.grp||null, pa:d.pa, pax:d.paExtra||{}, kw:d.keyword||null,
       sl:d.slots.map((u,i)=>u?{uid:u.id,cfg:d.cfgs[i]}:null),
       iu:(d.injectedUnits||[]).map((u,i)=>u?{uid:u.id,cfg:(d.injectedCfgs||[])[i]||{}}:null),
       ic:(d.injectedCfgs||[]).map(c=>c||{}),
@@ -7936,7 +8523,7 @@ function deserialise(code) {
     const raw = LZString.decompressFromEncodedURIComponent(code);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (!data || (data.v !== 1 && data.v !== 2)) return null;
+    if (!data || (data.v !== 1 && data.v !== 2 && data.v !== 3)) return null;
     const dets = data.ds.map(d=>{
       const def = DD[d.did]; if (!def) return null;
       const slots = (d.sl||[]).map(s=>{
@@ -7947,11 +8534,28 @@ function deserialise(code) {
       while (slots.length < def.slots.length) slots.push(null);
       const cfgs = (d.sl||[]).map(s=>s?(s.cfg||defaultCfg({minSize:1})):{});
       while (cfgs.length < def.slots.length) cfgs.push({});
-      return {iid:d.did+"_"+Math.random().toString(36).slice(2),did:d.did,slots,cfgs,pa:d.pa||{},paExtra:d.pax||{},keyword:d.kw||null,
+      return {iid:d.did+"_"+Math.random().toString(36).slice(2),grp:d.grp||"g0",did:d.did,slots,cfgs,pa:d.pa||{},paExtra:d.pax||{},keyword:d.kw||null,
         injectedUnits:(d.iu||[]).map(s=>s?UNIT_LOOKUP[s.uid]||null:null),
         injectedCfgs:(d.ic||[]).map(c=>c||{})};
     }).filter(Boolean);
-    return {allegiance:data.al,legion:data.lg,pts:data.pt,riteOfWar:data.ror||null,dets,modal:null};
+    // Groups: v3 carries them; v<=2 lists become a single primary group (back-compat).
+    const groups = (data.gs && data.gs.length)
+      ? data.gs.map(g=>({gid:g.gid, kind:g.k||"primary", list:g.li||DEFAULT_LIST, faction:g.fa, riteOfWar:g.ror||null}))
+      : [{gid:"g0", kind:"primary", list:DEFAULT_LIST, faction:data.lg, riteOfWar:data.ror||null}];
+    dets.forEach(d=>{ if(!d.grp || !groups.some(g=>g.gid===d.grp)) d.grp = (groups.find(g=>g.kind==="primary")||groups[0]).gid; });
+    // Migration: older lists kept the Lord of War detachment inside the primary group.
+    // Give it its own "low" group (inheriting the primary's list/faction) so it renders
+    // in the Lord of War block with its own faction picker.
+    dets.forEach(d=>{
+      const def=DD[d.did]; if(!def || def.cat!=="lordsofwar") return;
+      const g=groups.find(x=>x.gid===d.grp);
+      if(g && g.kind==="low") return;
+      const pg=groups.find(x=>x.kind==="primary")||groups[0];
+      const gid="low"+Math.random().toString(36).slice(2,7);
+      groups.push({gid, kind:"low", list:(pg&&pg.list)||DEFAULT_LIST, faction:pg&&pg.faction, riteOfWar:null});
+      d.grp=gid;
+    });
+    return {allegiance:data.al,groups,pts:data.pt,dets,modal:null};
   } catch(e){return null;}
 }
 
@@ -7970,11 +8574,60 @@ function getCodeFromURL() {
 function currentCode(){ return serialise(ST); }
 
 // ── App state ────────────────────────────────────────────────────────────────
+// ── Army groups ──────────────────────────────────────────────────────────────
+// An army is a set of GROUPS. Each group owns an army list, a faction (the
+// "legion" for Legiones Astartes), its own Rite of War, and its own Apex/Aux
+// unlock budget. Detachments stay in one flat ST.dets array, each tagged with
+// `grp` (its group id) — so existing code that iterates ST.dets keeps working.
+//   kind:"primary" — exactly one; defines the ARMY faction (allies must differ).
+//   kind:"ally"    — 0..n; Aux only (no Apex), no faction-specific detachments.
+//   kind:"low"     — 0..1; Lord of War, its own list/faction, no unlocks.
+// Faction/list resolution is AMBIENT: _CTX.gid names the group currently being
+// costed/rendered, and ST.legion / ST.riteOfWar are accessors that resolve to
+// that group. This keeps every existing `ST.legion` read correct without having
+// to thread a detachment argument through cp()/activeWargear()/etc.
+const DEFAULT_LIST = "Legiones Astartes";
+// Trait substitution tokens. "[Allegiance]" renders the army's allegiance; ANY other
+// bracketed token ("[Legiones Astartes]", "[Ætheric Dominion]", ...) renders the faction
+// of the group the unit belongs to. Adding a new army list needs no code change here.
+function resolveTraitToken(t){
+  if(t==='[Allegiance]') return ST.allegiance||'Loyalist';
+  if(typeof t==='string' && t.startsWith('[') && t.endsWith(']')) return ST.legion||t.slice(1,-1);
+  return t;
+}
 let ST = {
-  allegiance:"Loyalist", legion:"Iron Warriors", pts:3000, riteOfWar:null,
-  dets:[{iid:"p0",did:"crusade_primary",slots:Array(10).fill(null),cfgs:Array(10).fill(null).map(()=>({})),pa:{}}],
+  allegiance:"Loyalist", pts:3000,
+  groups:[{gid:"g0", kind:"primary", list:DEFAULT_LIST, faction:"Iron Warriors", riteOfWar:null}],
+  dets:[{iid:"p0",grp:"g0",did:"crusade_primary",slots:Array(10).fill(null),cfgs:Array(10).fill(null).map(()=>({})),pa:{}}],
   modal:null, showShare:false,
 };
+
+// Ambient group context. null => the primary group.
+const _CTX = { gid:null };
+function primaryGroup(){ return (ST.groups||[]).find(g=>g.kind==="primary") || (ST.groups||[])[0]; }
+function groupById(gid){ return (ST.groups||[]).find(g=>g.gid===gid) || primaryGroup(); }
+function activeGroup(){ return _CTX.gid ? groupById(_CTX.gid) : primaryGroup(); }
+function groupOfDet(d){ return d && d.grp ? groupById(d.grp) : primaryGroup(); }
+// Run fn with the given group as the ambient context (restores on exit).
+function withGroup(gid, fn){ const prev=_CTX.gid; _CTX.gid=gid; try { return fn(); } finally { _CTX.gid=prev; } }
+function withDet(d, fn){ return withGroup(d&&d.grp?d.grp:null, fn); }
+// Faction/list of the group a detachment belongs to.
+function factionFor(d){ const g=groupOfDet(d); return g?g.faction:null; }
+function listFor(d){ const g=groupOfDet(d); return g?g.list:DEFAULT_LIST; }
+// The army's faction = the primary group's (allies must differ from it).
+function armyFaction(){ const g=primaryGroup(); return g?g.faction:null; }
+function armyList(){ const g=primaryGroup(); return g?g.list:DEFAULT_LIST; }
+
+// ST.legion / ST.riteOfWar resolve against the ACTIVE group, so all existing
+// reads become group-aware for free. Writes go to the active group too.
+Object.defineProperty(ST, "legion", {
+  get(){ const g=activeGroup(); return g?g.faction:null; },
+  set(v){ const g=activeGroup(); if(g) g.faction=v; },
+});
+Object.defineProperty(ST, "riteOfWar", {
+  get(){ const g=activeGroup(); return g?g.riteOfWar:null; },
+  set(v){ const g=activeGroup(); if(g) g.riteOfWar=v; },
+});
 (function(){
   const code = getCodeFromURL();
   if (code){ const loaded=deserialise(code); if(loaded){Object.assign(ST,loaded);ST.modal=null;ST.showShare=false;}}
@@ -8061,12 +8714,15 @@ function sireTroopsPrime(){
   return {iid:pri.iid, set};
 }
 
-function getUnlocks(){
-  // HighCommand and Command slots in ANY detachment grant unlocks (Crusade Primary,
-  // Officer Cadre, etc.): HighCommand → Apex unlock; Command → Aux unlock (or Apex via
-  // a Delegatus/commandUnlockUpgrade, or X Aux via Officer of the Line (X)).
+function detsOfGroup(gid){ const pg=primaryGroup().gid; return ST.dets.filter(d=>(d.grp||pg)===gid); }
+function getUnlocks(gid){
+  // HighCommand and Command slots grant unlocks WITHIN THEIR OWN GROUP: HighCommand →
+  // Apex unlock; Command → Aux unlock (or Apex via a Delegatus/commandUnlockUpgrade, or
+  // X Aux via Officer of the Line (X)). An allied group's Command slots therefore unlock
+  // Auxiliaries for that ally only — which is why unlocks never need a faction tag.
+  const g = gid || (activeGroup()||primaryGroup()).gid;
   let ao=0,ax=0;
-  ST.dets.forEach(det=>{
+  detsOfGroup(g).forEach(det=>{
     const def=DD[det.did]; if(!def)return;
     if(def.noUnlock) return;   // e.g. Brotherhood of the Phoenix — its HC/Command slots grant no Apex/Aux unlocks
     def.slots.forEach((s,i)=>{
@@ -8090,42 +8746,122 @@ function getUnlocks(){
   return{ao,ax};
 }
 
-function getUsed(){
+function getUsed(gid){
+  const g = gid || (activeGroup()||primaryGroup()).gid;
   let a=0,b=0;
-  ST.dets.forEach(d=>{const c=DD[d.did].cat;if(c==="apex")a++;if(c==="auxiliary")b++;});
+  detsOfGroup(g).forEach(d=>{const c=DD[d.did].cat;if(c==="apex")a++;if(c==="auxiliary")b++;});
   return{a,b};
 }
 
-function canAdd(cat){
-  const{ao,ax}=getUnlocks();const{a,b}=getUsed();
-  if(cat==="apex")      return a<ao;
+function canAdd(cat, gid){
+  const g = gid || (activeGroup()||primaryGroup()).gid;
+  const grp = groupById(g);
+  const{ao,ax}=getUnlocks(g);const{a,b}=getUsed(g);
+  if(cat==="apex")      return grp && grp.kind!=="ally" && a<ao;   // allies never take Apex
   if(cat==="auxiliary") return(a+b)<(ao+ax);
+  // Warlord + Lord of War are army-wide singletons (not per group).
   if(cat==="warlord")   return ST.pts>=3000&&!ST.dets.find(d=>DD[d.did].cat==="warlord");
   if(cat==="lordsofwar")return !ST.dets.find(d=>DD[d.did].cat==="lordsofwar");
   return false;
 }
 
-function totalPts(){
+// ── Group mutations ──────────────────────────────────────────────────────────
+const ALLIED_DET = "allied_detachment";
+// The Lord of War detachment sits outside the primary/ally structure and may be from
+// ANY army list and faction (the whole detachment must be a single faction). It gets
+// its own group so its units resolve wargear/cost against ITS faction.
+function addLowGroup(){
+  if(ST.dets.some(d=>DD[d.did] && DD[d.did].cat==="lordsofwar")) return;
+  const pg=primaryGroup();
+  const gid="low"+Date.now().toString(36);
+  ST.groups.push({gid, kind:"low", list:pg.list, faction:pg.faction, riteOfWar:null});
+  addDet("lords_of_war", gid);
+  saveAndRender();
+}
+function addAllyGroup(){
+  const gid = "g"+Date.now().toString(36);
+  ST.groups.push({gid, kind:"ally", list:DEFAULT_LIST, faction:FACTIONS_FOR(DEFAULT_LIST)[0], riteOfWar:null});
+  addDet(ALLIED_DET, gid);
+  saveAndRender();
+}
+function removeGroup(gid){
+  ST.dets = ST.dets.filter(d=>(d.grp||primaryGroup().gid)!==gid);
+  ST.groups = ST.groups.filter(g=>g.gid!==gid);
+  saveAndRender();
+}
+// Drop any ally/LoW group left with no detachments (e.g. after removing its last one).
+function pruneEmptyGroups(){
+  ST.groups = ST.groups.filter(g=>g.kind==="primary" || detsOfGroup(g.gid).length>0);
+}
+function setGroupList(gid, list){
+  const g=groupById(gid); if(!g) return;
+  // Allegiance-locked lists (Ruinstorm = Traitor) can't be allied into a mismatched army.
+  if(g.kind!=="primary" && !listAllowedForArmy(list)) return;
+  g.list=list; g.faction=FACTIONS_FOR(list)[0]||null; g.riteOfWar=null;   // null faction = list has no sub-factions
+  // A list may force the army's allegiance (Ruinstorm Daemons are always Traitor).
+  const lock=LIST_ALLEGIANCE(list);
+  if(lock && g.kind==="primary") ST.allegiance=lock;
+  // Clear any units/detachments that no longer belong to this list.
+  detsOfGroup(gid).forEach(d=>{ d.slots=d.slots.map(()=>null); d.cfgs=d.cfgs.map(()=>({})); });
+  saveAndRender();
+}
+function setGroupFaction(gid, faction){
+  const g=groupById(gid); if(!g) return;
+  g.faction=faction; g.riteOfWar=null;
+  saveAndRender();
+}
+// Changing allegiance can invalidate an allegiance-locked ally/LoW list (e.g. flipping to
+// Loyalist while a Ruinstorm ally is present) — those groups are removed.
+function setAllegiance(v){
+  ST.allegiance=v;
+  (ST.groups||[]).filter(g=>g.kind!=="primary" && !listAllowedForArmy(g.list))
+    .forEach(g=>{ ST.dets=ST.dets.filter(d=>(d.grp||primaryGroup().gid)!==g.gid); });
+  ST.groups=(ST.groups||[]).filter(g=>g.kind==="primary" || listAllowedForArmy(g.list));
+  saveAndRender();
+}
+function setGroupRite(gid, rid){ const g=groupById(gid); if(g){ g.riteOfWar=rid; saveAndRender(); } }
+
+// ── Points budgets ───────────────────────────────────────────────────────────
+// Allies: total points of ALL allied groups (including their aux detachments)
+// may not exceed 50% of the army's points LIMIT. Warning only, never a hard stop.
+function allyCap(){ return Math.floor(ST.pts*0.5); }
+// Warlord + Lord of War: the combined points of units in Warlord and LordOfWar
+// SLOTS (not whole detachments) may not exceed 25% of the points limit.
+function lowCap(){ return Math.floor(ST.pts*0.25); }
+function lowWarlordPts(){
   let t=0;
-  ST.dets.forEach(d=>{
-    d.slots.forEach((u,i)=>{if(u)t+=cp(u,d.cfgs[i]||{});});
-    (d.injectedUnits||[]).forEach((u,i)=>{if(u)t+=cp(u,(d.injectedCfgs||[])[i]||{});});
-  });
+  ST.dets.forEach(d=>{ const def=DD[d.did]; if(!def) return; withDet(d, ()=>{
+    def.slots.forEach((s,i)=>{ const u=d.slots[i]; if(!u) return;
+      if(s.r==="Warlord"||s.r==="LordOfWar") t+=cp(u, d.cfgs[i]||{});
+    });
+  }); });
   return t;
 }
-function detPts(d){let t=0;d.slots.forEach((u,i)=>{if(u)t+=cp(u,d.cfgs[i]||{});});return t;}
+
+function totalPts(){
+  let t=0;
+  ST.dets.forEach(d=>{ withDet(d, ()=>{
+    d.slots.forEach((u,i)=>{if(u)t+=cp(u,d.cfgs[i]||{});});
+    (d.injectedUnits||[]).forEach((u,i)=>{if(u)t+=cp(u,(d.injectedCfgs||[])[i]||{});});
+  }); });
+  return t;
+}
+function detPts(d){return withDet(d, ()=>{let t=0;d.slots.forEach((u,i)=>{if(u)t+=cp(u,d.cfgs[i]||{});});return t;});}
+// Points contributed by each group (for the 50% ally cap and per-group displays).
+function groupPts(gid){ let t=0; ST.dets.filter(d=>(d.grp||primaryGroup().gid)===gid).forEach(d=>{ t+=detPts(d); withDet(d,()=>{ (d.injectedUnits||[]).forEach((u,i)=>{if(u)t+=cp(u,(d.injectedCfgs||[])[i]||{});}); }); }); return t; }
+function alliedPts(){ return (ST.groups||[]).filter(g=>g.kind==="ally").reduce((n,g)=>n+groupPts(g.gid),0); }
 
 // ── Mutations ────────────────────────────────────────────────────────────────
-function addDet(did){
+function addDet(did, gid){
   const d=DD[did];
-  ST.dets.push({iid:did+"_"+Date.now(),did,
+  ST.dets.push({iid:did+"_"+Date.now(),grp:gid||primaryGroup().gid,did,
     slots:Array(d.slots.length).fill(null),
     cfgs:Array(d.slots.length).fill(null).map(()=>({})),
     pa:{}, paExtra:{}, keyword:null,
     injectedUnits:[], injectedCfgs:[]});
   saveAndRender();
 }
-function remDet(iid){ ST.dets=ST.dets.filter(d=>d.iid!==iid); saveAndRender(); }
+function remDet(iid){ ST.dets=ST.dets.filter(d=>d.iid!==iid); pruneEmptyGroups(); saveAndRender(); }
 function setDetKeyword(iid, kw){
   const d=ST.dets.find(x=>x.iid===iid); if(!d) return;
   const def=DD[d.did]; if(!def||!def.keyword_choice) return;
@@ -8215,6 +8951,10 @@ const LEGION_SWAPS = [
   { legion:"Sons of Horus", type:"modelConditional", from:"Power Axe", to:"Carsoran Power Tabar", toId:"carsoran_power_tabar", costMode:"matchSource", costAdd:10 },
   { legion:"Emperor's Children", type:"modelConditional", requireTypes:["Command","Champion","Sergeant"],
     fromTrait:"Power", to:"Phoenix Power Spear", toId:"phoenix_power_spear", pts:10 },
+  { legion:"Dark Angels", type:"modelConditional", requireTypes:["Command","Champion","Sergeant"],
+    from:"Power Sword", to:"Calibanite Warblade", toId:"calibanite_warblade", pts:5 },
+  { legion:"Dark Angels", type:"modelConditional", requireTypes:["Command","Champion"],
+    from:"Power Fist", to:"Terranic Greatsword", toId:"terranic_greatsword", pts:0 },
   { legion:"Emperor's Children", allegiance:"Traitor", type:"grant", requireTypes:["Command","Champion"],
     add:"Sonic Shriekers", addId:"sonic_shriekers", pts:15, exclusive:["sonic_lance"] },
   { legion:"Emperor's Children", allegiance:"Traitor", type:"grant", requireTypes:["Command","Champion"],
@@ -8370,14 +9110,24 @@ function paOncePerDetTaken(a, det, slotIdx){
   const pa = det.pa || {};
   return Object.keys(pa).some(k => String(k)!==String(slotIdx) && pa[k]===a.id);
 }
+// A PA flagged oncePerArmy may be taken only once across the WHOLE army (every detachment).
+function paOncePerArmyTaken(a, det, slotIdx){
+  if(!a.oncePerArmy) return false;
+  return ST.dets.some(d=>{
+    const pa = d.pa || {};
+    return Object.keys(pa).some(k => !(d.iid===det.iid && String(k)===String(slotIdx)) && pa[k]===a.id);
+  });
+}
 
 function paAvailable(a, u, cfg){
+  // Inductii: a unit with this rule may not select any Prime Advantage.
+  if(u && (u.specialRules||[]).includes("Inductii")) return false;
   if(!a.req) return true;
   if(a.req.allegiance && ST.allegiance !== a.req.allegiance) return false;
   if(a.req.legion){ if(!u || !unitAdoptsLegion(u, a.req.legion)) return false; }
   if(a.req.infantryOnly){ if(!u || !unitInfantryOnly(u)) return false; }
   if(a.req.hasType){ if(!u || !unitHasType(u, a.req.hasType)) return false; }
-  if(a.req.unit){ if(!u || u.id !== a.req.unit) return false; }
+  if(a.req.unit){ const us=Array.isArray(a.req.unit)?a.req.unit:[a.req.unit]; if(!u || !us.includes(u.id)) return false; }
   if(a.req.profile){ if(!u || !u.profiles) return false; const active=(cfg&&cfg.profileId)||u.profiles[0].id; if(active!==a.req.profile) return false; }
   return true;
 }
@@ -8390,7 +9140,7 @@ function isUnique(u){
   return (u.profiles||[]).some(p=>(p.subtypes||[]).includes("Unique")||p.type==="Unique"||(p.modelTypes||[]).includes("Unique"));
 }
 function injectLegionSwaps(u, wg, cfg){
-  if(!u || !wg || !ST.legion || isUnique(u)) return wg;
+  if(!u || !wg || !ST.legion || isUnique(u) || unitIsForeign(u)) return wg;
   const rows = LEGION_SWAPS.filter(r=>unitAdoptsLegion(u, r.legion)
     && (!r.allegiance || ST.allegiance===r.allegiance)
     && (!r.onlyUnit || r.onlyUnit===u.id)
@@ -8511,7 +9261,7 @@ function activeWargear(u, cfg) {
   if (cfg && cfg.champUpgrade && u.championUpgrade && u.championUpgrade.wargear) {
     base = {...base, champion: u.championUpgrade.wargear};
   }
-  return filterWargearReqs(injectDecurions(u, injectLegionSwaps(u, base, cfg), cfg));
+  return filterWargearReqs(injectDecurions(u, injectLegionSwaps(u, base, cfg), cfg), cfg);
 }
 
 // Offer every Legiones Decurion whose appliesTo lists this unit — always shown, but greyed out
@@ -8520,9 +9270,13 @@ function activeWargear(u, cfg) {
 // Decurions don't count toward cost or grants (guarded at the gather sites). Clones before append.
 // Hide addons and slots gated to a specific allegiance when the army's allegiance doesn't
 // match (e.g. Traitor-only unit upgrades). Removed entirely so they are neither shown nor counted.
-function filterWargearReqs(wg){
+function filterWargearReqs(wg, cfg){
   if(!wg) return wg;
-  const bad = x => x && x.req && x.req.allegiance && x.req.allegiance !== ST.allegiance;
+  const paId = (cfg && cfg.paId) || null;
+  const bad = x => x && x.req && (
+    (x.req.allegiance && x.req.allegiance !== ST.allegiance) ||
+    (x.req.pa && x.req.pa !== paId)                       // slot/addon requires a specific Prime Advantage
+  );
   const blks=[wg, wg.champion, wg.perModel].filter(Boolean);
   if(!blks.some(b=>(b.addons||[]).some(bad)||(b.slots||[]).some(bad))) return wg;
   const clean = blk => ({...blk, addons:(blk.addons||[]).filter(x=>!bad(x)), slots:(blk.slots||[]).filter(x=>!bad(x))});
@@ -8532,7 +9286,7 @@ function filterWargearReqs(wg){
   return out;
 }
 function injectDecurions(u, wg, cfg){
-  if(!u || !wg || typeof DECURIONS==="undefined" || isUnique(u)) return wg;
+  if(!u || !wg || typeof DECURIONS==="undefined" || isUnique(u) || unitIsForeign(u)) return wg;
   const rows = DECURIONS.filter(d => (d.appliesTo||[]).some(a=>a.unit===u.id));
   if(!rows.length) return wg;
   const slots = (cfg && cfg.slots) || {};
@@ -8647,6 +9401,13 @@ function toggleChampUpgrade(iid,i){
 function setPA(iid,i,v){
   const d=ST.dets.find(x=>x.iid===iid);
   d.pa[i]=v;
+  // Mirror the chosen PA into the unit's cfg so wargear can gate on it (req:{pa:"id"}),
+  // e.g. Paladin of Hekatonystika unlocking the Centurion's Order selector. Clearing the
+  // PA also clears any slot that required it.
+  const cfg={...(d.cfgs[i]||{})};
+  cfg.paId = v || null;
+  if(!v && cfg.slots){ cfg.slots={...cfg.slots}; }
+  d.cfgs[i]=cfg;
   // Clear bonus-slot role if PA cleared or changed to a non-slot-adding advantage
   if(v!=="logistical" && v!=="rewards_of_treachery" && v!=="logisticae"){
     const pe={...(d.paExtra||{})};
@@ -8849,8 +9610,8 @@ function withinMaxPerUnit(def){
     : countUnitName(def.max_per_unit);
   return countDetachment(def.id) < perUnitCount;
 }
-function disReason(def,cat){
-  if(!canAdd(cat))return "No unlock available.";
+function disReason(def,cat,gid){
+  if(!canAdd(cat,gid))return "No unlock available.";
   if(def.req){
     if(def.req.legion&&ST.legion!==def.req.legion)return "Req legion: "+def.req.legion+".";
     if(def.req.allegiance&&ST.allegiance!==def.req.allegiance)return "Requires "+def.req.allegiance+" allegiance.";
@@ -8862,9 +9623,13 @@ function disReason(def,cat){
   }
   return "";
 }
-const BC={primary:"bp",apex:"ba",auxiliary:"bx",warlord:"bw",lordsofwar:"bl"};
-const BL={primary:"Primary",apex:"Apex",auxiliary:"Auxiliary",warlord:"Warlord",lordsofwar:"Lord of War"};
+const BC={primary:"bp",apex:"ba",auxiliary:"bx",warlord:"bw",lordsofwar:"bl",allied:"ball"};
+const BL={primary:"Primary",apex:"Apex",auxiliary:"Auxiliary",warlord:"Warlord",lordsofwar:"Lord of War",allied:"Allied"};
+// esc(): escapes a value for embedding inside a JS string in an inline handler, e.g. onclick="fn('${esc(x)}')".
+// It is NOT an HTML escaper — using it on display text renders apostrophes as \' ("Emperor\'s Children").
 function esc(s){return String(s).replace(/'/g,"\\'");}
+// escH(): escapes text for display inside HTML (element text or an attribute value).
+function escH(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
 // ── Tooltip manager ───────────────────────────────────────────────────────────
 let _tipEl = null;
@@ -8956,6 +9721,14 @@ function equipKeyFromLabel(label) {
   return EQUIPMENT[resolved] ? resolved : null;
 }
 
+// Hover attributes for a slot option. An option that GRANTS a rule (e.g. the Inner Circle's
+// Order choice) shows that rule's text, so the player can see what they're picking; otherwise
+// fall back to the weapon/equipment tooltip for its label.
+function optionHoverAttrs(opt, label) {
+  const gr = opt && opt.grants && opt.grants.specialRules && opt.grants.specialRules[0];
+  if (gr) return 'data-rule="' + escH(gr) + '" style="cursor:help;"';
+  return weaponHoverAttrs(label);
+}
 function weaponHoverAttrs(label) {
   let wkey = weaponKeyFromLabel(label);
   // "Two X(s)" twin weapons resolve to the single weapon's tooltip
@@ -9099,7 +9872,7 @@ function unitRefTipHtml(u) {
   const tipSpecial = (prof0&&prof0.specialRules)||u.specialRules||[];
   // Stats from profiles[0], champion, or unit root
   const stats = u.stats || (prof0&&prof0.stats) || u.championStats || u.modelStats || (u.wargear&&u.wargear.champion&&u.wargear.champion.stats) || null;
-  function resolveTrait(t){if(t==='[Allegiance]')return ST.allegiance||'Loyalist';if(t==='[Legiones Astartes]')return ST.legion||'Legion';return t;}
+  const resolveTrait = resolveTraitToken;
   const traitPills = tipTraits.map(t=>'<span class="rule-pill trait">'+resolveTrait(t)+'</span>').join(' ');
   const typePills  = tipTypes.map(t=>'<span class="rule-pill unit-type" data-rule="'+t.replace(/"/g,'&quot;')+'">'+t+'</span>').join(' ');
   const srPills    = tipSpecial.map(r=>'<span class="rule-pill special-rule" data-rule="'+r.replace(/"/g,'&quot;')+'">'+r+'</span>').join(' ');
@@ -9170,6 +9943,21 @@ function optionLegionOk(opt) {
 // Whether a UNIT passes the Legion filter (hard filter — hidden if legion mismatch).
 // Allegiance is NOT checked here: allegiance-locked units still SHOW under the right
 // Legion, but are disabled with a red badge in the picker (see pick modal).
+// Army list of a unit. Everything currently in SU is Legiones Astartes, so the
+// field is optional and defaults — no existing unit needs touching.
+function unitArmyList(u){ return (u && u.list) || DEFAULT_LIST; }
+// A unit may only be taken in a detachment whose group uses its army list — unless the
+// detachment declares `slotList`, in which case its slots are filled from THAT army list
+// instead (e.g. Daemonic Manifestation: an Astartes aux whose slots take Ruinstorm daemons).
+function unitListOk(u, listOverride){
+  const want = listOverride || ((activeGroup()||{}).list);
+  return !want || unitArmyList(u)===want;
+}
+// Units from a foreign army list never receive the host faction's wargear.
+function unitIsForeign(u){ const g=activeGroup(); return !!(g && unitArmyList(u)!==g.list); }
+// Some units may never be taken in an Allied Detachment (e.g. the Dark Angels Excindio,
+// whose rules tie it to a Dark Angels PRIMARY detachment).
+function unitAlliedBlocked(u){ const g=activeGroup(); return !!(u && u.noAllied && g && g.kind==="ally"); }
 function unitLegionOk(u) {
   if (!u.req) return true;
   if (u.req.legion && u.req.legion !== ST.legion) return false;
@@ -9189,7 +9977,9 @@ function optionSubtypeOk(opt, u, cfg) {
   const allSubtypes = [...new Set([...rootSubtypes, ...profileSubtypes])];
   return opt.requires_subtypes.some(s => allSubtypes.includes(s));
 }
-function optionVisible(opt, u, cfg)  { return optionLegionOk(opt) && optionWeaponOk(opt, u) && optionSubtypeOk(opt, u, cfg); }
+// An option gated to a Prime Advantage (req:{pa}) only appears when that PA is selected.
+function optionPaOk(opt, cfg){ return !(opt && opt.req && opt.req.pa) || ((cfg&&cfg.paId)===opt.req.pa); }
+function optionVisible(opt, u, cfg)  { return optionLegionOk(opt) && optionPaOk(opt, cfg) && optionWeaponOk(opt, u) && optionSubtypeOk(opt, u, cfg); }
 
 // Points calculation — handles ptsPerModel
 // Two-handed weapon support: returns the option (and its slot) occupying `slotId`, if any.
@@ -9667,11 +10457,7 @@ function renderWargearModal(det, slotIdx) {
   const dispSpecial = (activeProf2&&activeProf2.specialRules&&activeProf2.specialRules.length)
     ? activeProf2.specialRules : (u.specialRules||[]);
   // Resolve [Allegiance] and [Legiones Astartes] tokens
-  function resolveTraitLabel(t) {
-    if (t==='[Allegiance]') return ST.allegiance||'Loyalist';
-    if (t==='[Legiones Astartes]') return ST.legion||'Legion';
-    return t;
-  }
+  const resolveTraitLabel = resolveTraitToken;
   // Grants (BUG-005 + wargear grants): merge grants from any active addon that carries them
   // — disciplines, and special wargear like the Saturnine Teleportation Transponder (grants Deep Strike)
   const grantedTraits=[], grantedSpecial=[], grantedWeapons=[], grantedPowers=[], grantedTypes=[];
@@ -9773,7 +10559,9 @@ function renderWargearModal(det, slotIdx) {
   }
 
   // Size row
-  if (u.maxSize > 1) {
+  // Only offer a size control when the unit can actually gain or lose models
+  // (a fixed-size squad like 5–5 has nothing to choose).
+  if ((u.maxSize||1) > (u.minSize||1)) {
     const sizeLabel = u.baseSizeBreakdown ? "Total models:" : "Models:";
     html += `<div class="wg-section">
       <div class="wg-section-title">Unit Size</div>
@@ -9876,7 +10664,7 @@ function renderWargearModal(det, slotIdx) {
         const allSlotOptions = [...slot.options, ...getFactionOptions(slot)];
         allSlotOptions.forEach(opt => {
           // Filter by legion, weapon availability, subtype
-          if (!optionVisible(opt, u)) return;
+          if (!optionVisible(opt, u, cfg)) return;
           const isSelected = (cfg.slots||{})[slot.id] === opt.id;
           const isSharedUsed = opt.shared && sharedOptionUsed(wg, cfg, opt.id, slot.id);
           const isList = !!opt.list;
@@ -9896,7 +10684,7 @@ function renderWargearModal(det, slotIdx) {
             `setSlotOption('${esc(iid)}',${slotIdx},'${slot.id}','${opt.id}')`;
           const listChevron = isList ? ` <span style="font-size:12px;color:var(--text-muted);">▶</span>` : "";
           const legionBadge = opt.req && opt.req.legion ? ` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${opt.req.legion}</span>` : "";
-          const optWA = weaponHoverAttrs(displayLabel);
+          const optWA = optionHoverAttrs(opt, displayLabel);
           html += `<div class="slot-option${effectiveSelected?" selected":""}${isSharedUsed?" disabled":""}"
             onclick="${clickAction}" ${optWA}>
             <span>${displayLabel}${legionBadge}${listChevron}${isSharedUsed?` <span class="slot-option-note">— already selected</span>`:""}</span>
@@ -9962,7 +10750,7 @@ function renderWargearModal(det, slotIdx) {
       html += `<div class="addon-row ${cls}" onclick="${!unavailable?`toggleAddon('${esc(iid)}',${slotIdx},'${addon.id}')`:""}" >
         <div style="display:flex;align-items:center;gap:8px;">
           <div class="addon-check${isActive?" on":""}"></div>
-          <span ${weaponHoverAttrs(addon.label)}>${addon.label}${addonBadge}${unavailable&&reason?` <span class="addon-reason">(${reason})</span>`:""}</span>
+          <span ${optionHoverAttrs(addon, addon.label)}>${addon.label}${addonBadge}${unavailable&&reason?` <span class="addon-reason">(${reason})</span>`:""}</span>
         </div>
         <span class="addon-pts">+${addon.pts} pts</span>
       </div>`;
@@ -10164,7 +10952,7 @@ function renderWargearModal(det, slotIdx) {
           const orderedOpts = [..._uncapped, ..._groupOrder.flatMap(g=>_capped.filter(o=>o.per5cap===g))];
           let _lastCapGroup = null;
           orderedOpts.forEach(opt => {
-            if (!optionVisible(opt, u)) return;
+            if (!optionVisible(opt, u, cfg)) return;
             const isSel2 = curChoice === opt.id;
             const isList = !!opt.list;
             const currentListItem = isList && curChoice ? findListItem(curChoice) : null;
@@ -10243,7 +11031,7 @@ function renderWargearModal(det, slotIdx) {
             const slotOC = "setPerModelSlot('" + esc(iid) + "'," + slotIdx + ",'" + mkey + "','" + slot.id + "','" + opt.id + "')";
             const clickAct = isList ? listOC : slotOC;
             const chevron = isList ? ' ▶' : '';
-            const pmOptWA = weaponHoverAttrs(dispLabel);
+            const pmOptWA = optionHoverAttrs(opt, dispLabel);
             html2 += `<div class="slot-option${effSel?' selected':''}" onclick="${clickAct}" ${pmOptWA} style="padding:3px 8px;margin-bottom:2px;">
               <span>${dispLabel}${chevron}</span>
               <span class="slot-option-pts">${dispPts}</span>
@@ -10447,7 +11235,8 @@ function renderMissingModal(det, i) {
 }
 
 // ── Card render ──────────────────────────────────────────────────────────────
-function renderCard(det){
+function renderCard(det){ return withDet(det, ()=>_renderCardInner(det)); }
+function _renderCardInner(det){
   const def=DD[det.did];const isPri=def.cat==="primary";const pts=detPts(det);
   const sirePrime=sireTroopsPrime();
   const reqBadge=def.req?(()=>{const parts=[];if(def.req.legion)parts.push(def.req.legion);if(def.req.allegiance)parts.push(def.req.allegiance);if(def.req.any_unit)parts.push(def.req.any_unit.map(id=>{const u=UNIT_LOOKUP[id];return u?u.name:id;}).join(" or "));return parts.length?`<span class="ibadge">Req: ${parts.join(" · ")}</span>`:""})():""
@@ -10458,8 +11247,8 @@ function renderCard(det){
     const warn=det.keyword?"":`<span style="color:#f0b060;font-style:italic;"> — pick one to enable Retinue & Heavy Assault slots</span>`;
     return `<div class="rnote" style="color:var(--text);">Echelon keyword: ${btns}${warn}</div>`;
   })():"";
-  const armyListNote=def.slotArmyList
-    ?`<div class="rnote" style="color:var(--blue);">ℹ Unit data for restricted slots coming soon.</div>`:"";
+  const armyListNote=def.slotList
+    ?`<div class="rnote" style="color:var(--blue);">ℹ Slots are filled from the <b>${escH(def.slotList)}</b> army list.</div>`:"";
   let uinfo="";
   if(def.slots.some(s=>s.r==="Command"||s.r==="HighCommand")){
     const hcf=def.slots.filter((s,i)=>s.r==="HighCommand"&&det.slots[i]).length;
@@ -10576,21 +11365,47 @@ function detTier(def){
   if(def.req && def.req.any_unit) return 'unit';
   return 'ungated';
 }
-function pbtn(did,cat){
-  const def=DD[did];const reason=disReason(def,cat);const dis=!!reason;
+function pbtn(did,cat,gid){
+  const def=DD[did];const reason=disReason(def,cat,gid);const dis=!!reason;
   const tier=detTier(def);
   const reqStr=def.req?(()=>{const rp=[];if(def.req.legion)rp.push(def.req.legion);if(def.req.allegiance)rp.push(def.req.allegiance);if(def.req.any_unit)rp.push(def.req.any_unit.map(id=>{const u=UNIT_LOOKUP[id];return u?u.name:id;}).join(" or "));return rp.length?`<br><em style="color:#a0c0e0">Req: ${rp.join(" · ")}</em>`:"";})():"";
   const tip=`<div class="tip"><strong>${def.name}</strong>${reason?"":reqStr}<br>${stip(def.slots)}${reason?`<br><em style="color:#f09090">${reason}</em>`:""}</div>`;
   const pill=(tier==='legion'&&def.req&&def.req.legion)?` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${def.req.legion}</span>`:"";
   const tierCls=tier==='legion'?" pb-legion":tier==='unit'?" pb-unit":"";
-  return `<button class="pb${cat==="apex"?" apex":cat==="warlord"?" wlord":""}${tierCls}" onclick="addDet('${did}')" ${dis?"disabled":""}>${def.name}${pill}${tip}</button>`;
+  return `<button class="pb${cat==="apex"?" apex":cat==="warlord"?" wlord":""}${tierCls}" onclick="addDet('${did}'${gid?`,'${gid}'`:""})" ${dis?"disabled":""}>${def.name}${pill}${tip}</button>`;
 }
 
-function renderPool(){
+function lowBtn(){
+  const def=DD["lords_of_war"];
+  const dis=!canAdd("lordsofwar");
+  const tip=`<div class="tip"><strong>${def.name}</strong><br>${stip(def.slots)}<br><em style="color:#a0c0e0">Any army list / faction · max 25% of army points (shared with Warlord)</em></div>`;
+  return `<button class="pb" onclick="addLowGroup()" ${dis?"disabled":""}>${def.name}${tip}</button>`;
+}
+function renderPool(gid){
+  const _grp = gid || primaryGroup().gid;
+  return withGroup(_grp, ()=>_renderPoolInner(_grp));
+}
+function _renderPoolInner(_grp){
   const allApex=["combat_retinue","officer_cadre","army_vanguard","linebreaker_echelon","hammer_of_olympia"];
-  const allAux=["armoured_fist","tactical_support","armoured_support","heavy_support","combat_pioneer","shock_assault","first_strike","apothecarion_detachment","techmarine_covenant","daemonic_manifestation","dreadnought_talon","recon_demi_company","maelstrom_sentry_battery","storm_battery","veteran_cadre","ironfire_cohort","headhunter_leviathal","planetfall_speartip","primus_demi_company","supremacy_cadre","primacy_wing"];
+  const allAux=["armoured_fist","tactical_support","armoured_support","heavy_support","combat_pioneer","shock_assault","first_strike","apothecarion_detachment","techmarine_covenant","daemonic_manifestation","dreadnought_talon","recon_demi_company","maelstrom_sentry_battery","storm_battery","veteran_cadre","ironfire_cohort","headhunter_leviathal","planetfall_speartip","primus_demi_company","supremacy_cadre","primacy_wing",
+    "ironwing_gauntlet","deathwing_conclave","dreadwing_cadre","ravenwing_lance","stormwing_muster","firewing_echelon"];
   const altWarlord=["brotherhood_of_the_phoenix"];   // alternative Warlord detachments, gated by req (legion/allegiance/rite)
+  // Army-list gate + allied-group restrictions, applied to EVERY detachment pool.
+  // - req.list  : detachment belongs to a specific army list (e.g. Legiones Astartes only)
+  // - allied groups may NOT take faction-specific (req.legion) or rite-gated (req.rite) detachments,
+  //   and may never take an Apex detachment (they only unlock Auxiliaries).
+  function detAllowedInGroup(d, grp){
+    if(!d) return false;
+    const g = grp || activeGroup();
+    if(d.req && d.req.list && g && d.req.list !== g.list) return false;
+    if(g && g.kind === "ally"){
+      if(d.cat === "apex") return false;
+      if(d.req && (d.req.legion || d.req.rite)) return false;
+    }
+    return true;
+  }
   function reqMet(d){
+    if(!detAllowedInGroup(d))return false;
     if(!d.req)return true;
     if(d.req.legion&&d.req.legion!==ST.legion)return false;
     if(d.req.rite&&d.req.rite!==currentRiteId())return false;
@@ -10604,6 +11419,7 @@ function renderPool(){
   }
   const ai=allApex.filter(id=>{
     const d=DD[id];
+    if(!detAllowedInGroup(d))return false;
     if(!d.req)return true;
     if(d.req.allegiance&&d.req.allegiance!==ST.allegiance)return false;
     if(d.req.legion&&d.req.legion!==ST.legion)return false;
@@ -10612,6 +11428,7 @@ function renderPool(){
   });
   const xi=allAux.filter(id=>{
     const d=DD[id];
+    if(!detAllowedInGroup(d))return false;
     if(!d.req)return true;
     if(d.req.allegiance&&d.req.allegiance!==ST.allegiance)return false;
     if(d.req.legion&&d.req.legion!==ST.legion)return false;
@@ -10624,10 +11441,18 @@ function renderPool(){
   const _tierOrd={legion:0,ungated:1,unit:2};
   const _sortByTier=arr=>arr.sort((a,b)=>_tierOrd[detTier(DD[a])]-_tierOrd[detTier(DD[b])]);
   _sortByTier(ai); _sortByTier(xi);
+  const g = groupById(_grp);
+  const isAlly = g && g.kind==="ally";
+  // Allied groups: Auxiliaries only (no Apex, no Warlord/Lord of War).
+  if(isAlly){
+    return `<div class="pool-area pool-ally">
+      <div><div class="sec-title">Add Auxiliary Detachment</div><div class="pool">${xi.map(id=>pbtn(id,"auxiliary",_grp)).join("")}</div></div>
+    </div>`;
+  }
   return `<div class="pool-area">
-    <div><div class="sec-title">Add Apex Detachment</div><div class="pool">${ai.map(id=>pbtn(id,"apex")).join("")}</div></div>
-    <div><div class="sec-title">Add Auxiliary Detachment</div><div class="pool">${xi.map(id=>pbtn(id,"auxiliary")).join("")}</div></div>
-    <div><div class="sec-title">Special Detachments</div><div class="pool">${!wE?pbtn("warlord_det","warlord"):""}${!wE?altWarlord.filter(id=>reqMet(DD[id])).map(id=>pbtn(id,"warlord")).join(""):""}${!lE?pbtn("lords_of_war","lordsofwar"):""}</div></div>
+    <div><div class="sec-title">Add Apex Detachment</div><div class="pool">${ai.map(id=>pbtn(id,"apex",_grp)).join("")}</div></div>
+    <div><div class="sec-title">Add Auxiliary Detachment</div><div class="pool">${xi.map(id=>pbtn(id,"auxiliary",_grp)).join("")}</div></div>
+    <div><div class="sec-title">Special Detachments</div><div class="pool">${!wE?pbtn("warlord_det","warlord",_grp):""}${!wE?altWarlord.filter(id=>reqMet(DD[id])).map(id=>pbtn(id,"warlord",_grp)).join(""):""}${!lE?lowBtn():""}</div></div>
   </div>`;
 }
 
@@ -10657,6 +11482,12 @@ function renderSharePanel(){
 
 // ── Modal dispatch ────────────────────────────────────────────────────────────
 function renderModal(){
+  // The modal edits a unit inside a specific detachment — resolve wargear/cost under
+  // that detachment's group (so an allied unit gets ITS faction's swaps, not the primary's).
+  const _md = ST.modal && ST.modal.iid ? ST.dets.find(x=>x.iid===ST.modal.iid) : null;
+  return _md ? withDet(_md, ()=>_renderModalInner()) : _renderModalInner();
+}
+function _renderModalInner(){
   if(!ST.modal)return"";
   const{mode,iid,i}=ST.modal;
   const det=ST.dets.find(d=>d.iid===iid);
@@ -10755,7 +11586,7 @@ function renderModal(){
     return `<div class="ov" onclick="closeModal()"><div class="mod" onclick="event.stopPropagation()">
       <button class="mc" onclick="closeModal()">✕</button>
       <div class="mt">Prime Advantage</div><div class="ms">${rn} slot</div>
-      ${PA.filter(a=>(det.slots[i]||a.id==="special_assignment") && (a.id!=="special_assignment"||isSA) && (a.id!=="rewards_of_treachery"||isSA) && (a.id!=="logisticae"||isSA) && (!a.slotRole || (def.slots[i]&&def.slots[i].r===a.slotRole)) && !paOncePerDetTaken(a, det, i) && paAvailable(a, det.slots[i], det.cfgs[i])).map(a=>{
+      ${PA.filter(a=>(det.slots[i]||a.id==="special_assignment") && (a.id!=="special_assignment"||isSA) && (a.id!=="rewards_of_treachery"||isSA) && (a.id!=="logisticae"||isSA) && (!a.slotRole || (def.slots[i]&&def.slots[i].r===a.slotRole)) && !paOncePerDetTaken(a, det, i) && !paOncePerArmyTaken(a, det, i) && paAvailable(a, det.slots[i], det.cfgs[i])).map(a=>{
         const isLog=a.id==="logistical"||a.id==="rewards_of_treachery"||a.id==="logisticae";
         const roleSuffix=isLog&&logRole?" ("+logRole.replace(/([A-Z])/g," $1").trim()+")":"";
         const reqBadge=a.req||a.slotRole?(()=>{const parts=[];if(a.req&&a.req.legion)parts.push(a.req.legion);if(a.req&&a.req.allegiance)parts.push(a.req.allegiance);if(a.req&&a.req.infantryOnly)parts.push("Infantry only");if(a.slotRole)parts.push(a.slotRole+" slot");return parts.length?` <span class="ibadge">Req: ${parts.join(" · ")}</span>`:"";})():"";
@@ -10787,7 +11618,8 @@ function renderModal(){
       }
     }
     const beforeLegion=us.length;
-    us=us.filter(u=>unitLegionOk(u));
+    const slotList = def.slotList || null;   // detachment whose slots use another army list
+    us=us.filter(u=>!unitAlliedBlocked(u) && (slotList ? unitListOk(u, slotList) : (unitListOk(u) && unitLegionOk(u))));
     const rn2=def.restr&&def.restr[sd.r]?`<div class="wt">⚠ Restricted to: ${def.restr[sd.r].join(", ")}</div>`:"";
     const legionNote = (us.length===0 && beforeLegion>0)
       ? `<div class="wt">No ${ST.legion} units available for this slot — try changing the Legion in the header.</div>` : "";
@@ -10888,7 +11720,7 @@ function renderModal(){
         if(!locked){
           const allSgtSlotOpts = [...slot.options, ...getFactionOptions(slot)];
           allSgtSlotOpts.forEach(opt=>{
-            if(!optionVisible(opt,u))return;
+            if(!optionVisible(opt,u,cfg))return;
             const isSel=(sc.slots||{})[slot.id]===opt.id;
             const isSharedUsed=opt.shared&&sharedOptionUsed(sgtwg,sc,opt.id,slot.id);
             const isList=!!opt.list;
@@ -11089,6 +11921,16 @@ const PLAY_ROLE_ORDER = ['Warlord','HighCommand','Command','Retinue','Elites','T
 // }
 // Entries are entered per-legion as their text is provided (like unit data).
 const LEGION_RITES = {
+  "Dark Angels": {
+    tactica:  {name:"The Angels of Death", text:"Non-Vehicle Dark Angels models in your army may never have their Leadership modified below 6. Additionally, any variant of the Fear (X) rule may only reduce their Leadership, Willpower, Intelligence, and Cool by a maximum of 1, regardless of the value of X."},
+    gambit:   {name:"Sword of the Order", text:"This model must be using a chainsword, power sword, force sword, paragon blade, or Sword of the Order for this Challenge Round. When this Gambit is selected, that weapon\'s Attacks Modifier is modified by -1, and it gains Critical Hit (6+). If it already has the Critical Hit rule, improve X by 1."},
+    reaction: {name:"Vengeance of the First Legion", text:"<b>Restriction:</b> Once per battle.<br><b>Trigger:</b> After the last Initiative Step of a Close Combat has resolved, but before final Pile-In Moves are made or a winner is declared.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> One of your units in this combat.<br><b>Effect:</b> Return to Step 1 of that combat and resolve it a second time, discarding any Combat Resolution Points gained during the first round (but keeping any points earned through a Challenge). Models in your target unit gain the Shred (6+) rule with any Sword of the Order weapons they are using."},
+  },
+  "Ultramarines": {
+    tactica:  {name:"Tactical Flexibility", text:"Once per turn, when declaring a Reaction for a non-Vehicle Ultramarines unit, you may modify the cost of that Reaction by -1 Reaction Point (to a minimum of 0)."},
+    gambit:   {name:"Aegis of Wisdom", text:"When this Gambit is selected, this model gains no Outside Support bonus to its Focus Roll for this Challenge Round, but instead adds a +1 modifier to their Focus Roll for every friendly model on the Battlefield that has both the Command type and the Ultramarines trait (excluding this model)."},
+    reaction: {name:"Retribution Strike", text:"<b>Restriction:</b> Once per battle.<br><b>Trigger:</b> During the Shooting Phase, after the opponent has declared one of your Ultramarines units as a target of Shooting.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> One of your units that meets the following criteria:<br>\u2022 It is not the target of the triggering Shooting attack.<br>\u2022 At least one model in the unit has line of sight to the triggering unit.<br>\u2022 It is eligible to make a Reaction.<br>\u2022 It is eligible to shoot.<br>\u2022 It has the Ultramarines trait.<br><b>Effect:</b> The active player continues to resolve its Shooting until just before you remove casualties. At that time, you may make a Shooting attack with your chosen unit, targeting only the opponent\'s unit that triggered this Reaction. Once this Shooting is resolved, remove all casualties from both sides."},
+  },
   // Emperor's Children — two Rites of War (header dropdown appears once the 2nd is entered).
   "Emperor's Children": [
     { id:"legiones_astartes", name:"Legiones Astartes",
@@ -11146,7 +11988,7 @@ const LEGION_RITES = {
   },
 };
 
-function toggleRite(){ ST.riteOpen = !ST.riteOpen; render(); }
+function toggleRite(gid){ ST.riteOpen = ST.riteOpen || {}; ST.riteOpen[gid] = !ST.riteOpen[gid]; render(); }
 function toggleRiteSub(k){ ST.riteSub = ST.riteSub || {}; ST.riteSub[k] = !ST.riteSub[k]; render(); }
 
 function enterPlay(){ ST.view='play'; ST.playSel=null; window.scrollTo(0,0); render(); }
@@ -11177,11 +12019,12 @@ function playCollectUnits(){
   const out=[];
   ST.dets.forEach(det=>{
     const def=DD[det.did];
+    const gid=(det.grp||primaryGroup().gid);
     (def.slots||[]).forEach((s,i)=>{ const u=det.slots[i]; if(u&&!u._missing)
-      out.push({iid:det.iid, key:String(i), u, cfg:det.cfgs[i]||{}, role:s.r, pa:det.pa[i]}); });
+      out.push({iid:det.iid, key:String(i), u, cfg:det.cfgs[i]||{}, role:s.r, pa:det.pa[i], gid}); });
     (det.injectedUnits||[]).forEach((iu,j)=>{ if(iu&&!iu._missing){
       const inj=getInjectedSlots(det)[j];
-      out.push({iid:det.iid, key:'inj'+j, u:iu, cfg:(det.injectedCfgs||[])[j]||{}, role:(inj&&inj.r)||'Troops', pa:null}); }});
+      out.push({iid:det.iid, key:'inj'+j, u:iu, cfg:(det.injectedCfgs||[])[j]||{}, role:(inj&&inj.r)||'Troops', pa:null, gid}); }});
   });
   return out;
 }
@@ -11214,7 +12057,14 @@ function _modelGearLabels(blk, mc){
       if(replaced.has(slot.id)) return;  // slot replaced by an active pair exchange (e.g. lightning claws)
       if(typeof slotConsumedBy==='function' && slotConsumedBy(blk, mc, slot.id)) return; // consumed by a two-handed weapon
       const chosen=(mc.slots||{})[slot.id];
-      if(chosen){ const opt=resolveOption(slot,chosen); if(opt){ if(opt.chips) opt.chips.forEach(add); else add(opt.label||chosen); } }
+      if(chosen){ const opt=resolveOption(slot,chosen); if(opt){
+        // A pure rule-granting option (e.g. the Inner Circle's Order) is not wargear —
+        // it shows in Special Rules, not the equipment list.
+        const isRuleOnly = opt.grants && opt.grants.specialRules && !opt.chips
+          && !weaponKeyFromLabel(opt.label) && !(typeof EQUIPMENT!=='undefined' && EQUIPMENT[opt.label]);
+        if(isRuleOnly) { /* granted rule only */ }
+        else if(opt.chips) opt.chips.forEach(add);
+        else add(opt.label||chosen); } }
       else { if(slot.defaultChips) slot.defaultChips.forEach(add); else { const dl=stripHint(slot.label); if(weaponKeyFromLabel(dl) || (typeof EQUIPMENT!=="undefined" && EQUIPMENT[dl])) add(dl); } }
     });
     if(pair){ if(pair.chips) pair.chips.forEach(add); else add(pair.label); }
@@ -11410,6 +12260,20 @@ function playCollectRules(u, cfg, extra){
   const blocks = wg.perModel ? [wg.champion, wg.perModel] : [wg];
   blocks.forEach(blk=>{ if(!blk)return; (blk.addons||[]).forEach(a=>{
     if(a.grants&&!a.decurionDisabled&&a.grants.specialRules&&(a.always_on||activeIds.has(a.id))) a.grants.specialRules.forEach(r=>rules.push(r)); }); });
+  // A SELECTED SLOT OPTION may also grant rules (e.g. the Inner Circle's Order choice).
+  // Covers the unit-level slots plus the champion/per-model blocks.
+  const grantFromSlots = (blk, sel) => {
+    if(!blk || !sel) return;
+    (blk.slots||[]).forEach(sl=>{
+      const chosen = sel[sl.id];
+      if(!chosen) return;
+      const opt = (sl.options||[]).find(o=>o.id===chosen);
+      if(opt && opt.grants && opt.grants.specialRules) opt.grants.specialRules.forEach(r=>rules.push(r));
+    });
+  };
+  grantFromSlots(wg, cfg.slots);
+  grantFromSlots(wg.champion, (cfg.champion||{}).slots);
+  (cfg.chosen||[]).forEach(mc=>grantFromSlots(wg.perModel, (mc||{}).slots));
   ((extra&&extra.specialRules)||[]).forEach(r=>rules.push(r));
   return [...new Set(rules)];
 }
@@ -11497,7 +12361,7 @@ function playEquipmentSection(labels){
 }
 
 function playTraitPills(u, cfg, extra){
-  const resolveTrait = t => t==='[Allegiance]'?(ST.allegiance||'Loyalist'):t==='[Legiones Astartes]'?(ST.legion||'Legion'):t;
+  const resolveTrait = resolveTraitToken;
   const types = playCollectTypes(u, cfg, extra);
   const traits = [...(u.traits||[]), ...((extra&&extra.traits)||[])];
   const pills = [];
@@ -11522,15 +12386,20 @@ function legionRites(legion){ const r=LEGION_RITES[legion]; const all=!r?[]:(Arr
 function currentRite(legion){ const rs=legionRites(legion); if(!rs.length)return null; if(rs.length===1)return rs[0]; return rs.find(x=>x.id===ST.riteOfWar)||rs[0]; }
 function currentRiteId(){ const c=currentRite(ST.legion); return c?c.id:null; }
 
-function renderRiteOfWar(){
-  const rite = currentRite(ST.legion) || {};
-  const open = !!ST.riteOpen;
+function renderRiteOfWar(g){
+  const grp = g || primaryGroup();
+  return withGroup(grp.gid, ()=>_renderRiteOfWarInner(grp));
+}
+function _renderRiteOfWarInner(grp){
+  const rite = currentRite(grp.faction) || {};
+  const open = !!(ST.riteOpen && ST.riteOpen[grp.gid]);
   const sub = ST.riteSub || {};
-  const entry = (key, label, e) => {
+  const entry = (rawKey, label, e) => {
+    const key = grp.gid + ':' + rawKey;
     const isOpen = !!sub[key];
     const name = (e && e.name) ? e.name : '—';
     const text = (e && e.text) ? e.text
-      : `<span style="color:var(--text-muted);font-style:italic;">Not yet entered for ${ST.legion}.</span>`;
+      : `<span style="color:var(--text-muted);font-style:italic;">Not yet entered for ${grp.faction}.</span>`;
     return `<div class="pm-rite-sub">
       <div class="pm-rite-subh" onclick="toggleRiteSub('${key}')">
         <span class="pm-rite-lab"><b>${label}:</b> ${name}</span><span class="pm-rite-chev">${isOpen?'⌃':'⌄'}</span>
@@ -11539,7 +12408,7 @@ function renderRiteOfWar(){
     </div>`;
   };
   return `<div class="pm-sec">
-    <div class="pm-sec-h" onclick="toggleRite()"><span>Rite of War</span><span>${open?'⌃':'⌄'}</span></div>
+    <div class="pm-sec-h" onclick="toggleRite('${grp.gid}')"><span>Rite of War${grp.kind!=="primary"?` — ${escH(grp.faction||grp.list)}`:""}</span><span>${open?'⌃':'⌄'}</span></div>
     ${open ? (
       entry('tactica','Legion Tactica', rite.tactica) +
       entry('gambit','Gambit', rite.gambit) +
@@ -11554,36 +12423,67 @@ function renderPlayRoster(){
   if(!units.length){
     body = `<div class="pm-empty">No units in your list yet. Switch to the builder and add some.</div>`;
   } else {
-    const byRole = {};
-    units.forEach(x=>{ (byRole[x.role]=byRole[x.role]||[]).push(x); });
-    const roles = Object.keys(byRole).sort((a,b)=>{
-      const ia=PLAY_ROLE_ORDER.indexOf(a), ib=PLAY_ROLE_ORDER.indexOf(b);
-      return (ia<0?99:ia)-(ib<0?99:ib);
-    });
-    body = roles.map(role=>{
-      const collapsed = ST.playCollapsed && ST.playCollapsed[role];
-      const rows = collapsed ? '' : byRole[role].map(x=>{
-        const wg = activeWargear(x.u, x.cfg);
-        const size = wg.perModel ? (x.cfg.size||x.u.minSize||1) : 1;
-        const adv = x.pa ? PA.find(a=>a.id===x.pa) : null;
-        const pills = [`<span class="pm-pill">${cp(x.u,x.cfg)} pts</span>`];
-        if(size>1) pills.push(`<span class="pm-pill ghost">${size} models</span>`);
-        if(adv) pills.push(`<span class="pm-pill pa">${adv.label}</span>`);
-        return `<div class="pm-row" onclick="openPlayUnit('${esc(x.iid)}','${esc(x.key)}')">
-          <div class="pm-row-l"><span class="pm-uname">${x.u.name}</span><div class="pm-pills">${pills.join('')}</div></div>
-          <span class="pm-chev-r">›</span></div>`;
+    // Each contingent (primary, each ally, Lord of War) is its own section: a heading,
+    // its own Rite of War, then its units by role. This mirrors how the army is actually
+    // organised — and at the table you never have to work out which force a unit is from.
+    const groupSection = (g) => {
+      const mine = units.filter(x=>x.gid===g.gid);
+      if(!mine.length) return '';
+      const byR = {};
+      mine.forEach(x=>{ (byR[x.role]=byR[x.role]||[]).push(x); });
+      const rls = Object.keys(byR).sort((a,b)=>{
+        const ia=PLAY_ROLE_ORDER.indexOf(a), ib=PLAY_ROLE_ORDER.indexOf(b);
+        return (ia<0?99:ia)-(ib<0?99:ib);
+      });
+      const secs = rls.map(role=>{
+        const ckey = g.gid+':'+role;
+        const collapsed = ST.playCollapsed && ST.playCollapsed[ckey];
+        const rows = collapsed ? '' : byR[role].map(x=>withGroup(x.gid, ()=>{
+          // Each unit resolves its wargear/cost under ITS OWN group's faction.
+          const wg = activeWargear(x.u, x.cfg);
+          const size = wg.perModel ? (x.cfg.size||x.u.minSize||1) : 1;
+          const adv = x.pa ? PA.find(a=>a.id===x.pa) : null;
+          const pills = [`<span class="pm-pill">${cp(x.u,x.cfg)} pts</span>`];
+          if(size>1) pills.push(`<span class="pm-pill ghost">${size} models</span>`);
+          if(adv) pills.push(`<span class="pm-pill pa">${adv.label}</span>`);
+          return `<div class="pm-row" onclick="openPlayUnit('${esc(x.iid)}','${esc(x.key)}')">
+            <div class="pm-row-l"><span class="pm-uname">${x.u.name}</span><div class="pm-pills">${pills.join('')}</div></div>
+            <span class="pm-chev-r">›</span></div>`;
+        })).join('');
+        return `<div class="pm-sec">
+          <div class="pm-sec-h" onclick="togglePlaySec('${esc(ckey)}')">
+            <span>${roleDisplay(role)}</span><span>${collapsed?'⌄':'⌃'}</span></div>
+          ${rows}</div>`;
       }).join('');
-      return `<div class="pm-sec">
-        <div class="pm-sec-h" onclick="togglePlaySec('${esc(role)}')">
-          <span>${roleDisplay(role)}</span><span>${collapsed?'⌄':'⌃'}</span></div>
-        ${rows}</div>`;
-    }).join('');
+      const pts = groupPts(g.gid);
+      const isPri = g.kind==="primary";
+      const kindLabel = isPri ? "Primary Force" : g.kind==="low" ? "Lord of War" : "Allied Detachment";
+      const head = `<div class="pm-grp-h ${isPri?'pri':'ally'}">
+        <span class="pm-grp-name">${escH(g.faction||g.list)}</span>
+        <span class="pm-grp-meta">${escH(kindLabel)} · ${pts} pts</span>
+      </div>`;
+      // The contingent's own Rite of War sits at the top of its section.
+      const rite = legionRites(g.faction).length ? renderRiteOfWar(g) : '';
+      return `<div class="pm-grp ${isPri?'pri':'ally'}">${head}${rite}${secs}</div>`;
+    };
+    const ordered = [primaryGroup(),
+      ...(ST.groups||[]).filter(g=>g.kind==="ally"),
+      ...(ST.groups||[]).filter(g=>g.kind==="low")];
+    body = ordered.filter(Boolean).map(groupSection).join('');
   }
+  const pg = primaryGroup();
+  const allyBits = (ST.groups||[]).filter(g=>g.kind==="ally").map(g=>escH(g.faction||g.list));
+  const title = `${escH(pg.faction||pg.list)} · ${escH(ST.allegiance)}${allyBits.length?` <span style="color:var(--text-muted);font-size:13px;">+ ${allyBits.join(", ")}</span>`:""}`;
   document.getElementById("app").innerHTML =
-    `<div class="app pm-wrap">${renderPlayTopbar(`<span class="pm-title" style="font-family:'Cinzel',serif;font-size:16px;color:var(--gold-light);">${ST.legion} · ${ST.allegiance}</span>`)}${renderRiteOfWar()}${body}</div>`;
+    `<div class="app pm-wrap">${renderPlayTopbar(`<span class="pm-title" style="font-family:'Cinzel',serif;font-size:16px;color:var(--gold-light);">${title}</span>`)}${body}</div>`;
 }
 
 function renderPlayDatasheet(){
+  const _r0 = playResolve(ST.playSel.iid, ST.playSel.key);
+  if(!_r0){ backToRoster(); return; }
+  return withDet(_r0.det, ()=>_renderPlayDatasheetInner());
+}
+function _renderPlayDatasheetInner(){
   const r = playResolve(ST.playSel.iid, ST.playSel.key);
   if(!r){ backToRoster(); return; }
   const {u, cfg, def, role, pa} = r;
@@ -11642,10 +12542,105 @@ function renderPlay(){
   else renderPlayRoster();
 }
 
+// ── Group rendering ──────────────────────────────────────────────────────────
+function groupHasUnits(gid){ return detsOfGroup(gid).some(d=>(d.slots||[]).some(Boolean)); }
+
+// The primary group's own detachments come first (Crusade + its apex/aux/warlord,
+// indented to show they belong to it). Then each allied group, with its own
+// list/faction/rite pickers, its own unlock counter and its own aux pool. Lord of
+// War stands outside the group structure with its own list/faction picker.
+function renderGroups(){
+  const pg = primaryGroup();
+  const isLow = d => DD[d.did] && DD[d.did].cat==="lordsofwar";
+
+  const groupBlock = (g) => withGroup(g.gid, ()=>{
+    const dets = detsOfGroup(g.gid).filter(d=>!isLow(d));
+    const anchorCat = g.kind==="primary" ? "primary" : "allied";
+    const anchor = dets.filter(d=>DD[d.did] && DD[d.did].cat===anchorCat);
+    const members = dets.filter(d=>DD[d.did] && DD[d.did].cat!==anchorCat);
+    const {ao,ax}=getUnlocks(g.gid); const {a,b}=getUsed(g.gid);
+    const isAlly = g.kind==="ally";
+    const rites = legionRites(g.faction);
+    const cur = currentRite(g.faction);
+    const locked = groupHasUnits(g.gid);
+    const head = isAlly ? `
+      <div class="grp-head">
+        <div class="grp-title">Allied Detachment <span class="grp-sub">${g.faction?escH(g.faction)+" · ":""}${escH(g.list)}</span></div>
+        <div class="grp-ctrls">
+          ${LISTS_FOR_GROUP(g).length>1?`<label class="cl">Army List</label>
+          <select onchange="setGroupList('${g.gid}',this.value)" ${locked?"disabled title='Clear this detachment to change its army list'":""}>
+            ${LISTS_FOR_GROUP(g).map(L=>`<option${g.list===L?" selected":""}>${escH(L)}</option>`).join("")}
+          </select>`:""}
+          ${FACTIONS_FOR(g.list).length?`<label class="cl">${escH(FACTION_LABEL(g.list))}</label>
+          <select onchange="setGroupFaction('${g.gid}',this.value)">
+            ${FACTIONS_FOR(g.list).map(L=>`<option${g.faction===L?" selected":""}>${escH(L)}</option>`).join("")}
+          </select>`:""}
+          ${rites.length>1?`<label class="cl">Rite of War</label>
+          <select onchange="setGroupRite('${g.gid}',this.value)">
+            ${rites.map(r=>`<option value="${esc(r.id)}"${cur&&cur.id===r.id?" selected":""}>${escH(r.name||r.id)}</option>`).join("")}
+          </select>`:""}
+          <span class="grp-unlocks">Unlocks: ${a+b}/${ao+ax}</span>
+          <span class="grp-pts">${groupPts(g.gid)} pts</span>
+          <button class="hbtn" onclick="removeGroup('${g.gid}')">✕ Remove Ally</button>
+        </div>
+      </div>` : `
+      <div class="grp-head pri-head">
+        <div class="grp-title pri-title">Primary Force <span class="grp-sub">${g.faction?escH(g.faction)+" · ":""}${escH(g.list)}</span></div>
+        <div class="grp-ctrls">
+          <span class="grp-unlocks">Unlocks: ${a+b}/${ao+ax}</span>
+          <span class="grp-pts">${groupPts(g.gid)} pts</span>
+        </div>
+      </div>`;
+    return `<div class="grp ${isAlly?"grp-ally":"grp-primary"}">
+      ${head}
+      ${anchor.map(renderCard).join("")}
+      ${members.length?`<div class="grp-members">${members.map(renderCard).join("")}</div>`:""}
+      ${renderPool(g.gid)}
+    </div>`;
+  });
+
+  const primaryHtml = groupBlock(pg);
+  const alliesHtml  = (ST.groups||[]).filter(g=>g.kind==="ally").map(groupBlock).join("");
+  const lowGroups = (ST.groups||[]).filter(g=>g.kind==="low" && detsOfGroup(g.gid).length);
+  const lowHtml = lowGroups.map(g=>withGroup(g.gid, ()=>{
+    const dets = detsOfGroup(g.gid);
+    const locked = groupHasUnits(g.gid);
+    return `<div class="grp grp-low">
+      <div class="grp-head low-head">
+        <div class="grp-title low-title">Lord of War <span class="grp-sub">${g.faction?escH(g.faction)+" · ":""}${escH(g.list)}</span></div>
+        <div class="grp-ctrls">
+          ${LISTS_FOR_GROUP(g).length>1?`<label class="cl">Army List</label>
+          <select onchange="setGroupList('${g.gid}',this.value)" ${locked?"disabled title='Clear this detachment to change its army list'":""}>
+            ${LISTS_FOR_GROUP(g).map(L=>`<option${g.list===L?" selected":""}>${escH(L)}</option>`).join("")}
+          </select>`:""}
+          ${FACTIONS_FOR(g.list).length?`<label class="cl">${escH(FACTION_LABEL(g.list))}</label>
+          <select onchange="setGroupFaction('${g.gid}',this.value)">
+            ${FACTIONS_FOR(g.list).map(L=>`<option${g.faction===L?" selected":""}>${escH(L)}</option>`).join("")}
+          </select>`:""}
+          <span class="grp-pts">${groupPts(g.gid)} pts</span>
+        </div>
+      </div>
+      ${dets.map(renderCard).join("")}
+    </div>`;
+  })).join("");
+  const addAlly = `<div class="add-ally"><button class="pb ally-btn" onclick="addAllyGroup()">+ Add Allied Detachment</button></div>`;
+  return primaryHtml + alliesHtml + addAlly + lowHtml;
+}
+
+// Warnings only — never a hard stop.
+function renderBudgetWarnings(){
+  const out=[];
+  const ap=alliedPts(), ac=allyCap();
+  if(ap>ac) out.push(`Allied detachments total <b>${ap}</b> pts, over the 50% limit of <b>${ac}</b> pts.`);
+  const lw=lowWarlordPts(), lc=lowCap();
+  if(lw>lc) out.push(`Warlord &amp; Lord of War units total <b>${lw}</b> pts, over the 25% limit of <b>${lc}</b> pts.`);
+  if(!out.length) return "";
+  return `<div class="warnbar">${out.map(w=>`<div>⚠ ${w}</div>`).join("")}</div>`;
+}
+
 function render(){
   if(ST.view==='play'){ renderPlay(); return; }
   const tp=totalPts();const pct=Math.min(100,Math.round((tp/ST.pts)*100));const ov=tp>ST.pts;
-  const{ao,ax}=getUnlocks();const{a,b}=getUsed();
   document.getElementById("app").innerHTML=`
     <div class="app-header">
       <div>
@@ -11660,18 +12655,29 @@ function render(){
     </div>
     ${renderSharePanel()}
     <div class="ctrls">
-      <div class="cg"><span class="cl">Allegiance</span>
-        <select onchange="ST.allegiance=this.value;saveAndRender()">
+      ${(()=>{const lock=lockedAllegiance();
+        return `<div class="cg"><span class="cl">Allegiance</span>
+        <select onchange="setAllegiance(this.value)" ${lock?`disabled title="${escH(primaryGroup().list)} is always ${escH(lock)}"`:""}>
           <option${ST.allegiance==="Loyalist"?" selected":""}>Loyalist</option>
           <option${ST.allegiance==="Traitor"?" selected":""}>Traitor</option>
-        </select></div>
-      <div class="cg"><span class="cl">Legion</span>
-        <select onchange="ST.legion=this.value;ST.riteOfWar=null;saveAndRender()">
-          ${["Dark Angels","Emperor's Children","Iron Warriors","White Scars","Space Wolves","Imperial Fists","Night Lords","Blood Angels","Iron Hands","World Eaters","Ultramarines","Death Guard","Thousand Sons","Sons of Horus","Word Bearers","Salamanders","Raven Guard","Alpha Legion"].map(L=>`<option${ST.legion===L?" selected":""}>${L}</option>`).join("")}
-        </select></div>
+        </select></div>`;})()}
+      ${(()=>{const pg=primaryGroup();const names=ARMY_LIST_NAMES();
+        // Army List is soft-locked: freely changeable while the group is empty, read-only once
+        // anything is placed (changing it would invalidate every unit/detachment below).
+        const locked=groupHasUnits(pg.gid);
+        if(names.length<2) return "";
+        return `<div class="cg"><span class="cl">Army List</span>
+        <select onchange="setGroupList('${pg.gid}',this.value)" ${locked?"disabled title='Clear this army to change its army list'":""}>
+          ${names.map(L=>`<option${pg.list===L?" selected":""}>${escH(L)}</option>`).join("")}
+        </select></div>`;})()}
+      ${(()=>{const fx=FACTIONS_FOR(primaryGroup().list); if(!fx.length) return "";
+        return `<div class="cg"><span class="cl">${escH(FACTION_LABEL(primaryGroup().list))}</span>
+        <select onchange="setGroupFaction('${primaryGroup().gid}',this.value)">
+          ${fx.map(L=>`<option${ST.legion===L?" selected":""}>${escH(L)}</option>`).join("")}
+        </select></div>`;})()}
       ${(()=>{const rites=legionRites(ST.legion);if(rites.length<2)return"";const cur=currentRite(ST.legion);return `<div class="cg"><span class="cl">Rite of War</span>
-        <select onchange="ST.riteOfWar=this.value;saveAndRender()">
-          ${rites.map(r=>`<option value="${esc(r.id)}"${cur&&cur.id===r.id?" selected":""}>${esc(r.name||r.id)}</option>`).join("")}
+        <select onchange="setGroupRite('${primaryGroup().gid}',this.value)">
+          ${rites.map(r=>`<option value="${esc(r.id)}"${cur&&cur.id===r.id?" selected":""}>${escH(r.name||r.id)}</option>`).join("")}
         </select></div>`;})()}
       <div class="cg"><span class="cl">Points Limit</span>
         <input type="number" value="${ST.pts}" min="500" max="10000" step="500"
@@ -11682,11 +12688,10 @@ function render(){
       <span class="pts-val" style="${ov?"color:#f06060":""}">${tp}</span>
       <span class="pts-lbl">/ ${ST.pts}</span>
       <div class="pts-fill"><div class="pts-inner${ov?" over":""}" style="width:${pct}%"></div></div>
-      <span style="font-size:13px;color:var(--gold-light)">Unlocks: ${a+b}/${ao+ax}</span>
     </div>
+    ${renderBudgetWarnings()}
     <div class="army">
-      ${ST.dets.map(renderCard).join("")}
-      ${renderPool()}
+      ${renderGroups()}
     </div>
     ${renderModal()}
     ${renderAuthModal()}`;
