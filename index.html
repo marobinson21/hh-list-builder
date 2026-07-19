@@ -350,12 +350,24 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
  *    per5cap:"grp", per5max:N, per5size:S    // at most per5max of options sharing "grp" per S models (e.g. 1 special weapon per 4/5). Inductii: per5size:4 }
  *  A slot whose label ends "(optional)" and is not a weapon name has NO default weapon — nothing added until an option is picked (Orchestrator melee, pintle slots).
  *
+ *
+ *  LEGION EQUIPMENT LIST (design decision): there is deliberately NO `legion_equipment`
+ *  WARGEAR_LISTS entry. The list is exactly two items — Augury Scanner and Nuncio-vox, +10
+ *  each — so units that grant "one item from the Legion Equipment list" enumerate them as two
+ *  addons instead. "Up to two models may each take one item" is expressed as both addons
+ *  carrying unique_in_unit:true + exclusive of each other (1 scanner + 1 vox = 2 models).
+ *  Do NOT add other wargear (vexilla, phosphex bombs, bayonets) to this set — those come from
+ *  a unit's own separate option bullets and are priced independently.
+ *
  *  ADDON (wargear.addons[]): { id, label, pts, ptsPerModel:true(×modelCount),
  *    uniform:true          // squad-wide toggle shown as a per-model addon (togglePerModelAddon uniform branch)
  *    exclusive:["id",...]  // can't be taken WITH these; SYMMETRIC — declaring on either side greys both (addonExcluded / dropExcluded)
  *    unique_group:"g"      // at most one of this group PER UNIT across models
  *    unique_in_unit:true   // at most one across the unit (banners, etc.)
  *    max_in_unit:N         // at most N of THIS addon across the unit (legion-equipment "up to two": nuncio/augury each max_in_unit:2 + exclusive)
+ *                          // Also honoured on SLOT OPTIONS: at most N models may pick this option, or any
+ *                          // option sharing its cap_group:"<name>" (flat cap, unlike per5cap which scales
+ *                          // with unit size as floor(models/per5size)*per5max).
  *    req:{legion}          // shows a "Req: <legion>" pill (does NOT hide)
  *    req:{allegiance}      // HIDDEN entirely if army allegiance mismatch (filterWargearReqs)
  * *    grants:{types,traits,specialRules,weapons,powers}   // applied to the datasheet when selected (or when always_on).
@@ -482,6 +494,9 @@ const PA = [
   {id:"iron_clad", label:"The Iron-Clad",
     desc:"Once per army. Adds a War-Engine slot to this detachment. The unit that fills that slot gains the Champion type if it does not already have it.",
     req:{legion:"Iron Hands"}, oncePerArmy:true},
+  {id:"revenants", label:"Revenants",
+    desc:"Models in this unit gain the Fear (1) rule.",
+    req:{legion:"Blood Angels"}, grants:{specialRules:["Fear (1)"]}},
 ];
 
 // ── Detachment definitions ────────────────────────────────────────────────────
@@ -515,6 +530,11 @@ const DD = {
     restr:{HeavyTransport:["Land Raider Carrier","Spartan"]},
     rnote:"Heavy Transport: Land Raider Carrier or Spartan units only.",
     slots:[{r:"HeavyTransport",p:false},{r:"Armour",p:false},{r:"HeavyAssault",p:false}]},
+  revelation_host:{id:"revelation_host",name:"Revelation Host",cat:"auxiliary",
+    req:{legion:"Blood Angels"},
+    restr:{Troops:["Assault Squad"], Elites:["Dawnbreaker Cohort","Veteran Assault Squad"]},
+    rnote:"Troops: Assault Squads only. Elites: Dawnbreaker Cohort or Veteran Assault Squad only.",
+    slots:[{r:"Troops",p:true},{r:"Troops",p:false},{r:"Elites",p:false},{r:"Elites",p:false}]},
   primus_demi_company:{id:"primus_demi_company",name:"Primus Demi-Company",cat:"auxiliary",
     req:{legion:"Ultramarines"},
     restr:{Command:["Optae"]},
@@ -707,6 +727,15 @@ const WARGEAR_LISTS = {
       {id:"power_axe",   label:"Power Axe",   pts:0},
       {id:"power_maul",  label:"Power Maul",  pts:0},
       {id:"power_lance", label:"Power Lance", pts:0},
+    ]
+  },
+  perdition_weapons: {
+    label: "Perdition Weapons",
+    items: [
+      {id:"blade_of_perdition", label:"Blade of Perdition", pts:0},
+      {id:"axe_of_perdition",   label:"Axe of Perdition",   pts:0},
+      {id:"maul_of_perdition",  label:"Maul of Perdition",  pts:0},
+      {id:"spear_of_perdition", label:"Spear of Perdition", pts:0},
     ]
   },
   force_weapons: {
@@ -1073,7 +1102,36 @@ const WEAPONS = {
   "artificer_power_axe": {label:"Artificer Power Axe", melee:true, im:"-1", am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (5+), Shred (5+)", rules:["Power"]},
   "storms_wrath":        {label:"Storm's Wrath", range:24, fp:3, rs:5, ap:4, d:1, specialRules:"Breaching (6+)", rules:["Bolt","Assault"]},
   "albian_power_gladius":{label:"Albian Power Gladius", melee:true, im:"I", am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (6+)", rules:["Power"]},
+  "encarmine_warblade":  {label:"The Encarmine Warblade", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:2, specialRules:"Impact (AM), Critical Hit (6+)", rules:["Power"]},
+  "saiphan_shard_axe":   {label:"Saiphan Shard-axe", melee:true, im:"I", am:"+1", sm:"+1", ap:3, d:1, specialRules:"Breaching (4+)", rules:["Power"]},
+  "lament_and_grief":    {label:"Lament & Grief", range:10, fp:6, rs:5, ap:5, d:1, specialRules:"Deflagrate (5), Stun (1)", rules:["Assault","Volkite"]},
+  "spiritum_sanguis":    {label:"The Spiritum Sanguis", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:2, specialRules:"Reaping Blow (1)", rules:["Power"]},
+  "blade_of_judgement":  {label:"Blade of Judgement", melee:true, im:"I", am:"A", sm:"+2", ap:3, d:1, specialRules:"Breaching (5+), Critical Hit (6+)", rules:["Power"]},
+  "falling_star_power_spear": {label:"Falling-star Power Spear", melee:true, im:"+1", am:"A", sm:"S", ap:3, d:1, specialRules:"Impact (SM), Breaching (5+)", rules:["Power"]},
+  "equinox_blades":      {label:"Pair of Equinox Blades", melee:true, im:"I", am:"+1", sm:"S", ap:3, d:1, specialRules:"Breaching (6+)", rules:["Power"]},
+  "erelim_grenade_launcher": {label:"Erelim Grenade Launcher", range:18, fp:2, rs:4, ap:4, d:1, specialRules:"Poisoned (2+), Phage (T)", rules:["Missile","Rad"]},
+  "paired_talons_of_perdition": {label:"Paired Talons of Perdition", melee:true, im:"I", am:"+2", sm:"S", ap:2, d:2, specialRules:"Aflame (2)", rules:["Power","Flame"]},
+  "infernus":            {label:"Infernus", range:18, fp:2, rs:8, ap:2, d:3, specialRules:"Melta (12), Limited (1)", rules:["Melta","Assault"]},
+  "blade_encarmine":     {label:"The Blade Encarmine", melee:true, im:"I",  am:"A",  sm:"+1", ap:2, d:2, specialRules:"Critical Hit (5+), Impact (AM)", rules:["Power"]},
+  "spear_of_telesto":    {label:"Spear of Telesto",    melee:true, im:"-1", am:"-2", sm:"+3", ap:2, d:2, specialRules:"Armourbane, Shock (Suppressed)", rules:["Power"]},
+  "moonsilver_blade":    {label:"Moonsilver Blade",    melee:true, im:"I",  am:"A",  sm:"S",  ap:3, d:2, specialRules:"Duelist's Edge (1)", rules:["Power"]},
+  "grenade_discharger":  {label:"Grenade Discharger", profiles:[
+    {name:"Frag", range:12, fp:1, rs:4, ap:6, d:1, specialRules:"Blast (3in)", rules:["Assault"]},
+    {name:"Krak", range:12, fp:1, rs:6, ap:4, d:1, specialRules:"\u2014", rules:["Assault"]},
+  ]},
   "forgebreaker":        {label:"Forgebreaker", melee:true, im:"-1", am:"A", sm:"+3", ap:2, d:3, specialRules:"Critical Hit (5+)", rules:["Power"]},
+  "blade_of_perdition":  {label:"Blade of Perdition", melee:true, im:"I",  am:"A", sm:"S",  ap:3, d:1, specialRules:"Breaching (6+), Aflame (1)", rules:["Power","Flame"]},
+  "axe_of_perdition":    {label:"Axe of Perdition",   melee:true, im:"-1", am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (5+), Aflame (1)", rules:["Power","Flame"]},
+  "maul_of_perdition":   {label:"Maul of Perdition",  melee:true, im:"-1", am:"A", sm:"+2", ap:3, d:1, specialRules:"Breaching (6+), Aflame (1)", rules:["Power","Flame"]},
+  "spear_of_perdition":  {label:"Spear of Perdition", melee:true, im:"+1", am:"A", sm:"S",  ap:3, d:1, specialRules:"Precision (6+), Aflame (1)", rules:["Power","Flame"]},
+  "iliastus_assault_cannon": {label:"Iliastus Assault Cannon", profiles:[
+    {name:"Sustained fire", range:24, fp:3, rs:6, ap:4, d:1, specialRules:"Heavy (FP), Breaching (6+)", rules:["Auto"]},
+    {name:"Maximal fire",   range:24, fp:5, rs:6, ap:4, d:1, specialRules:"Heavy (FP), Breaching (6+), Overload (1)", rules:["Auto"]},
+  ]},
+  "twin_iliastus_assault_cannon": {label:"Twin Iliastus Assault Cannon", profiles:[
+    {name:"Sustained fire", range:24, fp:6, rs:6, ap:4, d:1, specialRules:"Heavy (FP), Breaching (6+)", rules:["Auto"]},
+    {name:"Maximal fire",   range:24, fp:8, rs:6, ap:4, d:1, specialRules:"Heavy (FP), Breaching (6+), Overload (1)", rules:["Auto"]},
+  ]},
   "medusan_carapace":    {label:"The Medusan Carapace", profiles:[
     {name:"Alpha-12",    range:18, fp:2, rs:7, ap:4, d:1, specialRules:"Breaching (4+)", rules:["Plasma"]},
     {name:"Epsilon-415", range:18, fp:2, rs:6, ap:3, d:1, specialRules:"Shock (Pinned), Pinning (1)", rules:["Graviton"]},
@@ -1491,7 +1549,7 @@ const SU = {
           type:"Infantry", subtypes:["Command","Antigrav"],
           specialRules:["Bulky (2)","Deep Strike"],
           wargear:{
-            included_slots:["Jump Pack","Frag Grenades","Krak Grenades"],
+            included_slots:["Frag Grenades","Krak Grenades"],
             pairs:[{id:"lightning_claws", label:"Pair of Lightning Claws", pts:20, replaces:["bolter","pistol"], sublabel:"Replaces bolter & bolt pistol"}],
             slots:[
               { id:"bolter", label:"Bolter", options:[
@@ -1560,7 +1618,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger",   pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",      pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",      label:"Specify Type",   pts:0, list:"power_weapons"},
                 {id:"paragon_blade",label:"Paragon Blade",  pts:15},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
@@ -1585,7 +1643,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger",   pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",      pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",      label:"Specify Type",   pts:0, list:"power_weapons"},
                 {id:"paragon_blade",label:"Paragon Blade",  pts:15},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
@@ -1676,8 +1734,44 @@ const SU = {
         pairs:[], slots:[], addons:[],
       }
     },
+    {
+      id:"hc_raldoron", name:"Chapter Master Raldoron", basePts:180, minSize:1, maxSize:1,
+      req:{legion:"Blood Angels", allegiance:"Loyalist"}, uniqueRule:"Chapter Master Raldoron",
+      traits:["Loyalist","Blood Angels","Master of the Legion"],
+      specialRules:["Archein of Wisdom"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:7,BS:5,S:4,T:4,W:4,I:5,A:4,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["The Encarmine Warblade","Combi-flamer","Bolt Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
   ],
   Command:[
+    {
+      id:"cmd_aster_crohne", name:"Aster Crohne", basePts:155, minSize:1, maxSize:1,
+      req:{legion:"Blood Angels", allegiance:"Loyalist"}, uniqueRule:"Aster Crohne",
+      traits:["Loyalist","Blood Angels"],
+      specialRules:["Officer of the Line (2)","The Ghost of Saiph"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:5,BS:5,S:4,T:4,W:3,I:5,A:3,LD:9,CL:8,WP:8,IN:8,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Hand Flamer","Hand Flamer","Saiphan Shard-axe","Frag Grenades","Krak Grenades","Rad Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"cmd_dominion_zephon", name:"Dominion Zephon", basePts:185, minSize:1, maxSize:1,
+      req:{legion:"Blood Angels", allegiance:"Loyalist"}, uniqueRule:"Dominion Zephon",
+      traits:["Loyalist","Blood Angels"],
+      specialRules:["Officer of the Line (2)","Bulky (2)","Deep Strike","Eternal Warrior (1)"],
+      modelTypes:["Infantry","Unique","Command","Antigrav"],
+      stats:{M:12,WS:6,BS:5,S:4,T:4,W:4,I:5,A:4,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Lament & Grief","The Spiritum Sanguis","Rad Grenades","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
     {
       id:"cmd_lucius", name:"Captain Lucius", basePts:215, minSize:1, maxSize:1,
       req:{legion:"Emperor's Children", allegiance:"Traitor"}, uniqueRule:"Captain Lucius",
@@ -1858,7 +1952,7 @@ const SU = {
           type:"Infantry", subtypes:["Command","Antigrav"],
           specialRules:["Officer of the Line (2)","Bulky (2)","Deep Strike"],
           wargear:{
-            included_slots:["Jump Pack","Frag Grenades","Krak Grenades"],
+            included_slots:["Frag Grenades","Krak Grenades"],
             pairs:[
               {id:"lightning_claws", label:"Pair of Lightning Claws", pts:20,
                replaces:["bolter","pistol"], sublabel:"Replaces bolter & bolt pistol"},
@@ -1971,7 +2065,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger", pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
                 // Paladin of Hekatonystika: a Centurion in Terminator Armour exchanges its
@@ -2008,7 +2102,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger", pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
                 // Paladin of Hekatonystika: a Centurion in Terminator Armour exchanges its
@@ -2095,7 +2189,7 @@ const SU = {
       modelTypes:["Infantry","Command","Antigrav"],
       stats:{M:12,WS:5,BS:4,S:4,T:4,W:3,I:5,A:4,LD:9,CL:10,WP:8,IN:7,SAV:"2+",INV:"5+"},
       wargear:{
-        included_slots:["Crozius Arcanum","Jump Pack","Frag Grenades","Krak Grenades"],
+        included_slots:["Crozius Arcanum","Frag Grenades","Krak Grenades"],
         pairs:[],
         slots:[
           { id:"pistol", label:"Bolt Pistol", options:[
@@ -2212,7 +2306,7 @@ const SU = {
           type:"Infantry", subtypes:["Command","Antigrav"],
           specialRules:["Bulky (2)","Deep Strike","Consul-Delegatus"],
           wargear:{
-            included_slots:["Jump Pack","Frag Grenades","Krak Grenades"],
+            included_slots:["Frag Grenades","Krak Grenades"],
             pairs:[
               {id:"lightning_claws", label:"Pair of Lightning Claws", pts:20,
                replaces:["bolter","pistol"], sublabel:"Replaces bolter & bolt pistol"},
@@ -2269,7 +2363,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger", pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
               ]},
@@ -2293,7 +2387,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger", pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
               ]},
@@ -2313,7 +2407,7 @@ const SU = {
         included_slots:["Archeotech Pistol","Frag Grenades","Krak Grenades"],
         pairs:[],
         slots:[
-          { id:"force_weapon", label:"Force Weapon", options:[
+          { id:"force_weapon", label:"Force Weapon", required:true, options:[
             {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
           ]},
         ],
@@ -2337,7 +2431,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger", pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
               ]},
-              { id:"force_weapon", label:"Force Weapon", options:[
+              { id:"force_weapon", label:"Force Weapon", required:true, options:[
                 {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
               ]},
             ],
@@ -2357,7 +2451,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger", pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
               ]},
-              { id:"force_weapon", label:"Force Weapon", options:[
+              { id:"force_weapon", label:"Force Weapon", required:true, options:[
                 {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
               ]},
             ],
@@ -2373,10 +2467,10 @@ const SU = {
       modelTypes:["Infantry","Command","Antigrav"],
       stats:{M:12,WS:5,BS:5,S:4,T:4,W:3,I:5,A:4,LD:7,CL:8,WP:10,IN:8,SAV:"2+",INV:"5+"},
       wargear:{
-        included_slots:["Jump Pack","Archeotech Pistol","Frag Grenades","Krak Grenades"],
+        included_slots:["Archeotech Pistol","Frag Grenades","Krak Grenades"],
         pairs:[],
         slots:[
-          { id:"force_weapon", label:"Force Weapon", options:[
+          { id:"force_weapon", label:"Force Weapon", required:true, options:[
             {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
           ]},
         ],
@@ -2415,7 +2509,7 @@ const SU = {
           type:"Infantry", subtypes:["Command","Antigrav"],
           specialRules:["Battlesmith (2)","Bulky (2)","Deep Strike","Legiones Thallaxes"],
           wargear:{
-            included_slots:["Jump Pack","Frag Grenades","Krak Grenades","Machinator Array"],
+            included_slots:["Frag Grenades","Krak Grenades","Machinator Array"],
             pairs:[],
             slots:[
               { id:"power_axe", label:"Power Axe", options:[
@@ -2493,7 +2587,7 @@ const SU = {
         included_slots:["Frag Grenades","Krak Grenades","Icon of Allegiance"],
         pairs:[],
         slots:[
-          { id:"power_weapon", label:"Power Weapon", options:[
+          { id:"power_weapon", label:"Power Weapon", required:true, options:[
             {id:"pw_type",    label:"Specify Type", pts:0, list:"power_weapons"},
             {id:"power_fist", label:"Power Fist",   pts:10},
           ]},
@@ -2517,7 +2611,7 @@ const SU = {
             included_slots:["Icon of Allegiance"],
             pairs:[],
             slots:[
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
               ]},
@@ -2534,7 +2628,7 @@ const SU = {
             included_slots:["Icon of Allegiance"],
             pairs:[],
             slots:[
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
               ]},
@@ -2551,10 +2645,10 @@ const SU = {
       modelTypes:["Infantry","Command","Antigrav"],
       stats:{M:12,WS:5,BS:5,S:4,T:4,W:3,I:5,A:4,LD:9,CL:9,WP:8,IN:8,SAV:"2+",INV:"5+"},
       wargear:{
-        included_slots:["Jump Pack","Frag Grenades","Krak Grenades","Icon of Allegiance"],
+        included_slots:["Frag Grenades","Krak Grenades","Icon of Allegiance"],
         pairs:[],
         slots:[
-          { id:"power_weapon", label:"Power Weapon", options:[
+          { id:"power_weapon", label:"Power Weapon", required:true, options:[
             {id:"pw_type",    label:"Specify Type", pts:0, list:"power_weapons"},
             {id:"power_fist", label:"Power Fist",   pts:10},
           ]},
@@ -2631,7 +2725,7 @@ const SU = {
       modelTypes:["Infantry","Command","Antigrav"],
       stats:{M:12,WS:6,BS:5,S:4,T:4,W:3,I:5,A:5,LD:8,CL:8,WP:8,IN:8,SAV:"2+",INV:"5+"},
       wargear:{
-        included_slots:["Paragon Blade","Jump Pack","Frag Grenades","Krak Grenades"],
+        included_slots:["Paragon Blade","Frag Grenades","Krak Grenades"],
         pairs:[],
         slots:[
           { id:"volkite_serpenta", label:"Volkite Serpenta", options:[
@@ -2653,7 +2747,7 @@ const SU = {
         included_slots:["Frag Grenades","Krak Grenades"],
         pairs:[],
         slots:[
-          { id:"force_weapon", label:"Force Weapon", options:[
+          { id:"force_weapon", label:"Force Weapon", required:true, options:[
             {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
           ]},
           { id:"pistol", label:"Bolt Pistol", options:[
@@ -2689,7 +2783,7 @@ const SU = {
                 {id:"combi_weapon",     label:"Combi-weapon",                     pts:0, list:"combi_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon",   pts:0, list:"terminator_melee"},
               ]},
-              { id:"force_weapon", label:"Force Weapon", options:[
+              { id:"force_weapon", label:"Force Weapon", required:true, options:[
                 {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
               ]},
             ],
@@ -2717,7 +2811,7 @@ const SU = {
                 {id:"combi_weapon",     label:"Combi-weapon",                     pts:0, list:"combi_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon",   pts:0, list:"terminator_melee"},
               ]},
-              { id:"force_weapon", label:"Force Weapon", options:[
+              { id:"force_weapon", label:"Force Weapon", required:true, options:[
                 {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
               ]},
             ],
@@ -2740,10 +2834,10 @@ const SU = {
       modelTypes:["Infantry","Command","Antigrav"],
       stats:{M:12,WS:5,BS:5,S:4,T:4,W:3,I:5,A:4,LD:8,CL:7,WP:9,IN:8,SAV:"2+",INV:"5+"},
       wargear:{
-        included_slots:["Jump Pack","Frag Grenades","Krak Grenades"],
+        included_slots:["Frag Grenades","Krak Grenades"],
         pairs:[],
         slots:[
-          { id:"force_weapon", label:"Force Weapon", options:[
+          { id:"force_weapon", label:"Force Weapon", required:true, options:[
             {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
           ]},
           { id:"pistol", label:"Bolt Pistol", options:[
@@ -2784,7 +2878,7 @@ const SU = {
       modelTypes:["Infantry","Command","Antigrav"],
       stats:{M:12,WS:5,BS:5,S:4,T:4,W:3,I:5,A:4,LD:8,CL:7,WP:7,IN:10,SAV:"2+",INV:"5+"},
       wargear:{
-        included_slots:["Jump Pack","Frag Grenades","Krak Grenades","Command Vox Relay"],
+        included_slots:["Frag Grenades","Krak Grenades","Command Vox Relay"],
         pairs:[],
         slots:[
           { id:"pistol", label:"Bolt Pistol", options:[
@@ -3075,7 +3169,7 @@ const SU = {
               { id:"twin_bolter", label:"Twin Bolter", options:[
                 {id:"twin_plasma_gun", label:"Twin Plasma Gun", pts:15},
               ]},
-              { id:"force_weapon", label:"Force Weapon", options:[
+              { id:"force_weapon", label:"Force Weapon", required:true, options:[
                 {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
               ]},
             ],
@@ -3096,7 +3190,7 @@ const SU = {
                 {id:"plasma_cannon",   label:"Plasma Cannon",    pts:15},
                 {id:"multi_melta",     label:"Multi-melta",      pts:20},
               ]},
-              { id:"force_weapon", label:"Force Weapon", options:[
+              { id:"force_weapon", label:"Force Weapon", required:true, options:[
                 {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
               ]},
             ],
@@ -3176,7 +3270,7 @@ const SU = {
               { id:"twin_bolter", label:"Twin Bolter", options:[
                 {id:"twin_plasma_gun", label:"Twin Plasma Gun", pts:15},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",    label:"Specify Type", pts:0, list:"power_weapons"},
                 {id:"power_fist", label:"Power Fist",   pts:10},
               ]},
@@ -3201,7 +3295,7 @@ const SU = {
                 {id:"plasma_cannon",   label:"Plasma Cannon",    pts:15},
                 {id:"multi_melta",     label:"Multi-melta",      pts:20},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",    label:"Specify Type", pts:0, list:"power_weapons"},
                 {id:"power_fist", label:"Power Fist",   pts:10},
               ]},
@@ -3276,7 +3370,7 @@ const SU = {
               { id:"twin_bolter", label:"Twin Bolter", options:[
                 {id:"twin_plasma_gun", label:"Twin Plasma Gun", pts:15},
               ]},
-              { id:"force_weapon", label:"Force Weapon", options:[
+              { id:"force_weapon", label:"Force Weapon", required:true, options:[
                 {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
               ]},
               { id:"pistol", label:"Bolt Pistol", options:[
@@ -3307,7 +3401,7 @@ const SU = {
                 {id:"plasma_cannon",   label:"Plasma Cannon",    pts:15},
                 {id:"multi_melta",     label:"Multi-melta",      pts:20},
               ]},
-              { id:"force_weapon", label:"Force Weapon", options:[
+              { id:"force_weapon", label:"Force Weapon", required:true, options:[
                 {id:"fw_type", label:"Specify Type", pts:0, list:"force_weapons"},
               ]},
               { id:"pistol", label:"Bolt Pistol", options:[
@@ -3520,7 +3614,7 @@ const SU = {
           type:"Infantry", subtypes:["Command","Antigrav"],
           specialRules:["Bulky (2)","Deep Strike"],
           wargear:{
-            included_slots:["Jump Pack","Frag Grenades","Krak Grenades"],
+            included_slots:["Frag Grenades","Krak Grenades"],
             pairs:[
               {id:"lightning_claws", label:"Pair of Lightning Claws", pts:20,
                replaces:["bolter","pistol"], sublabel:"Replaces bolter & bolt pistol"},
@@ -3656,7 +3750,7 @@ const SU = {
           type:"Infantry", subtypes:["Specialist","Antigrav"],
           specialRules:["Medic (4+)","Bulky (2)","Deep Strike"],
           wargear:{
-            included_slots:["Jump Pack","Narthecium","Frag Grenades","Krak Grenades"],
+            included_slots:["Narthecium","Frag Grenades","Krak Grenades"],
             pairs:[],
             slots:[
               { id:"chainsword", label:"Chainsword", options:[
@@ -3694,7 +3788,7 @@ const SU = {
                 {id:"needle_pistol",   label:"Needle Pistol",    pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",     pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
               ]},
@@ -3716,7 +3810,7 @@ const SU = {
                 {id:"needle_pistol",   label:"Needle Pistol",    pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",     pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
               ]},
@@ -3793,7 +3887,7 @@ const SU = {
       modelTypes:["Infantry","Command","Heavy","Antigrav"],
       stats:{M:12,WS:5,BS:5,S:4,T:4,W:3,I:5,A:4,LD:9,CL:9,WP:8,IN:8,SAV:"2+",INV:"5+"},
       wargear:{
-        included_slots:["Jump Pack","Thunder Hammer","Phosphex Bombs","Cognis-signum","Augury Scanner","Frag Grenades","Krak Grenades"],
+        included_slots:["Thunder Hammer","Phosphex Bombs","Cognis-signum","Augury Scanner","Frag Grenades","Krak Grenades"],
         pairs:[],
         slots:[
           { id:"pistol", label:"Bolt Pistol", options:[
@@ -3872,7 +3966,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger", pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
               ]},
@@ -3896,7 +3990,7 @@ const SU = {
                 {id:"volkite_charger", label:"Volkite Charger", pts:0},
                 {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
               ]},
-              { id:"power_weapon", label:"Power Weapon", options:[
+              { id:"power_weapon", label:"Power Weapon", required:true, options:[
                 {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
                 {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
               ]},
@@ -4248,7 +4342,7 @@ const SU = {
               {id:"combi_bolter",     label:"Combi-bolter",                   pts:0},
               {id:"combi_weapon",     label:"Combi-weapon",                   pts:0, list:"combi_weapons"},
             ]},
-            { id:"power_weapon", label:"Power Weapon", options:[
+            { id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
               {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
             ]},
@@ -4269,7 +4363,7 @@ const SU = {
               {id:"combi_bolter",     label:"Combi-bolter",                   pts:0},
               {id:"combi_weapon",     label:"Combi-weapon",                   pts:0, list:"combi_weapons"},
             ]},
-            { id:"power_weapon", label:"Power Weapon", options:[
+            { id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
               {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
             ]},
@@ -4540,7 +4634,7 @@ const SU = {
       modelStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"—"},
       wargear:{
         champion:{
-          included_slots:["Jump Pack","Frag Grenades","Krak Grenades"],
+          included_slots:["Frag Grenades","Krak Grenades"],
           modelTypes:["Infantry","Antigrav","Champion","Sergeant"],
           pairs:[
             {id:"lightning_claws", label:"Pair of Lightning Claws", pts:10,
@@ -4566,7 +4660,7 @@ const SU = {
           ],
         },
         perModel:{
-          included_slots:["Jump Pack","Frag Grenades","Krak Grenades"],
+          included_slots:["Frag Grenades","Krak Grenades"],
           modelTypes:["Infantry","Antigrav"],
           pairs:[
             {id:"lightning_claws", label:"Pair of Lightning Claws", pts:10,
@@ -4617,7 +4711,7 @@ const SU = {
               {id:"volkite_charger", label:"Volkite Charger", pts:0},
               {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
             ]},
-            { id:"power_weapon", label:"Power Weapon", options:[
+            { id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
               {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
             ]},
@@ -4639,7 +4733,7 @@ const SU = {
               {id:"combi_weapon",      label:"Combi-weapon",     pts:0, list:"combi_weapons"},
               {id:"legion_standard",   label:"Legion Standard",  pts:20, unique_in_unit:true},
             ]},
-            { id:"power_weapon", label:"Power Weapon", options:[
+            { id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type",          label:"Specify Type",                   pts:0, list:"power_weapons"},
               {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
             ]},
@@ -4660,7 +4754,7 @@ const SU = {
       championStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:10,CL:9,WP:8,IN:7,SAV:"2+",INV:"4+"},
       modelStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:9,CL:8,WP:8,IN:7,SAV:"2+",INV:"4+"},
       wargear:(()=>{
-        const meleeSlot = ()=>({ id:"power_weapon", label:"Power Weapon", options:[
+        const meleeSlot = ()=>({ id:"power_weapon", label:"Power Weapon", required:true, options:[
           {id:"pw_type",             label:"Specify Type",        pts:0, list:"power_weapons"},
           {id:"artificer_power_axe", label:"Artificer Power Axe", pts:0},
           {id:"lightning_claw",      label:"Lightning Claw",      pts:5},
@@ -4701,6 +4795,77 @@ const SU = {
           },
         };
       })()
+    },
+    {
+      id:"ret_ba_ofanim_court", name:"Blood Angels Ofanim Court",
+      basePts:130, minSize:3, maxSize:5, ptsPerModel:40,
+      req:{legion:"Blood Angels", allegiance:"Loyalist"}, uniqueRule:"Blood Angels Ofanim Court",
+      traits:["Loyalist","Blood Angels"],
+      specialRules:["Shadows of Judgement"],
+      modelTypes:["Infantry","Champion"],
+      championLabel:"Ofanim", baseModelLabel:"Ofanim", baseModelPlural:"Ofanim",
+      baseSizeBreakdown:"3 Ofanim",
+      championStats:{M:7,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:9,CL:8,WP:8,IN:7,SAV:"2+",INV:"\u2014"},
+      modelStats:{M:7,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:9,CL:8,WP:8,IN:7,SAV:"2+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry","Champion"],
+        included_slots:["Blade of Judgement","Bolt Pistol","Combat Shield","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
+      id:"ret_ba_ofanim_court_jump", name:"Blood Angels Ofanim Court with Jump Packs",
+      basePts:160, minSize:3, maxSize:5, ptsPerModel:50,
+      req:{legion:"Blood Angels", allegiance:"Loyalist"}, uniqueRule:"Blood Angels Ofanim Court with Jump Packs",
+      traits:["Loyalist","Blood Angels"],
+      specialRules:["Bulky (2)","Deep Strike","Shadows of Judgement"],
+      modelTypes:["Infantry","Champion","Antigrav"],
+      championLabel:"Ofanim with Jump Pack", baseModelLabel:"Ofanim with Jump Pack", baseModelPlural:"Ofanim with Jump Packs",
+      baseSizeBreakdown:"3 Ofanim with Jump Packs",
+      championStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:9,CL:8,WP:8,IN:7,SAV:"2+",INV:"\u2014"},
+      modelStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:9,CL:8,WP:8,IN:7,SAV:"2+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry","Champion","Antigrav"],
+        included_slots:["Blade of Judgement","Bolt Pistol","Combat Shield","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
+      id:"ret_ba_sanguinary_guard", name:"Blood Angels Sanguinary Guard",
+      basePts:205, minSize:5, maxSize:10, ptsPerModel:40,
+      req:{legion:"Blood Angels"},
+      traits:["[Allegiance]","Blood Angels"],
+      specialRules:["Bulky (2)","Deep Strike"],
+      modelTypes:["Infantry","Antigrav"],
+      championLabel:"Sanguinary Guard", baseModelLabel:"Sanguinary Guard", baseModelPlural:"Sanguinary Guard",
+      baseSizeBreakdown:"5 Sanguinary Guard",
+      championStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"\u2014"},
+      modelStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry","Antigrav"],
+        included_slots:["Frag Grenades","Krak Grenades"],
+        pairs:[
+          {id:"standard_pw", label:"Legion Standard & Power Weapon", pts:15,
+           replaces:["melee","pistol"], unique_in_unit:true,
+           chips:["Legion Standard"], pickList:"power_weapons", pickPlaceholder:"Power Weapon",
+           sublabel:"Replaces perdition weapon & bolt pistol"},
+        ],
+        slots:[
+          { id:"melee", label:"Perdition Weapon", required:true, options:[
+            {id:"perdition_type", label:"Specify Type", pts:0, list:"perdition_weapons"},
+            {id:"paragon_blade",  label:"Paragon Blade", pts:15, per5cap:"sg_paragon", per5max:1, per5size:5},
+          ]},
+          { id:"pistol", label:"Bolt Pistol", options:[
+            {id:"combat_shield",  label:"Combat Shield",  pts:2},
+            {id:"inferno_pistol", label:"Inferno Pistol", pts:10},
+            {id:"legion_pistol",  label:"Legion Pistol",  pts:0, list:"legion_pistols"},
+          ]},
+        ],
+        addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[
+        // Unit-wide: arms every model in the unit, flat cost (not per model).
+        {id:"melta_bombs_all", label:"Melta Bombs (all models)", pts:25},
+      ], champion:blk(), perModel:blk()}; })()
     },
   ],
   Elites:[
@@ -4954,7 +5119,7 @@ const SU = {
               {id:"reaper_autocannon", label:"Reaper Autocannon",  pts:15, per5cap:"just_heavy", per5max:1},
               {id:"plasma_blaster",    label:"Plasma Blaster",     pts:10, per5cap:"just_heavy", per5max:1},
             ]},
-            {id:"power_weapon", label:"Power Weapon", options:[
+            {id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type",            label:"Specify Type",       pts:0,  list:"power_weapons"},
               {id:"lightning_claw",     label:"Lightning Claw",     pts:5},
               {id:"carsoran_power_axe", label:"Carsoran Power Axe", pts:5},
@@ -4977,7 +5142,7 @@ const SU = {
               {id:"reaper_autocannon", label:"Reaper Autocannon",  pts:15, per5cap:"just_heavy", per5max:1},
               {id:"plasma_blaster",    label:"Plasma Blaster",     pts:10, per5cap:"just_heavy", per5max:1},
             ]},
-            {id:"power_weapon", label:"Power Weapon", options:[
+            {id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type",            label:"Specify Type",       pts:0,  list:"power_weapons"},
               {id:"lightning_claw",     label:"Lightning Claw",     pts:5},
               {id:"carsoran_power_axe", label:"Carsoran Power Axe", pts:5},
@@ -5258,7 +5423,7 @@ const SU = {
       modelStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"3+",INV:"—"},
       wargear:{
         champion:{
-          included_slots:["Jump Pack","Frag Grenades","Krak Grenades"],
+          included_slots:["Frag Grenades","Krak Grenades"],
           modelTypes:["Infantry","Sergeant","Antigrav"],
           pairs:[
             {id:"lightning_claws", label:"Pair of Lightning Claws", pts:10,
@@ -5279,7 +5444,7 @@ const SU = {
           ],
         },
         perModel:{
-          included_slots:["Jump Pack","Frag Grenades","Krak Grenades"],
+          included_slots:["Frag Grenades","Krak Grenades"],
           modelTypes:["Infantry","Antigrav"],
           pairs:[
             {id:"lightning_claws", label:"Pair of Lightning Claws", pts:10,
@@ -5458,6 +5623,95 @@ const SU = {
       },
     },
   },
+    {
+      id:"e_ba_crimson_paladins", name:"Crimson Paladins",
+      basePts:225, minSize:5, maxSize:10, ptsPerModel:40,
+      req:{legion:"Blood Angels"},
+      traits:["[Allegiance]","Blood Angels"],
+      specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful","Line (1)","Deep Strike","The Blood is Forever"],
+      modelTypes:["Infantry","Heavy"],
+      championLabel:"Crimson Exemplar", baseModelLabel:"Crimson Paladin",
+      baseSizeBreakdown:"1 Crimson Exemplar + 4 Crimson Paladins",
+      championStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:9,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      modelStats:{M:6,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{
+          modelTypes:["Infantry","Sergeant","Heavy"],
+          included_slots:[],
+          pairs:[
+            {id:"exemplar_perdition", label:"Perdition Weapon", pts:0,
+             replaces:["melee","shield"], unique_in_unit:true,
+             chips:[], pickList:"perdition_weapons", pickPlaceholder:"Perdition Weapon",
+             sublabel:"Replaces power sword & Coriolis pattern power shield"},
+          ],
+          slots:[
+            { id:"melee",  label:"Power Sword", options:[] },
+            { id:"shield", label:"Coriolis Pattern Power Shield", options:[] },
+          ],
+          addons:[
+            {id:"grenade_harness", label:"Grenade Harness", pts:5},
+          ],
+        },
+        perModel:{
+          modelTypes:["Infantry","Heavy"],
+          included_slots:[],
+          pairs:[],
+          slots:[
+            { id:"melee", label:"Power Sword", options:[
+              {id:"power_fist", label:"Power Fist", pts:5,  max_in_unit:2, cap_group:"paladin_melee"},
+              {id:"chainfist",  label:"Chainfist",  pts:10, max_in_unit:2, cap_group:"paladin_melee"},
+            ]},
+            { id:"shield", label:"Coriolis Pattern Power Shield", options:[
+              {id:"heavy_flamer",            label:"Heavy Flamer",            pts:5,  per5cap:"cp_special", per5max:1, per5size:5},
+              {id:"iliastus_assault_cannon", label:"Iliastus Assault Cannon", pts:15, per5cap:"cp_special", per5max:1, per5size:5},
+              {id:"plasma_blaster",          label:"Plasma Blaster",          pts:10, per5cap:"cp_special", per5max:1, per5size:5},
+            ]},
+          ],
+          addons:[],
+        },
+      }
+    },
+    {
+      id:"e_ba_dawnbreaker_cohort", name:"Dawnbreaker Cohort",
+      basePts:150, minSize:5, maxSize:10, ptsPerModel:25,
+      req:{legion:"Blood Angels"},
+      traits:["[Allegiance]","Blood Angels"],
+      specialRules:["Set the Sky Aflame","Bulky (2)","Deep Strike"],
+      modelTypes:["Infantry","Antigrav"],
+      championLabel:"Dawnbreaker Champion", baseModelLabel:"Dawnbreaker",
+      baseSizeBreakdown:"1 Dawnbreaker Champion + 4 Dawnbreakers",
+      championStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"\u2014"},
+      modelStats:{M:12,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"\u2014"},
+      wargear:{
+        included_slots:[], pairs:[], slots:[],
+        addons:[
+          // Unit-wide: arms every model, flat cost per unit.
+          {id:"melta_bombs_all", label:"Melta Bombs (all models)", pts:25},
+        ],
+        champion:{
+          modelTypes:["Infantry","Sergeant","Antigrav"],
+          included_slots:["Grenade Discharger"], pairs:[],
+          slots:[
+            { id:"melee", label:"Falling-star Power Spear", options:[
+              {id:"perdition_type", label:"Perdition Weapon",       pts:5, list:"perdition_weapons"},
+              {id:"equinox_blades", label:"Pair of Equinox Blades", pts:0},
+            ]},
+          ],
+          addons:[],
+        },
+        perModel:{
+          modelTypes:["Infantry","Antigrav"],
+          included_slots:["Grenade Discharger"], pairs:[],
+          slots:[
+            { id:"melee", label:"Falling-star Power Spear", options:[
+              {id:"equinox_blades", label:"Pair of Equinox Blades", pts:0},
+            ]},
+          ],
+          addons:[],
+        },
+      }
+    },
   ],
   Troops:[
     {
@@ -5931,6 +6185,41 @@ const SU = {
           {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["augury_scanner"]},
           {id:"bayonet",        label:"Bayonet",        pts:1, exclusive:["chain_bayonet"]},
           {id:"chain_bayonet",  label:"Chain Bayonet",  pts:2, exclusive:["bayonet"]},
+        ],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
+      id:"t_ba_inductii", name:"Blood Angels Inductii Squad", basePts:100, minSize:10, maxSize:20, ptsPerModel:9,
+      req:{legion:"Blood Angels"},
+      traits:["[Allegiance]","Blood Angels"],
+      specialRules:["Vanguard (2)","Eaters of the Dead","Inductii"],
+      modelTypes:["Infantry"],
+      championLabel:"Inductii", baseModelLabel:"Inductii", baseModelPlural:"Inductii",
+      baseSizeBreakdown:"10 Inductii",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Frag Grenades","Krak Grenades"],
+        pairs:[
+          {id:"heavy_chainaxe", label:"Heavy Chainaxe", pts:5, replaces:["melee","pistol"],
+           chips:["Heavy Chainaxe"], sublabel:"Replaces chainsword & bolt pistol"},
+        ],
+        slots:[
+          { id:"melee", label:"Chainsword", options:[
+            {id:"heavy_chainsword", label:"Heavy Chainsword", pts:5,  per5cap:"ind_melee", per5max:1, per5size:4},
+            {id:"power_weapon",     label:"Power Weapon",     pts:10, per5cap:"ind_melee", per5max:1, per5size:4, list:"power_weapons"},
+            {id:"charnabal_sabre",  label:"Charnabal Sabre",  pts:5,  per5cap:"ind_melee", per5max:1, per5size:4},
+          ]},
+          { id:"pistol", label:"Bolt Pistol", options:[
+            {id:"legion_pistol", label:"Legion Pistol", pts:0, per5cap:"ind_pistol", per5max:1, per5size:4, list:"legion_pistols"},
+          ]},
+        ],
+        addons:[
+          {id:"vexilla",        label:"Vexilla",        pts:10, unique_in_unit:true},
+          // Legion Equipment list = Augury Scanner / Nuncio-vox at +10 each (see architecture notes).
+          {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["nuncio_vox"]},
+          {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["augury_scanner"]},
         ],
       }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
     },
@@ -6445,10 +6734,10 @@ const SU = {
         included_slots:[],
         pairs:[
           {id:"paired_pf", label:"Paired Gravis Power Fists & Two Combi-bolters", pts:5, replaces:["mount1","mount2"], chips:["Paired Gravis Power Fists","Combi-bolter","Combi-bolter"], sublabel:"Fills both weapon mounts"},
-          {id:"paired_cf", label:"Paired Gravis Chainfists & Two Combi-bolters", pts:5, replaces:["mount1","mount2"], chips:["Gravis Chainfist","Gravis Chainfist","Combi-bolter","Combi-bolter"], sublabel:"Fills both weapon mounts"},
+          {id:"paired_cf", label:"Paired Gravis Chainfists & Two Combi-bolters", pts:5, replaces:["mount1","mount2"], chips:["Paired Gravis Chainfists","Combi-bolter","Combi-bolter"], sublabel:"Fills both weapon mounts"},
         ],
         slots:[
-          { id:"mount1", label:"Weapon Mount 1", options:[
+          { id:"mount1", label:"Weapon Mount 1", defaultChips:["Gravis Bolt Cannon"], options:[
             {id:"gravis_bolt_cannon", label:"Gravis Bolt Cannon", pts:0},
             {id:"gravis_autocannon", label:"Gravis Autocannon", pts:10},
             {id:"gravis_plasma_cannon", label:"Gravis Plasma Cannon", pts:10},
@@ -6463,7 +6752,7 @@ const SU = {
             {id:"cf_hf", label:"Gravis Chainfist & Heavy Flamer", pts:10, chips:["Gravis Chainfist","Heavy Flamer"]},
             {id:"cf_m",  label:"Gravis Chainfist & Meltagun", pts:20, chips:["Gravis Chainfist","Meltagun"]},
           ]},
-          { id:"mount2", label:"Weapon Mount 2", options:[
+          { id:"mount2", label:"Weapon Mount 2", defaultChips:["Gravis Bolt Cannon"], options:[
             {id:"gravis_bolt_cannon", label:"Gravis Bolt Cannon", pts:0},
             {id:"gravis_autocannon", label:"Gravis Autocannon", pts:10},
             {id:"gravis_plasma_cannon", label:"Gravis Plasma Cannon", pts:10},
@@ -6496,10 +6785,10 @@ const SU = {
         included_slots:[],
         pairs:[
           {id:"paired_pf", label:"Paired Gravis Power Fists & Two Combi-bolters", pts:5, replaces:["mount1","mount2"], chips:["Paired Gravis Power Fists","Combi-bolter","Combi-bolter"], sublabel:"Fills both weapon mounts"},
-          {id:"paired_cf", label:"Paired Gravis Chainfists & Two Combi-bolters", pts:5, replaces:["mount1","mount2"], chips:["Gravis Chainfist","Gravis Chainfist","Combi-bolter","Combi-bolter"], sublabel:"Fills both weapon mounts"},
+          {id:"paired_cf", label:"Paired Gravis Chainfists & Two Combi-bolters", pts:5, replaces:["mount1","mount2"], chips:["Paired Gravis Chainfists","Combi-bolter","Combi-bolter"], sublabel:"Fills both weapon mounts"},
         ],
         slots:[
-          { id:"mount1", label:"Weapon Mount 1", options:[
+          { id:"mount1", label:"Weapon Mount 1", defaultChips:["Gravis Bolt Cannon"], options:[
             {id:"gravis_bolt_cannon", label:"Gravis Bolt Cannon", pts:0},
             {id:"gravis_melta_cannon", label:"Gravis Melta Cannon", pts:15},
             {id:"gravis_autocannon", label:"Gravis Autocannon", pts:10},
@@ -6519,7 +6808,7 @@ const SU = {
             {id:"cf_gg", label:"Gravis Chainfist & Graviton Gun", pts:15, chips:["Gravis Chainfist","Graviton Gun"]},
             {id:"cf_m",  label:"Gravis Chainfist & Meltagun", pts:10, chips:["Gravis Chainfist","Meltagun"]},
           ]},
-          { id:"mount2", label:"Weapon Mount 2", options:[
+          { id:"mount2", label:"Weapon Mount 2", defaultChips:["Gravis Bolt Cannon"], options:[
             {id:"gravis_bolt_cannon", label:"Gravis Bolt Cannon", pts:0},
             {id:"gravis_melta_cannon", label:"Gravis Melta Cannon", pts:15},
             {id:"gravis_autocannon", label:"Gravis Autocannon", pts:10},
@@ -6543,6 +6832,25 @@ const SU = {
         addons:[
           {id:"havoc_launcher", label:"Havoc Launcher", pts:5, unique_in_unit:true},
         ],
+      }
+    },
+    {
+      id:"we_contemptor_incaendius", name:"Contemptor-Incaendius Dreadnought", basePts:200, minSize:1, maxSize:1,
+      req:{legion:"Blood Angels"},
+      traits:["[Allegiance]","Blood Angels"],
+      specialRules:["Bulky (7)","Explodes (4+)","Incaendius Boost Pack","Deep Strike"],
+      modelTypes:["Walker"],
+      stats:{M:8,WS:4,BS:4,S:7,T:7,W:6,I:4,A:4,LD:12,CL:10,WP:7,IN:5,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:["Paired Talons of Perdition"],
+        pairs:[],
+        slots:[
+          { id:"flamers", label:"Two Heavy Flamers", defaultChips:["Heavy Flamer","Heavy Flamer"], options:[
+            {id:"two_meltaguns", label:"Two Meltaguns", pts:20, chips:["Meltagun","Meltagun"]},
+            {id:"two_iliastus_assault_cannons", label:"Two Iliastus Assault Cannons", pts:30, chips:["Iliastus Assault Cannon","Iliastus Assault Cannon"]},
+          ]},
+        ],
+        addons:[],
       }
     },
     {
@@ -6579,26 +6887,29 @@ const SU = {
       wargear:{
         included_slots:[],
         pairs:[
-          {id:"paired_claws", label:"Paired Leviathan Siege Claws & Two Meltaguns", pts:5, replaces:["mount1","mount2"], sublabel:"Fills both weapon mounts"},
-          {id:"paired_drills", label:"Paired Leviathan Siege Drills & Two Meltaguns", pts:5, replaces:["mount1","mount2"], sublabel:"Fills both weapon mounts"},
+          {id:"paired_claws", label:"Paired Leviathan Siege Claws & Two Meltaguns", pts:5, replaces:["mount1","mount2"], sublabel:"Fills both weapon mounts",
+           chips:["Paired Leviathan Siege Claws","Meltagun","Meltagun"]},
+          {id:"paired_drills", label:"Paired Leviathan Siege Drills & Two Meltaguns", pts:5, replaces:["mount1","mount2"], sublabel:"Fills both weapon mounts",
+           chips:["Paired Leviathan Siege Drills","Meltagun","Meltagun"]},
         ],
         slots:[
-          { id:"mount1", label:"Weapon Mount 1", options:[
-            {id:"siege_claw_melta", label:"Leviathan Siege Claw & Meltagun", pts:0},
-            {id:"siege_drill_melta", label:"Leviathan Siege Drill & Meltagun", pts:5},
+          { id:"mount1", label:"Weapon Mount 1", defaultChips:["Leviathan Siege Claw","Meltagun"], options:[
+            {id:"siege_claw_melta", label:"Leviathan Siege Claw & Meltagun", pts:0, chips:["Leviathan Siege Claw","Meltagun"]},
+            {id:"siege_drill_melta", label:"Leviathan Siege Drill & Meltagun", pts:5, chips:["Leviathan Siege Drill","Meltagun"]},
             {id:"grav_flux_bombard", label:"Grav-flux Bombard", pts:10},
             {id:"leviathan_storm_cannon", label:"Leviathan Storm Cannon", pts:15},
             {id:"cyclonic_melta_lance", label:"Cyclonic Melta Lance", pts:20},
           ]},
-          { id:"mount2", label:"Weapon Mount 2", options:[
-            {id:"siege_claw_melta", label:"Leviathan Siege Claw & Meltagun", pts:0},
-            {id:"siege_drill_melta", label:"Leviathan Siege Drill & Meltagun", pts:5},
+          { id:"mount2", label:"Weapon Mount 2", defaultChips:["Leviathan Siege Claw","Meltagun"], options:[
+            {id:"siege_claw_melta", label:"Leviathan Siege Claw & Meltagun", pts:0, chips:["Leviathan Siege Claw","Meltagun"]},
+            {id:"siege_drill_melta", label:"Leviathan Siege Drill & Meltagun", pts:5, chips:["Leviathan Siege Drill","Meltagun"]},
             {id:"grav_flux_bombard", label:"Grav-flux Bombard", pts:10},
             {id:"leviathan_storm_cannon", label:"Leviathan Storm Cannon", pts:15},
             {id:"cyclonic_melta_lance", label:"Cyclonic Melta Lance", pts:20},
           ]},
-          { id:"flamers", label:"Two Heavy Flamers", options:[
-            {id:"two_twin_volkite_calivers", label:"Two Twin Volkite Calivers", pts:15},
+          { id:"flamers", label:"Two Heavy Flamers", defaultChips:["Heavy Flamer","Heavy Flamer"], options:[
+            {id:"two_twin_volkite_calivers", label:"Two Twin Volkite Calivers", pts:15, chips:["Twin Volkite Caliver","Twin Volkite Caliver"]},
+            {id:"two_iliastus_assault_cannons", label:"Two Iliastus Assault Cannons", pts:30, req:{legion:"Blood Angels"}, chips:["Iliastus Assault Cannon","Iliastus Assault Cannon"]},
           ]},
         ],
         addons:[
@@ -7199,7 +7510,7 @@ const SU = {
               {id:"combi_bolter", label:"Combi-bolter", pts:0},
               {id:"combi_weapon", label:"Combi-weapon", pts:0, list:"combi_weapons"},
             ]},
-            {id:"power_weapon", label:"Power Weapon", options:[
+            {id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type", label:"Specify Type", pts:0, list:"power_weapons"},
               {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
             ]},
@@ -7217,7 +7528,7 @@ const SU = {
               {id:"reaper_autocannon", label:"Reaper Autocannon", pts:15, per5cap:"cata_heavy", per5max:1},
               {id:"plasma_blaster",    label:"Plasma Blaster",    pts:10, per5cap:"cata_heavy", per5max:1},
             ]},
-            {id:"power_weapon", label:"Power Weapon", options:[
+            {id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type", label:"Specify Type", pts:0, list:"power_weapons"},
               {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
             ]},
@@ -7420,7 +7731,7 @@ const SU = {
               {id:"reaper_autocannon", label:"Reaper Autocannon", pts:15},
               {id:"plasma_blaster",    label:"Plasma Blaster",    pts:10},
             ]},
-            {id:"power_weapon", label:"Power Weapon", options:[
+            {id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type", label:"Specify Type", pts:0, list:"power_weapons"},
               {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
               {id:"chainfist", label:"Chainfist", pts:10},
@@ -7438,7 +7749,7 @@ const SU = {
               {id:"reaper_autocannon", label:"Reaper Autocannon", pts:15},
               {id:"plasma_blaster",    label:"Plasma Blaster",    pts:10},
             ]},
-            {id:"power_weapon", label:"Power Weapon", options:[
+            {id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type", label:"Specify Type", pts:0, list:"power_weapons"},
               {id:"chainfist", label:"Chainfist", pts:10},
             ]},
@@ -7464,7 +7775,7 @@ const SU = {
               {id:"volkite_charger", label:"Volkite Charger", pts:0},
               {id:"combi_weapon", label:"Combi-weapon", pts:0, list:"combi_weapons"},
             ]},
-            {id:"power_weapon", label:"Power Weapon", options:[
+            {id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type", label:"Specify Type", pts:0, list:"power_weapons"},
               {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
             ]},
@@ -7482,7 +7793,7 @@ const SU = {
               {id:"reaper_autocannon", label:"Reaper Autocannon", pts:15, per5cap:"tart_heavy", per5max:1},
               {id:"plasma_blaster",    label:"Plasma Blaster",    pts:10, per5cap:"tart_heavy", per5max:1},
             ]},
-            {id:"power_weapon", label:"Power Weapon", options:[
+            {id:"power_weapon", label:"Power Weapon", required:true, options:[
               {id:"pw_type", label:"Specify Type", pts:0, list:"power_weapons"},
               {id:"terminator_melee", label:"Legion Terminator Melee Weapon", pts:0, list:"terminator_melee"},
             ]},
@@ -7574,6 +7885,59 @@ const SU = {
           ],
         },
       }
+    },
+    {
+      id:"ha_ba_angels_tears", name:"The Angel's Tears",
+      basePts:150, minSize:5, maxSize:10, ptsPerModel:20,
+      req:{legion:"Blood Angels"},
+      traits:["[Allegiance]","Blood Angels"],
+      specialRules:["Deep Strike","Bulky (2)","Vanguard (3)","Bitter Duty","Firestorm"],
+      modelTypes:["Infantry","Antigrav"],
+      championLabel:"Arch-Erelim", baseModelLabel:"Erelim", baseModelPlural:"Erelim",
+      baseSizeBreakdown:"1 Arch-Erelim + 4 Erelim",
+      championStats:{M:12,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:8,CL:7,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:12,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:7,CL:7,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{
+        // "Two volkite serpenta" = two separate weapons, so two slots; the options that
+        // exchange BOTH are pair exchanges replacing them together.
+        const bothPairs = ()=>[
+          {id:"p_erelim_gl",       label:"Erelim Grenade Launcher", pts:10, replaces:["serpenta1","serpenta2"], chips:["Erelim Grenade Launcher"], sublabel:"Replaces both volkite serpentas"},
+          {id:"p_heavy_chainsword",label:"Heavy Chainsword",        pts:5,  replaces:["serpenta1","serpenta2"], chips:["Heavy Chainsword"],        sublabel:"Replaces both volkite serpentas"},
+          {id:"p_heavy_flamer",    label:"Heavy Flamer",            pts:10, replaces:["serpenta1","serpenta2"], chips:["Heavy Flamer"],            sublabel:"Replaces both volkite serpentas"},
+          {id:"p_rotor_cannon",    label:"Rotor Cannon",            pts:10, replaces:["serpenta1","serpenta2"], chips:["Rotor Cannon"],            sublabel:"Replaces both volkite serpentas"},
+          {id:"p_iliastus",        label:"Iliastus Assault Cannon", pts:20, replaces:["serpenta1","serpenta2"], chips:["Iliastus Assault Cannon"], sublabel:"Replaces both volkite serpentas"},
+        ];
+        return {
+          included_slots:[], pairs:[], slots:[], addons:[],
+          champion:{
+            modelTypes:["Infantry","Sergeant","Antigrav"],
+            included_slots:["Rad Grenades","Frag Grenades","Krak Grenades"],
+            pairs:bothPairs(),
+            slots:[
+              // Either serpenta may be exchanged, but each swap only once across the two.
+              { id:"serpenta1", label:"Volkite Serpenta", options:[
+                {id:"sergeant_melee", label:"Legion Sergeant Melee", pts:0, shared:true, list:"sergeant_melee"},
+                {id:"plasma_pistol",  label:"Plasma Pistol",         pts:0, shared:true},
+              ]},
+              { id:"serpenta2", label:"Volkite Serpenta", options:[
+                {id:"sergeant_melee", label:"Legion Sergeant Melee", pts:0, shared:true, list:"sergeant_melee"},
+                {id:"plasma_pistol",  label:"Plasma Pistol",         pts:0, shared:true},
+              ]},
+            ],
+            addons:[],
+          },
+          perModel:{
+            modelTypes:["Infantry","Antigrav"],
+            included_slots:["Rad Grenades","Frag Grenades","Krak Grenades"],
+            pairs:bothPairs(),
+            slots:[
+              { id:"serpenta1", label:"Volkite Serpenta", options:[] },
+              { id:"serpenta2", label:"Volkite Serpenta", options:[] },
+            ],
+            addons:[],
+          },
+        };
+      })()
     },
   ],
   HeavyTransport:[
@@ -8585,6 +8949,26 @@ const SU = {
         pairs:[], slots:[], addons:[],
       }
     },
+    {
+      id:"wl_sanguinius", name:"Sanguinius", basePts:485, minSize:1, maxSize:1,
+      req:{legion:"Blood Angels", allegiance:"Loyalist"}, uniqueRule:"Sanguinius",
+      primeAllTroops:{count:4, allowed:["Assault Squad"]},
+      traits:["Loyalist","Blood Angels","Master of the Legion"],
+      specialRules:["Sire of the Blood Angels","Bulky (6)","Angelic Descent","Deep Strike","Eternal Warrior (2)"],
+      modelTypes:["Paragon","Unique","Antigrav"],
+      stats:{M:16,WS:8,BS:6,S:6,T:6,W:6,I:6,A:6,LD:12,CL:10,WP:10,IN:10,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Infernus","Frag Grenades","Krak Grenades"],
+        pairs:[],
+        slots:[
+          { id:"blade", label:"The Blade Encarmine", defaultChips:["The Blade Encarmine"], options:[
+            {id:"telesto_moonsilver", label:"Spear of Telesto & Moonsilver Blade", pts:0,
+             chips:["Spear of Telesto","Moonsilver Blade"]},
+          ]},
+        ],
+        addons:[],
+      }
+    },
   ],
 
 };
@@ -8597,7 +8981,7 @@ const EQUIPMENT = {
   "Icon of the Warmaster": {text:"When this model is part of a unit that contains models with the Line (X) or Vanguard (X) rules, modify the value of X by +1."},
   "Nuncio-vox":           {text:"The unit may attempt to remove one Status token from itself at the beginning of its turn."},
   "Augury Scanner":       {text:"Ranged attacks made by models in this unit ignore the Shrouded special rule."},
-  "Cytheron Pattern Aegis": {text:"This model gains a 5+ invulnerable save and the Shield trait. In addition, this unit may declare the Shieldwall! Advanced Reaction even if the majority of its models do not have the Shield trait."},
+  "Cytheron Pattern Aegis": {traits:["Shield"], text:"This model gains a 5+ invulnerable save and the Shield trait. In addition, this unit may declare the Shieldwall! Advanced Reaction even if the majority of its models do not have the Shield trait."},
   "Armour of the Forest": {text:"When this model is fighting a Challenge, reduce the Damage characteristic of any Wound inflicted on it by 1 (to a minimum of 1)."},
   "Sonic Shriekers":      {text:"When this model\u2019s unit makes a Charge Move, the target of the Charge cannot make Reactions until the Charge Procedure has been completed."},
   "Incursor Pattern Command Array": {text:"This Super-heavy model is able to make the Overwatch and Return Fire reactions in response to actions made with any unit, instead of only units that contain models with the Paragon, Super-heavy, Knight, or Titan types. In addition, while this model has the Suppressed or Stunned status, it has the Auto-repair (4+) special rule."},
@@ -8608,12 +8992,13 @@ const EQUIPMENT = {
   "Cortex Controller":    {text:"If this unit includes Automata, it can ignore the restrictions on Automata making Reactions."},
   "Cyber-familiar":       {text:"This model gains +2 to Intelligence checks."},
   "Icon of Allegiance":   {text:"Gains Honor by winning Challenges and Close Combat. Honor grants bonus victory points at the end of battle."},
-  "Boarding Shield":      {text:"Grants a 5+ invulnerable save, the Shield trait, and the Heavy unit type."},
+  "Boarding Shield":      {traits:["Shield"], text:"Grants a 5+ invulnerable save, the Shield trait, and the Heavy unit type."},
   "The Pythian Scales":   {text:"Gains Feel No Pain (4+) against attacks with the Poisoned (X) rule."},
   "Servo-arm":            {text:"When this model uses the Battlesmith special rule to Repair, increase the amount of Hull Points or Wounds gained by the target model by 1."},
   "Company Standard":     {text:"Adds +1 to Combat Resolution Score. This model counts as 5 models for determining Outside Support in a Challenge."},
   "Legion Standard":      {text:"Adds +2 to Combat Resolution Score. This model counts as 6 models for determining Outside Support in a Challenge."},
-  "Combat Shield":        {text:"Grants the bearer a 5+ Invulnerable Save and a bonus to Focus rolls."},
+  "Combat Shield":        {text:"Grants the bearer a 5+ invulnerable save against Melee attacks, and a +1 modifier to Focus Rolls during a Challenge."},
+  "Coriolis Pattern Power Shield": {traits:["Shield"], text:"When a Wound is allocated to this model, reduce the Damage of that Wound by -1 (to a minimum of 1). Additionally, this model gains the Shield trait."},
   "Saturnine Teleportation Transponder":{text:"This model gains the Deep Strike rule. If this model joins a unit of Saturnine Terminators in reserve, the entire unit also gains Deep Strike."},
   "Thermal Diffraction Field":          {text:"Reduce the Strength of all hits on this model made with Las, Plasma, Melta, and Flame weapons by -1."},
   "Proteus Pattern Storm Shield":       {text:"Grants the bearer a 4+ Invulnerable Save and the Shield Trait."},
@@ -8622,7 +9007,7 @@ const EQUIPMENT = {
   "Strato-vox":                         {text:"Reserve Tests made for this unit are automatically successful. When this model is on the Battlefield, you may choose to have units in Reserves with Deep Strike automatically pass their Reserves tests, but they must arrive from Deep Strike."},
   "Icon of Calth":                      {text:"All Ultramarines models in this model's unit (including itself) have +1 Tactical Strength towards contesting and holding objectives."},
   "Vox-interlink":                      {text:"While this model is on the Battlefield, you may add +1 to your Reserves Tests."},
-  "Argyrum Pattern Boarding Shield":    {text:"This model has a 5+ invulnerable save, increasing to a 4+ invulnerable save against Melee Weapons. This model gains the Shield trait and the Heavy type."},
+  "Argyrum Pattern Boarding Shield":    {traits:["Shield"], text:"This model has a 5+ invulnerable save, increasing to a 4+ invulnerable save against Melee Weapons. This model gains the Shield trait and the Heavy type."},
   "Peritarch Targeter":                 {text:"When this unit makes a Shooting attack, if it remained Stationary this turn, Shrouded rolls cannot be made against that attack. Additionally, you may make an Intelligence Check for this unit. If successful, for this Shooting attack all models in the unit with a Peritarch Targeter have +1 BS."},
   "Searchlight": {text:"When Shooting, the target unit gets -1 to Shrouded rolls. This unit may never make Shrouded rolls."},
   "Seal the Veil": {text:"<strong>Seal the Veil</strong> (Psychic Reaction, Curse)<br><em>Trigger:</em> When charged by a Malefic unit, before their Setup Move.<br><em>Cost:</em> 1 Reaction Point<br><em>Focus:</em> An Anathemata model you control that was the target of the charge.<br><em>Target:</em> The Malefic unit making the charge.<br><em>Duration:</em> Immediate<br><em>Effect:</em> Target makes a Resistance check. If it fails, its Setup Move is only 1\" and it drops the highest die on its Charge Roll."},
@@ -8770,6 +9155,15 @@ const RULES = {
   "Phased Refractor Shields":     {type:"special_rule",  text:"This model's Invulnerable save is improved by 1 against ranged attacks."},
   "Lord of Automata":             {type:"special_rule",  text:"Adds one slot to this Detachment that may be filled with a single Castellax Battle Maniple or Castellax Destructor Maniple (Forces of the Taghmata army list)."},
   "Fate of the Gorgon":           {type:"special_rule",  text:"If Ferrus Manus is not a part of this army, this model has the Hatred (Emperor's Children) rule."},
+  "Archein of Wisdom":            {type:"special_rule",  text:"When this model is in a Challenge, it has access to the following special Gambit:<br>• Archein of Wisdom — When this Gambit is selected, this model gains a positive modifier to their Focus Roll equal to the number of successful Hit Tests made by their opponent in the previous round of the current Challenge."},
+  "The Ghost of Saiph":           {type:"special_rule",  text:"The first time this model is reduced to 0 Wounds, roll 1d6. On a 4+, this model is not removed as a Casualty and has its Remaining Wounds set to 1."},
+  "Shadows of Judgement":         {type:"special_rule",  text:"While this model is in a Challenge, it has the Duelist's Edge (1) and Feel No Pain (5+) rules."},
+  "The Blood is Forever":         {type:"special_rule",  text:"When this model is Locked in Combat with an enemy unit that outnumbers their unit, it gains the Feel No Pain (5+) rule. If it is outnumbered by more than twice their own number, instead it gains the Feel No Pain (4+) rule. Any model joining this unit that does not have this rule does not count towards the total for determining if this unit is outnumbered."},
+  "Set the Sky Aflame":           {type:"special_rule",  text:"When this unit is deployed via Deep Strike, no enemy models over 12\" away may target this unit with the Intercept Advanced Reaction."},
+  "Eaters of the Dead":           {type:"special_rule",  text:"If this unit is involved in a Close Combat that you win, you <i>must</i> select the below special aftermath option for this unit. If there is a model attached to this unit that does not have this rule, you may attempt a Cool Check to select a different option.<br>• <b>The Thirst</b> — This aftermath option is resolved after all other aftermath options have been completed for this Combat. Each enemy unit that is not part of this Combat (either because it never was or because of the other aftermath choices) that is within 8\" of this unit must make a Leadership Check. If failed, that unit gains the Routed status."},
+  "Incaendius Boost Pack":        {type:"special_rule",  text:"When this model makes a Rush, it gains the Antigrav type for that movement."},
+  "Sire of the Blood Angels":     {type:"special_rule",  text:"If this is a Blood Angels army:<br>• If four or more Troops slots in your Primary Detachment are filled with Assault Squads, then all of those slots are considered Prime Slots.<br>• Once per turn, when making a Reserves Roll for a Blood Angels unit with the Deep Strike rule, you may modify this Roll by +1. If successful, this unit must be deployed using the Deep Strike rule."},
+  "Angelic Descent":              {type:"special_rule",  text:"While this model is in a Challenge, it has access to the following special Gambit:<br>• Angelic Descent — May only be selected during the first Face-Off Step of a Challenge, and only if this model made a successful Charge this turn. When selected, this model gains a positive modifier to the Focus Roll equal to the X value in any Bulky (X) rule the enemy model it is engaged in the Challenge with has."},
   "Forbidden Augmentations":      {type:"special_rule",  text:"A unit containing only models with this rule is considered to contain a model with the Medic (X) rule for the purposes of declaring the Medic! Advanced Reaction. When targeted by that reaction, all Recovery Tests made as part of it have a Target Number of 5+."},
   "Sire of the Iron Hands":       {type:"special_rule",  text:"If this is an Iron Hands army:<br>• If four or more Troops slots in your Primary Detachment are filled with Tactical Squads and/or Breacher Squads, then all of those slots are considered Prime Slots.<br>• Until the end of the first Battle Turn, all Iron Hands Infantry in the army have the Feel No Pain (6+) rule."},
   "Tempered by War":              {type:"special_rule",  text:"While this model is in a Challenge, it has access to the following special Gambit:<br>• Tempered by War — When this Gambit is selected, this model's Toughness is set to 8 for the following Strike Step."},
@@ -8805,6 +9199,7 @@ const RULES = {
   "Psychic":                      {type:"weapon_trait",  text:"..."},
   "Volkite":                      {type:"weapon_trait",  text:"..."},
   "Armourbane": {type:"weapon_special", text:"Glancing Hits made with this weapon count as Penetrating Hits."},
+  "Aflame": {type:"weapon_special", text:"If this successfully Wounds an opponent in melee, regardless of whether any Damage is inflicted, that unit is considered 'aflame' until the end of the Phase. If an aflame unit is required to make a Leadership Check, that unit gets -{X} to that test."},
   "Armour-breaker": {type:"weapon_special", text:"When scoring a Penetrating Hit, roll a die. On a {X}, increase the Damage of that hit by +1."},
   "Concussive (1)":               {type:"weapon_special", text:"..."},
   "Detonation": {type:"weapon_special", text:"This weapon may only be used to attack Vehicles, Buildings, and immobile models."},
@@ -8919,7 +9314,7 @@ function ARMY_LIST_NAMES(){ return Object.values(ARMY_LISTS).filter(l=>(l.factio
 function LIST_ALLEGIANCE(label){ const l=Object.values(ARMY_LISTS).find(x=>x.label===label); return (l&&l.allegiance)||null; }
 // Display name for a list's faction axis ("Legion", "Aetheric Domain", ...).
 function FACTION_LABEL(label){ const l=Object.values(ARMY_LISTS).find(x=>x.label===label); return (l&&l.factionLabel)||"Legion"; }
-function FACTIONS_FOR(label){ const l=Object.values(ARMY_LISTS).find(x=>x.label===label); return (l&&l.factions)||[]; }
+function FACTIONS_FOR(label){ const l=Object.values(ARMY_LISTS).find(x=>x.label===label); return ((l&&l.factions)||[]).slice().sort((a,b)=>a.localeCompare(b)); }
 // The army's allegiance is forced when the PRIMARY list locks it (Ruinstorm => Traitor).
 function lockedAllegiance(){ return LIST_ALLEGIANCE(primaryGroup().list); }
 // An army list whose allegiance is locked (e.g. Ruinstorm = Traitor) can only be used
@@ -9430,6 +9825,28 @@ const LEGION_SWAPS = [
     add:"Sonic Shriekers", addId:"sonic_shriekers", pts:15, exclusive:["sonic_lance"] },
   { legion:"Emperor's Children", allegiance:"Traitor", type:"grant", requireTypes:["Command","Champion"],
     add:"Sonic Lance", addId:"sonic_lance", pts:10, exclusive:["sonic_shriekers"] },
+  // ── Blood Angels ──
+  { legion:"Blood Angels", type:"modelConditional",
+    onlyUnits:["e_veteran_tactical_squad","ret_centurion_command_squad"],
+    from:"Heavy Flamer", to:"Iliastus Assault Cannon", toId:"iliastus_assault_cannon", pts:10 },
+  { legion:"Blood Angels", type:"modelConditional", onlyUnits:["a_predator"],
+    from:"Turret Predator Cannon", to:"Turret Twin Iliastus Assault Cannon", toId:"twin_iliastus_assault_cannon", pts:0 },
+  // Cataphractii Terminators — characters (via Cataphractii profile) and the terminator squads.
+  { legion:"Blood Angels", type:"modelConditional", profileIncludes:"cataphractii",
+    from:"Heavy Flamer", to:"Iliastus Assault Cannon", toId:"iliastus_assault_cannon", pts:10 },
+  { legion:"Blood Angels", type:"modelConditional",
+    onlyUnits:["ret_cataphractii_command_squad","ha_cataphractii_terminator_squad"],
+    from:"Heavy Flamer", to:"Iliastus Assault Cannon", toId:"iliastus_assault_cannon", pts:10 },
+  { legion:"Blood Angels", type:"modelConditional", requireTypes:["Command","Champion","Sergeant"],
+    from:"Power Sword", to:"Blade of Perdition", toId:"blade_of_perdition", pts:5 },
+  { legion:"Blood Angels", type:"modelConditional", requireTypes:["Command","Champion","Sergeant"],
+    from:"Power Axe", to:"Axe of Perdition", toId:"axe_of_perdition", pts:5 },
+  { legion:"Blood Angels", type:"modelConditional", requireTypes:["Command","Champion","Sergeant"],
+    from:"Power Maul", to:"Maul of Perdition", toId:"maul_of_perdition", pts:5 },
+  { legion:"Blood Angels", type:"modelConditional", requireTypes:["Command","Champion","Sergeant"],
+    from:"Power Lance", to:"Spear of Perdition", toId:"spear_of_perdition", pts:5 },
+  { legion:"Blood Angels", type:"modelConditional",
+    from:"Plasma Pistol", to:"Inferno Pistol", toId:"inferno_pistol", pts:5 },
   // ── Iron Hands ──
   // Gorgon Pattern Terminator Armour — Tartaros-profile terminator characters only (+ Iron Father via a separate row).
   { legion:"Iron Hands", type:"grant", requireTypes:["Infantry"], profileIncludes:"tartaros",
@@ -9701,26 +10118,34 @@ function injectLegionSwaps(u, wg, cfg){
           }
           return;
         }
-        // Case B: source obtainable only as an option/list pick. Offer the target at
-        // (source cost + premium), so it works for any model that *could* take the source.
-        let found=null;
-        for(const s of (blk.slots||[])){
+        // Case B: source obtainable as an option/list pick. Offer the target in EVERY slot
+        // that offers the source, so the swap is available wherever the model could take the
+        // source (e.g. a pistol offered via the officer-wargear list on both the bolter AND
+        // pistol slots). Price = source-access cost + premium.
+        (blk.slots||[]).forEach(s=>{
+          if(s.label===r.to) return;                    // slot already defaults to the target
+          if(s.options.some(o=>o.id===r.toId)) return;  // already offered here
+          let price=null, srcOpt=null;
           for(const o of (s.options||[])){
-            if(o.label && isSource(o.label)){ found={slot:s, price:(o.pts||0)}; break; }
+            if(o.label && isSource(o.label)){ price=(o.pts||0); srcOpt=o; break; }
             if(o.list){
               const items=((WARGEAR_LISTS[o.list]||{}).items||[]);
               const it = items.find(x=>isSource(x.label));
-              if(it){ found={slot:s, price:(o.pts||0)+(it.pts||0)}; break; }
+              if(it){ price=(o.pts||0)+(it.pts||0); srcOpt=o; break; }
             }
           }
-          if(found) break;
-        }
-        // Skip if that slot already defaults to the target (no real exchange).
-        if(found && found.slot.label !== r.to && !found.slot.options.some(o=>o.id===r.toId)){
-          found.slot.options.push({ id:r.toId, label:r.to, legionSwap:true, req:{legion:r.legion},
-            pts: swapCost(found.price) });
-          touched=true;
-        }
+          if(price!==null){
+            const newOpt={ id:r.toId, label:r.to, legionSwap:true, req:{legion:r.legion}, pts:swapCost(price) };
+            // Inherit any per-N-models cap from the source option, so a restricted weapon's
+            // replacement counts against the same limit (e.g. Iliastus on a 1-per-5 slot).
+            if(srcOpt && srcOpt.per5cap){ newOpt.per5cap=srcOpt.per5cap; newOpt.per5max=srcOpt.per5max; newOpt.per5size=srcOpt.per5size; }
+            // Inherit a shared (once-per-model-across-slots) lock, sharing the SOURCE's group so
+            // the swap and its source consume the same single exchange.
+            if(srcOpt && srcOpt.shared){ newOpt.shared=true; newOpt.shared_group=srcOpt.shared_group||srcOpt.id; }
+            s.options.push(newOpt);
+            touched=true;
+          }
+        });
       } else if(r.type==="grant"){
         // Optional ADDED wargear (not a swap) for qualifying models, via the addon
         // mechanism: "may be given <item> for +N points per model".
@@ -10404,6 +10829,18 @@ function resolveOption(slot, optId) {
   return findListItem(optId);
 }
 
+// A slot option that offers a wargear LIST carries an access premium in its own pts
+// (e.g. "Power Weapon +10" → then pick a type from power_weapons). resolveOption returns the
+// list ITEM (usually 0 pts), so the premium has to be added separately — mirroring how
+// list-based ADDONS are priced as addon.pts + item.pts. Returns the offering option, or null.
+function slotListHost(slot, chosenId) {
+  if (!chosenId) return null;
+  if ((slot.options || []).some(o => o.id === chosenId)) return null;   // inline pick, no host
+  return (slot.options || []).find(o => o.list &&
+    (((typeof WARGEAR_LISTS !== 'undefined' && WARGEAR_LISTS[o.list]) || {}).items || [])
+      .some(it => it.id === chosenId)) || null;
+}
+
 // Get all weapon labels available to a unit (included + slot options + list items)
 function unitWeaponLabels(u, activeCfg) {
   const labels = new Set();
@@ -10510,6 +10947,8 @@ function cp(u, cfg) {
     const opt = resolveOption(slot, chosen);
     if (!opt) return;
     p += opt.ptsPerModel ? (opt.pts||0)*modelCount : (opt.pts||0);
+    const _host = slotListHost(slot, chosen);
+    if (_host) p += _host.ptsPerModel ? (_host.pts||0)*modelCount : (_host.pts||0);
   });
   (cfg.addons||[]).forEach(id => {
     const addon = (wg.addons||[]).find(a=>a.id===id);
@@ -10534,6 +10973,8 @@ function cp(u, cfg) {
         if (!chosen) return;
         const opt = resolveOption(slot, chosen);
         if (opt) mp += opt.pts||0;
+        const _host = slotListHost(slot, chosen);
+        if (_host) mp += _host.pts||0;
       });
       (mc.addons||[]).forEach(id => {
         const addon = (mwg.addons||[]).find(a=>a.id===id);
@@ -10659,15 +11100,24 @@ function slotLabel(wg, cfg, slot) {
   return {name: opt?opt.label:chosen, pts: opt?opt.pts:0};
 }
 
-function sharedOptionUsed(wg, cfg, optId, excludeSlotId) {
+function sharedOptionUsed(wg, cfg, optId, excludeSlotId, opt) {
   if (!wg||!wg.slots) return false;
   const lockedSlots = cfg.pairExchange
     ? ((wg.pairs||[]).find(x=>x.id===cfg.pairExchange)||{}).replaces||[]
     : [];
+  // Options lock by GROUP, not by id, so a legion swap shares its source's lock
+  // (taking an Inferno Pistol also consumes the model's one Plasma Pistol exchange).
+  const grp = (opt && (opt.shared_group || opt.id)) || optId;
   return (wg.slots||[]).some(slot => {
     if (slot.id===excludeSlotId) return false;
     if (lockedSlots.includes(slot.id)) return false;
-    return (cfg.slots||{})[slot.id]===optId;
+    const chosen = (cfg.slots||{})[slot.id];
+    if (!chosen) return false;
+    // Resolve which option of THIS slot the stored id belongs to: an inline option, or the
+    // option offering the wargear list the chosen ITEM came from.
+    const other = (slot.options||[]).find(o=>o.id===chosen) || slotListHost(slot, chosen);
+    if (!other) return false;
+    return (other.shared_group || other.id) === grp;
   });
 }
 
@@ -10842,6 +11292,23 @@ function togglePerModelAddon(iid, i, modelKey, addonId) {
 function openPerModelListPicker(iid, i, modelKey, slotId, listKey) {
   ST.modal={mode:"permodel_list_pick", iid, i, modelKey, slotId, listKey};
   render();
+}
+// Pair pick: a pair exchange that also grants a weapon of a player-chosen type.
+function openPairListPicker(iid, i, modelKey, pairId, listKey) {
+  ST.modal={mode:"pair_list_pick", iid, i, modelKey, pairId, listKey};
+  render();
+}
+function setPairPick(iid, i, modelKey, itemId) {
+  const d=modalDet(ST.dets.find(x=>x.iid===iid));
+  const cfg={...(d.cfgs[i]||{})};
+  if(modelKey==='champion'){ cfg.champion={...(cfg.champion||{}), pairPick:itemId}; }
+  else {
+    const idx=parseInt(modelKey,10);
+    const chosen=[...(cfg.chosen||[])];
+    chosen[idx]={...(chosen[idx]||{}), pairPick:itemId};
+    cfg.chosen=chosen;
+  }
+  d.cfgs[i]=cfg; saveAndRender();
 }
 
 // Open sergeant sub-modal
@@ -11165,7 +11632,7 @@ function renderWargearModal(det, slotIdx) {
           // Filter by legion, weapon availability, subtype
           if (!optionVisible(opt, u, cfg)) return;
           const isSelected = (cfg.slots||{})[slot.id] === opt.id;
-          const isSharedUsed = opt.shared && sharedOptionUsed(wg, cfg, opt.id, slot.id);
+          const isSharedUsed = opt.shared && sharedOptionUsed(wg, cfg, opt.id, slot.id, opt);
           const isList = !!opt.list;
           const currentChoice = (cfg.slots||{})[slot.id];
           // Only active if the chosen item actually belongs to THIS option's list
@@ -11409,12 +11876,37 @@ function renderWargearModal(det, slotIdx) {
       if (mwg.pairs && mwg.pairs.length) {
         (mwg.pairs||[]).forEach(pair => {
           const isPairSel = mc.pairExchange === pair.id;
+          // unique_in_unit pair: only one model in the unit may take it (e.g. a standard bearer).
+          let pairUnavail = false;
+          if (pair.unique_in_unit && !isPairSel) {
+            const takenByOther = (cfg.chosen||[]).some((other,oidx) =>
+              String(oidx) !== mkey && other && other.pairExchange === pair.id
+            ) || (mkey!=='champion' && (cfg.champion||{}).pairExchange === pair.id);
+            if (takenByOther) pairUnavail = true;
+          }
+          if (pairUnavail) {
+            html2 += `<div class="slot-option disabled" style="padding:3px 8px;margin-bottom:4px;opacity:.5;cursor:not-allowed;">
+              <span>${pair.label} <span style="font-size:12px;color:var(--text-muted);">(taken by another model)</span></span>
+              <span class="slot-option-pts">+${pair.pts} pts</span>
+            </div>`;
+            return;
+          }
           const pairOC = "setPerModelPair('" + esc(iid) + "'," + slotIdx + ",'" + mkey + "','" + pair.id + "')";
           const pairWA = weaponHoverAttrs(pair.label);
           html2 += `<div class="slot-option${isPairSel?' selected':''}" onclick="${pairOC}" ${pairWA} style="padding:3px 8px;margin-bottom:4px;">
             <span>${pair.label} <span style="font-size:12px;color:var(--text-muted);">(pair exchange — replaces both)</span></span>
             <span class="slot-option-pts">+${pair.pts} pts</span>
           </div>`;
+          // Follow-up type picker for a pair that grants a pickable weapon.
+          if (isPairSel && pair.pickList) {
+            const items = (WARGEAR_LISTS[pair.pickList]||{}).items||[];
+            const picked = items.find(x=>x.id===mc.pairPick);
+            const pickOC = "openPairListPicker('" + esc(iid) + "'," + slotIdx + ",'" + mkey + "','" + pair.id + "','" + pair.pickList + "')";
+            html2 += `<div class="slot-option" onclick="${pickOC}" style="padding:3px 8px;margin:0 0 4px 18px;border-left:2px solid var(--gold-dark);">
+              <span>${picked ? picked.label : `<span style="color:var(--red);font-weight:600;">⚠ Specify ${pair.pickPlaceholder||'type'}</span>`} <span style="font-size:12px;color:var(--text-muted);">(choose type)</span></span>
+              <span class="slot-option-pts">›</span>
+            </div>`;
+          }
         });
       }
 
@@ -11433,7 +11925,9 @@ function renderWargearModal(det, slotIdx) {
             return;
           }
           const slotWA = weaponHoverAttrs(slot.label);
-          html2 += `<div style="font-size:13px;color:var(--gold-dark);font-family:'Cinzel',serif;margin:.3rem 0 .2rem;" ${slotWA}>${slot.label}</div>`;
+          // Mandatory pick not yet made → red warning, matching the pair-pick prompt.
+          const needsPick = slot.required && !((mc.slots||{})[slot.id]);
+          html2 += `<div style="font-size:13px;color:${needsPick?'var(--red)':'var(--gold-dark)'};font-family:'Cinzel',serif;margin:.3rem 0 .2rem;" ${slotWA}>${needsPick?'<span style="font-weight:600;">⚠ Specify </span>':''}${slot.label}</div>`;
           // Restore button
           const curChoice = (mc.slots||{})[slot.id];
           if (curChoice) {
@@ -11458,6 +11952,15 @@ function renderWargearModal(det, slotIdx) {
             const listIsActive = isList && currentListItem &&
               (WARGEAR_LISTS[opt.list]||{items:[]}).items.some(ii=>ii.id===curChoice);
             const effSel = isSel2 || listIsActive;
+            // shared:true — this option may be taken only once across the model's slots
+            // (e.g. a two-weapon model may swap each weapon, but not for the same thing twice).
+            if (opt.shared && !effSel && sharedOptionUsed(mwg, mc, opt.id, slot.id, opt)) {
+              html2 += `<div class="slot-option disabled" style="padding:3px 8px;margin-bottom:2px;opacity:.4;cursor:not-allowed;">
+                <span>${opt.label} <span style="font-size:12px;font-style:italic;">(already taken by the other weapon)</span></span>
+                <span class="slot-option-pts">${optPtsLabel(opt,1)}</span>
+              </div>`;
+              return;
+            }
             // Subheading per capped group: capped "squad" swaps sit below the unlimited ones, each labelled with its per-5 budget
             if (opt.per5cap && opt.per5cap !== _lastCapGroup) {
               _lastCapGroup = opt.per5cap;
@@ -11494,6 +11997,31 @@ function renderWargearModal(det, slotIdx) {
               if (takenElsewhere && !effSel) {
                 html2 += `<div class="slot-option disabled" style="padding:3px 8px;margin-bottom:2px;opacity:.4;cursor:not-allowed;">
                   <span>${opt.label} <span style="font-size:12px;font-style:italic;">(taken by another model)</span></span>
+                  <span class="slot-option-pts">${optPtsLabel(opt,1)}</span>
+                </div>`;
+                return;
+              }
+            }
+            // max_in_unit: at most N models across the unit may take this option, or any
+            // option sharing its cap_group (e.g. "up to two models may exchange their power
+            // sword" for either a power fist or a chainfist).
+            if (opt.max_in_unit) {
+              const grp = opt.cap_group || opt.id;
+              const optInGroup = (wgm, chosenId) => {
+                if (!chosenId) return false;
+                return (wgm.slots||[]).some(os =>
+                  (os.options||[]).some(o => o.id === chosenId && o.max_in_unit && (o.cap_group||o.id) === grp));
+              };
+              const allMcs3 = [{key:'champion', wgm:(wg.champion||{}), mc:(cfg.champion||{})},
+                ...(cfg.chosen||[]).map((c,ci)=>({key:String(ci), wgm:(wg.perModel||{}), mc:(c||{})}))];
+              let used = 0;
+              allMcs3.forEach(({key:okey, wgm:owgm, mc:omc}) => {
+                if (okey === mkey) return;
+                if (Object.values(omc.slots||{}).some(cid => optInGroup(owgm, cid))) used++;
+              });
+              if (used >= opt.max_in_unit && !effSel) {
+                html2 += `<div class="slot-option disabled" style="padding:3px 8px;margin-bottom:2px;opacity:.4;cursor:not-allowed;">
+                  <span>${opt.label} <span style="font-size:12px;font-style:italic;">(max ${opt.max_in_unit} per unit)</span></span>
                   <span class="slot-option-pts">${optPtsLabel(opt,1)}</span>
                 </div>`;
                 return;
@@ -11891,7 +12419,7 @@ function renderPool(gid){
 }
 function _renderPoolInner(_grp){
   const allApex=["combat_retinue","officer_cadre","army_vanguard","linebreaker_echelon","hammer_of_olympia","medusan_vanguard"];
-  const allAux=["armoured_fist","tactical_support","armoured_support","heavy_support","combat_pioneer","shock_assault","first_strike","apothecarion_detachment","techmarine_covenant","daemonic_manifestation","dreadnought_talon","recon_demi_company","maelstrom_sentry_battery","storm_battery","veteran_cadre","ironfire_cohort","headhunter_leviathal","planetfall_speartip","primus_demi_company","spearhead_phalanx","supremacy_cadre","primacy_wing",
+  const allAux=["armoured_fist","tactical_support","armoured_support","heavy_support","combat_pioneer","shock_assault","first_strike","apothecarion_detachment","techmarine_covenant","daemonic_manifestation","dreadnought_talon","recon_demi_company","maelstrom_sentry_battery","storm_battery","veteran_cadre","ironfire_cohort","headhunter_leviathal","planetfall_speartip","primus_demi_company","spearhead_phalanx","revelation_host","supremacy_cadre","primacy_wing",
     "ironwing_gauntlet","deathwing_conclave","dreadwing_cadre","ravenwing_lance","stormwing_muster","firewing_echelon"];
   const altWarlord=["brotherhood_of_the_phoenix"];   // alternative Warlord detachments, gated by req (legion/allegiance/rite)
   // Army-list gate + allied-group restrictions, applied to EVERY detachment pool.
@@ -12033,6 +12561,7 @@ function _renderModalInner(){
         us=(SU[role]||[]).filter(unitLegionOk);
         subMsg='Injected slot';
       }
+      us=(us||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
       return `<div class="ov" onclick="closeModal()"><div class="mod" onclick="event.stopPropagation()">
         <button class="mc" onclick="closeModal()">✕</button>
         <div class="mt">Choose ${rn2}</div><div class="ms"${coopt?' style="color:#c080c0;"':''}>${subMsg}</div>
@@ -12139,6 +12668,7 @@ function _renderModalInner(){
     const beforeLegion=us.length;
     const slotList = def.slotList || null;   // detachment whose slots use another army list
     us=us.filter(u=>!u.injectedOnly && !unitAlliedBlocked(u) && (slotList ? unitListOk(u, slotList) : (unitListOk(u) && unitLegionOk(u))));
+    us=us.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     const rn2=def.restr&&def.restr[sd.r]?`<div class="wt">⚠ Restricted to: ${def.restr[sd.r].join(", ")}</div>`:"";
     const legionNote = (us.length===0 && beforeLegion>0)
       ? `<div class="wt">No ${ST.legion} units available for this slot — try changing the Legion in the header.</div>` : "";
@@ -12241,7 +12771,7 @@ function _renderModalInner(){
           allSgtSlotOpts.forEach(opt=>{
             if(!optionVisible(opt,u,cfg))return;
             const isSel=(sc.slots||{})[slot.id]===opt.id;
-            const isSharedUsed=opt.shared&&sharedOptionUsed(sgtwg,sc,opt.id,slot.id);
+            const isSharedUsed=opt.shared&&sharedOptionUsed(sgtwg,sc,opt.id,slot.id,opt);
             const isList=!!opt.list;
             const currentChoice=(sc.slots||{})[slot.id];
             const currentListItem=isList&&currentChoice?findListItem(currentChoice):null;
@@ -12352,6 +12882,36 @@ function _renderModalInner(){
         const iidb64 = btoa(iid);
         return `<div class="slot-option${isChosen?' selected':''}" ${pmLiWA}
           onclick="handlePmSlot(atob('${iidb64}'),${i},'${modelKey}','${slotId}','${item.id}')">
+          <span>${item.label}${legBadge}</span>
+          <span class="slot-option-pts">${ptsLabel}</span>
+        </div>`;
+      }).join('')}
+      <hr class="mdiv"><div style="text-align:center">
+        <button class="clrbtn" style="width:auto;padding:5px 20px;" onclick="backToUnit('${esc(iid)}',${i});">↩ Back</button>
+      </div></div></div>`;
+  }
+
+  if(mode==="pair_list_pick"){
+    const{modelKey,pairId,listKey}=ST.modal;
+    const list=WARGEAR_LISTS[listKey]; if(!list)return'';
+    const det2=modalDet(ST.dets.find(d=>d.iid===iid));
+    const u2=det2?det2.slots[i]:null;
+    const cfg2=det2?(det2.cfgs[i]||{}):{};
+    const mc2=modelKey==='champion'?(cfg2.champion||{}):(cfg2.chosen||[])[parseInt(modelKey)]||{};
+    const items=list.items.filter(item=>optionVisible(item,u2||{}));
+    const currentChoice=mc2.pairPick;
+    const iidb64=btoa(iid);
+    return `<div class="ov" onclick="backToUnit('${esc(iid)}',${i})">
+      <div class="mod" onclick="event.stopPropagation()">
+      <button class="mc" onclick="backToUnit('${esc(iid)}',${i})">✕</button>
+      <div class="mt">${list.label}</div>
+      <div class="ms">Select a weapon for this model</div>
+      ${items.map(item=>{
+        const isChosen=currentChoice===item.id;
+        const legBadge=item.req&&item.req.legion?` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${item.req.legion}</span>`:'';
+        const ptsLabel=item.pts?'+'+item.pts+' pts':'free';
+        return `<div class="slot-option${isChosen?' selected':''}" ${weaponHoverAttrs(item.label)}
+          onclick="setPairPick(atob('${iidb64}'),${i},'${modelKey}','${item.id}');backToUnit(atob('${iidb64}'),${i})">
           <span>${item.label}${legBadge}</span>
           <span class="slot-option-pts">${ptsLabel}</span>
         </div>`;
@@ -12505,6 +13065,20 @@ const LEGION_RITES = {
       text: "<b>Restriction:</b> Once per battle.<br><b>Trigger:</b> When your opponent declares a Charge against your unit, just before the Setup Move.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> The unit being charged.<br><b>Effect:</b> Immediately resolve a Shooting Attack against the charging unit with the target unit. These attacks can be made with any Ranged Weapon, and are resolved at full Ballistic Skill. During this Shooting Attack, weapons in your unit have their Firepower increased by +1, and gain the Overload (1) rule. If they already have the Overload (X) rule, increase X by 1. After resolving this Shooting Attack, your opponent continues the Charge as normal. Your unit may not make Volley Attacks during this Charge."
     },
   },
+  "Blood Angels": {
+    tactica: {
+      name: "Encarmine Fury",
+      text: "When your non-Vehicle unit makes a Charge Move, models in that unit gain +1 Strength until end of turn."
+    },
+    gambit: {
+      name: "Thrall of the Red Thirst",
+      text: "When this Gambit is selected, this model may ignore any negative modifiers to the Focus Roll for being below starting Wounds, and Wounds it inflicts this round have +1 Damage. This model gains no bonus to the Focus Roll for outside support this round."
+    },
+    reaction: {
+      name: "Wrath of Angels",
+      text: "<b>Restriction:</b> Once per battle.<br><b>Trigger:</b> Your opponent declares a Shooting Attack targeting your unit.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> Your targeted unit.<br><b>Effect:</b> Your opponent finishes resolving this Shooting Attack. After you Remove Casualties, each remaining model in your unit immediately makes a normal Move directly towards the nearest model in the triggering unit. These models must move as close as possible to the triggering unit while remaining at least 1\" away from any enemy model. After this move, if any model from your unit is within 6\" of the triggering unit, that unit must make a Cool Check during the Morale sub-phase of this Shooting Phase. If this check is failed, the triggering unit gains the Pinned status."
+    },
+  },
   "Alpha Legion": {
     tactica: {
       name: "Lies and Obfuscation",
@@ -12600,7 +13174,17 @@ function _modelGearLabels(blk, mc){
         else add(opt.label||chosen); } }
       else { if(slot.defaultChips) slot.defaultChips.forEach(add); else { const dl=stripHint(slot.label); if(weaponKeyFromLabel(dl) || (typeof EQUIPMENT!=="undefined" && EQUIPMENT[dl])) add(dl); } }
     });
-    if(pair){ if(pair.chips) pair.chips.forEach(add); else add(pair.label); }
+    if(pair){
+      if(pair.chips) pair.chips.forEach(add); else add(pair.label);
+      // A pair may also grant a weapon whose exact type the player picks from a list
+      // (e.g. Legion Standard & Power Weapon). Show the pick once chosen.
+      if(pair.pickList){
+        const picked = mc.pairPick;
+        const items = ((typeof WARGEAR_LISTS!=='undefined' && WARGEAR_LISTS[pair.pickList])||{}).items||[];
+        const it = picked ? items.find(x=>x.id===picked) : null;
+        add(it ? it.label : (pair.pickPlaceholder||null));
+      }
+    }
     const _activeAddonIds = new Set(mc.addons||[]);
     (blk.addons||[]).forEach(a=>{ if(!a||a.decurionDisabled) return;
       if(!(a.always_on || _activeAddonIds.has(a.id))) return;   // always-on (innate) grants apply even when unselected
@@ -12621,6 +13205,21 @@ function pmPlural(label,n){
 }
 
 // Equipped weapons for a unit+cfg with per-weapon counts, split ranged/melee.
+// Unit-wide addons live on the ROOT wargear block of a multi-model unit and arm every
+// model at a flat cost (e.g. "Melta Bombs (all models)"). Return the gear labels they add.
+function _unitWideAddonLabels(wg, cfg){
+  const out=[];
+  const active=new Set(cfg.addons||[]);
+  (wg.addons||[]).forEach(a=>{
+    if(!a || a.decurionDisabled) return;
+    if(!(a.always_on || active.has(a.id))) return;
+    if(a.grants && a.grants.weapons) a.grants.weapons.forEach(w=>out.push(w));
+    const base=String(a.label||'').replace(/\s*\([^)]*\)\s*$/,'').trim();  // drop "(all models)" style hints
+    if(weaponKeyFromLabel(base) || (typeof EQUIPMENT!=='undefined' && EQUIPMENT[base])) out.push(base);
+    else if(weaponKeyFromLabel(a.label) || (typeof EQUIPMENT!=='undefined' && EQUIPMENT[a.label])) out.push(a.label);
+  });
+  return out;
+}
 function playLoadout(u, cfg){
   const wg = activeWargear(u, cfg);
   const counts={}, order=[];
@@ -12628,6 +13227,7 @@ function playLoadout(u, cfg){
   const size = wg.perModel ? (cfg.size||u.minSize||1) : 1;
   if(wg.perModel){
     (wg.included_slots||[]).forEach(it=>bump(resolveGearLabel(it), size));  // unit-wide gear on every model
+    _unitWideAddonLabels(wg, cfg).forEach(l=>bump(l, size));                // unit-wide addon gear on every model
     _modelGearLabels(wg.champion, cfg.champion||{}).forEach(l=>bump(l,1));
     const baseCount=size-1, chosen=cfg.chosen||[];
     for(let k=0;k<baseCount;k++) _modelGearLabels(wg.perModel, chosen[k]||{}).forEach(l=>bump(l,1));
@@ -12658,7 +13258,8 @@ function playComposition(u, cfg){
     const parts=order.map(it=> counts[it]>1 ? counts[it]+' '+pmPlural(it,counts[it]) : it);
     if(parts.length===1) return parts[0];
     return parts.slice(0,-1).join(', ')+' and '+parts[parts.length-1]; };
-  const incl = (wg.included_slots||[]).map(it=>resolveGearLabel(it));
+  const incl = (wg.included_slots||[]).map(it=>resolveGearLabel(it))
+    .concat(wg.perModel ? _unitWideAddonLabels(wg, cfg) : []);
   const groups=[];
   if(wg.perModel){
     const size=cfg.size||u.minSize||1;
@@ -12681,7 +13282,9 @@ function playComposition(u, cfg){
       for(let k=0;k<baseCount;k++) addToGroup([...incl,..._modelGearLabels(wg.perModel,chosen[k]||{})], baseLabel);
     }
   } else {
-    groups.push({n:1,label:u.name,weps:[...incl,..._modelGearLabels(wg,cfg)]});
+    // Single-model unit: _modelGearLabels(wg,cfg) already includes the root included_slots,
+    // so don't prepend `incl` again (that double-counted every fixed weapon).
+    groups.push({n:1,label:u.name,weps:_modelGearLabels(wg,cfg)});
   }
   return `<div class="pm-section-h">UNIT COMPOSITION &amp; WARGEAR</div>`+
     groups.filter(g=>g.n>0).map(g=>
@@ -12891,6 +13494,12 @@ function unitReactionTokens(u, cfg){
   (u.traits||[]).forEach(add);
   playCollectTypes(u,cfg).forEach(add);
   const lo=playLoadout(u,cfg);
+  // Equipment carried by ANY model may confer a trait that unlocks a reaction
+  // (e.g. a power shield granting Shield → Shieldwall!). Declared via EQUIPMENT[...].traits.
+  (lo.gearLabels||[]).forEach(l=>{
+    const eq = (typeof EQUIPMENT!=='undefined') ? EQUIPMENT[l] : null;
+    if(eq && eq.traits) eq.traits.forEach(add);
+  });
   [...lo.ranged,...lo.melee].forEach(e=>{ const w=e.w;
     (w.rules||[]).forEach(add);
     if(w.specialRules&&w.specialRules!=='—') w.specialRules.split(',').forEach(s=>add(s.trim()));
