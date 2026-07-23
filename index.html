@@ -128,6 +128,7 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
 .eye-btn:hover{opacity:1;}.pb:disabled{cursor:not-allowed;color:#aaa;border-color:#ccc;background:#f0ece0;}.pb:disabled .tip{color:var(--gold-light);background:var(--dark);border-color:var(--gold);}
 .pb.apex{border-color:var(--blue);}.pb.wlord{border-color:var(--red);}
 .pb.pb-unit{border-color:#5a8a6a;border-style:dashed;border-width:1px;}
+.pb.pb-list{border-color:var(--gold-dark);border-style:dashed;border-width:1.5px;}
 .pb.pb-legion{border-color:#9a6fb8;border-width:1.5px;}
 .pb .tip{display:none;position:absolute;bottom:calc(100% + 6px);left:0;min-width:200px;max-width:280px;background:var(--dark);color:var(--gold-light);font-family:"Crimson Text",serif;font-size:13px;padding:7px 9px;border-radius:4px;border:.5px solid var(--gold);z-index:50;white-space:normal;line-height:1.5;pointer-events:none;opacity:1;}
 .pb:hover .tip{display:block;}
@@ -371,6 +372,10 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
  *    req:{legion}          // shows a "Req: <legion>" pill (does NOT hide)
  *    req:{allegiance}      // HIDDEN entirely if army allegiance mismatch (filterWargearReqs)
  * *    grants:{types,traits,specialRules,weapons,powers}   // applied to the datasheet when selected (or when always_on).
+ * *    activeWhen:{absent:"<Unit Name>"} | {present:"<Unit Name>"}  // gates an always_on addon's grants on the
+ * *                                                                // army roster (e.g. Typhon's Witchblood Biomancy,
+ * *                                                                // active only while Mortarion is absent). Checked
+ * *                                                                // via countUnitName across all detachments.
  *                                                        // Play-mode surfacing: types/traits→pills, specialRules→SPECIAL RULES,
  *                                                        // weapons→WEAPONS table (via _modelGearLabels), powers→PSYCHIC POWERS
  *                                                        // subsection (playPowers; each power/reaction/gambit carries its type inline).
@@ -425,7 +430,10 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
  *    disabled ones contribute 0 cost and no grants (guarded at every cost/grant gather site).
  *
  *  PA[] (Prime Advantages; paAvailable): { id, label, desc, slotRole, oncePerDet,
- *    req:{legion,allegiance,infantryOnly,hasType,unit,profile}, grants:{types,specialRules}, statBonus }
+ *    req:{legion,allegiance,infantryOnly,hasType,unit,profile,unitProfiles}, grants:{types,specialRules}, statBonus }
+ *      unitProfiles:{unitId:profileId} — unit must be a key; if it has profiles, the active one must
+ *      equal the mapped id (null = any profile). Used for "Centurion or Cataphractii Centurion only",
+ *      where the Terminator Centurion qualifies ONLY on its cataphractii_centurion profile.
  *    Slot-adding PAs inject a slot via getInjectedSlots' PA branch (gated to Command slots by isSA in the
  *    selector). Role-choice adders (logistical/logisticae/rewards_of_treachery) store the picked role in
  *    paExtra[i].logisticalRole; fixed-role adders (iron_clad -> WarEngine) need no picker. An injected slot
@@ -497,6 +505,19 @@ const PA = [
   {id:"revenants", label:"Revenants",
     desc:"Models in this unit gain the Fear (1) rule.",
     req:{legion:"Blood Angels"}, grants:{specialRules:["Fear (1)"]}},
+  {id:"unnatural_resilience", label:"Unnatural Resilience",
+    desc:"Death Guard Centurion or Cataphractii Centurion models only. Once per army. This model gains +1 to its Wounds characteristic and gains the Eternal Warrior (2) rule.",
+    req:{legion:"Death Guard", unitProfiles:{cmd_centurion:null, cmd_terminator_centurion:"cataphractii_centurion"}}, oncePerArmy:true,
+    grants:{specialRules:["Eternal Warrior (2)"]}, statBonus:{scope:"lead", deltas:{W:1}}},
+  {id:"custodes_prefect", label:"Prefect",
+    desc:"Shield-Captain only. This model gains +1 to its Wounds characteristic and the Officer of the Line (2) rule.",
+    req:{list:"Legio Custodes", unit:["cmd_custodes_shield_captain"]},
+    grants:{specialRules:["Officer of the Line (2)"]}, statBonus:{scope:"lead", deltas:{W:1}}},
+  {id:"hataeron_guard", label:"Hataeron Guard",
+    desc:"May be selected for any models with the Golden Exemplar trait, plus up to one additional Infantry or Cavalry unit. Change the value of X in this unit's Eternal Warrior (X) special rule to 2.",
+    req:{list:"Legio Custodes", anyType:["Infantry","Cavalry"]},
+    oncePerArmy:true, oncePerArmyExempt:{trait:"Golden Exemplar"},
+    ruleReplace:{from:"Eternal Warrior", to:"Eternal Warrior (2)", addIfMissing:false}},
 ];
 
 // ── Detachment definitions ────────────────────────────────────────────────────
@@ -535,6 +556,21 @@ const DD = {
     restr:{Troops:["Assault Squad"], Elites:["Dawnbreaker Cohort","Veteran Assault Squad"]},
     rnote:"Troops: Assault Squads only. Elites: Dawnbreaker Cohort or Veteran Assault Squad only.",
     slots:[{r:"Troops",p:true},{r:"Troops",p:false},{r:"Elites",p:false},{r:"Elites",p:false}]},
+  reaping_host:{id:"reaping_host",name:"Reaping Host",cat:"auxiliary",
+    req:{legion:"Death Guard"},
+    restr:{Troops:["Assault Squad"]},
+    rnote:"Troops: Assault Squads only.",
+    slots:[{r:"Troops",p:true},{r:"Troops",p:false},{r:"Support",p:false},{r:"HeavyAssault",p:false}]},
+  moritoi_convocation:{id:"moritoi_convocation",name:"Moritoi Convocation",cat:"apex",req:{list:"Legio Custodes"},
+    slots:[{r:"WarEngine",p:true},{r:"WarEngine",p:false}]},
+  hykanatoi_convocation:{id:"hykanatoi_convocation",name:"Hykanatoi Convocation",cat:"auxiliary",req:{list:"Legio Custodes"},
+    slots:[{r:"Troops",p:true},{r:"Troops",p:false},{r:"HeavyTransport",p:false}]},
+  tharanatoi_convocation:{id:"tharanatoi_convocation",name:"Tharanatoi Convocation",cat:"auxiliary",req:{list:"Legio Custodes"},
+    slots:[{r:"HeavyAssault",p:true},{r:"HeavyAssault",p:false}]},
+  ephoroi_convocation:{id:"ephoroi_convocation",name:"Ephoroi Convocation",cat:"auxiliary",req:{list:"Legio Custodes"},
+    slots:[{r:"Recon",p:true},{r:"Recon",p:false}]},
+  kataphractoi_convocation:{id:"kataphractoi_convocation",name:"Kataphractoi Convocation",cat:"auxiliary",req:{list:"Legio Custodes"},
+    slots:[{r:"FastAttack",p:true},{r:"HeavyTransport",p:false},{r:"Armour",p:false}]},
   primus_demi_company:{id:"primus_demi_company",name:"Primus Demi-Company",cat:"auxiliary",
     req:{legion:"Ultramarines"},
     restr:{Command:["Optae"]},
@@ -596,7 +632,7 @@ const DD = {
   dreadnought_talon:{id:"dreadnought_talon",name:"Dreadnought Talon",cat:"auxiliary",req:{list:"Legiones Astartes",any_unit:["cmd_mortificator","cmd_terminator_mortificator"]},restr:{WarEngine:["Contemptor Dreadnought"]},rnote:"War-Engine: Contemptor Dreadnought units only.",slots:[{r:"WarEngine",p:false},{r:"WarEngine",p:false},{r:"WarEngine",p:false}]},
   storm_battery:   {id:"storm_battery",   name:"Storm Battery",   cat:"auxiliary", req:{list:"Legiones Astartes",any_unit:["cmd_siege_breaker","cmd_mounted_siege_breaker","cmd_terminator_siege_breaker","cmd_siege_breaker_jump"]}, restr:{Support:["Rapier Battery"],Armour:["Arquitor Bombard","Vindicator Siege Tank"]},rnote:"Support: Rapier Battery only. Armour: Arquitor Bombard or Vindicator Siege Tank only.",slots:[{r:"Support",p:false},{r:"Support",p:false},{r:"Armour",p:false},{r:"Armour",p:false}]},
   recon_demi_company:{id:"recon_demi_company",name:"Recon Demi-Company",cat:"auxiliary",req:{list:"Legiones Astartes",any_unit:["cmd_vigilator"]},max_per_unit_any:["cmd_vigilator"],restr:{Recon:["Reconnaissance Squad"]},rnote:"Recon: Reconnaissance Squad units only.",slots:[{r:"Recon",p:false},{r:"Recon",p:false},{r:"Recon",p:false},{r:"FastAttack",p:false}]},
-  planetfall_speartip:{id:"planetfall_speartip",name:"Planetfall Speartip",cat:"auxiliary",req:{any_unit:["cmd_master_of_descent"]},restr:{Retinue:["Praetorian Command Squad with Jump Packs"],Elites:["Veteran Assault Squad"]},rnote:"Retinue: Praetorian Command Squad with Jump Packs only. Elites: Veteran Assault Squad only. Once per army.",slots:[{r:"Retinue",p:false},{r:"Elites",p:true},{r:"Elites",p:true}]},
+  planetfall_speartip:{id:"planetfall_speartip",name:"Planetfall Speartip",cat:"auxiliary",req:{list:"Legiones Astartes",any_unit:["cmd_master_of_descent"]},restr:{Retinue:["Praetorian Command Squad with Jump Packs"],Elites:["Veteran Assault Squad"]},rnote:"Retinue: Praetorian Command Squad with Jump Packs only. Elites: Veteran Assault Squad only. Once per army.",slots:[{r:"Retinue",p:false},{r:"Elites",p:true},{r:"Elites",p:true}]},
   maelstrom_sentry_battery:{id:"maelstrom_sentry_battery",name:"Maelstrom Sentry Battery",cat:"auxiliary",req:{list:"Legiones Astartes",any_unit:["cmd_master_of_signals","cmd_master_of_signals_jump","cmd_mounted_master_of_signals"]},max_per_unit_any:["cmd_master_of_signals","cmd_master_of_signals_jump","cmd_mounted_master_of_signals"],restr:{Support:["Araknae Quad Accelerator Platform"],Recon:["Tarantula Sentry Gun"]},rnote:"Support: Araknae Quad Accelerator Platform only. Recon: Tarantula Sentry Gun only.",slots:[{r:"Support",p:false},{r:"Support",p:false},{r:"Recon",p:false},{r:"Recon",p:false},{r:"Recon",p:false}]},
   apothecarion_detachment:{id:"apothecarion_detachment",name:"Apothecarion Delegation",cat:"auxiliary",req:{list:"Legiones Astartes"},restr:{Support:["Apothecary"]},rnote:"Support: Apothecary units only.",slots:[{r:"Support",p:true},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false}]},
   techmarine_covenant:{id:"techmarine_covenant",name:"Techmarine Covenant",cat:"auxiliary",req:{list:"Legiones Astartes"},restr:{Support:["Techmarine"]},rnote:"Support: Techmarine units only.",slots:[{r:"Support",p:true},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false},{r:"Support",p:false}]},
@@ -954,6 +990,7 @@ const WEAPONS = {
   "combi_volkite": {label:"Combi-volkite", profiles:[{name:"Bolter", range:24, fp:2, rs:4, ap:5, d:1, specialRules:"Combi", rules:["Bolt"]},{name:"Volkite Charger",   range:15,   fp:2, rs:5, ap:5, d:1, specialRules:"Deflagrate (5), Combi",                                      rules:["Volkite"]}]},
   "combi_grenade": {label:"Combi-grenade", profiles:[{name:"Bolter", range:24, fp:2, rs:4, ap:5, d:1, specialRules:"Combi", rules:["Bolt"]},{name:"Grenade Launcher - Krak", range:24, fp:1, rs:6, ap:4, d:2, specialRules:"Combi",                                                  rules:[]}]},
   "combi_grav": {label:"Combi-grav", profiles:[{name:"Bolter", range:24, fp:2, rs:4, ap:5, d:1, specialRules:"Combi", rules:["Bolt"]},{name:"Graviton Gun",      range:18,   fp:1, rs:6, ap:4, d:1, specialRules:"Blast (3in), Breaching (6+), Shock (Pinned), Pinning (1), Limited (1), Combi", rules:["Graviton"]}]},
+  "alchem_combi_flamer": {label:"Alchem Combi-flamer", profiles:[{name:"Bolter", range:24, fp:2, rs:4, ap:5, d:1, specialRules:"Combi", rules:["Bolt"]},{name:"Alchem Flamer", range:"Template", fp:1, rs:4, ap:5, d:1, specialRules:"Template, Poisoned (2+), Limited (1), Combi", rules:[]}]},
   "archeotech_pistol": {label:"Archeotech Pistol", range:12, fp:1, rs:6, ap:4, d:2, specialRules:"Pistol, Breaching (3+)", rules:["Assault"]},
   "astartes_shotgun": {label:"Astartes Shotgun", range:12, fp:2, rs:4, ap:"-", d:1, specialRules:"Stun (0)", rules:["Assault","Auto"]},
   "kraken_bolter": {label:"Kraken Bolter", range:30, fp:2, rs:4, ap:4, d:1, specialRules:"Precision (4+), Shot Selector", rules:["Bolt"]},
@@ -962,6 +999,12 @@ const WEAPONS = {
   "twin_heavy_bolter": {label:"Twin Heavy Bolter", range:36, fp:6, rs:5, ap:4, d:1, specialRules:"—", rules:["Bolt"]},
   "twin_bolter": {label:"Twin Bolter", range:24, fp:4, rs:4, ap:5, d:1, specialRules:"—", rules:["Bolt"]},
   "flamer": {label:"Flamer", range:"Template", fp:1, rs:4, ap:5, d:1, specialRules:"Template, Panic (1)", rules:["Flame"]},
+  "alchem_flamer":       {label:"Alchem Flamer", range:"Template", fp:1, rs:4, ap:5, d:1, specialRules:"Template, Poisoned (2+)", rules:[]},
+  "heavy_alchem_flamer": {label:"Heavy Alchem Flamer", range:"Template", fp:1, rs:5, ap:4, d:1, specialRules:"Template, Poisoned (2+)", rules:["Assault"]},
+  "assault_grenade_launcher": {label:"Assault Grenade Launcher", profiles:[
+    {name:"Krak",  range:18, fp:2, rs:6, ap:4, d:2, specialRules:"\u2014", rules:["Assault"]},
+    {name:"Toxin", range:18, fp:3, rs:1, ap:5, d:1, specialRules:"Poisoned (3+)", rules:["Assault"]},
+  ]},
   "heavy_flamer": {label:"Heavy Flamer", range:"Template", fp:1, rs:5, ap:4, d:1, specialRules:"Template, Panic (1)", rules:["Flame"]},
   "twin_heavy_flamer": {label:"Twin Heavy Flamer", range:"Template", fp:1, rs:5, ap:4, d:1, specialRules:"Template, Panic (2)", rules:["Flame"]},
   "flamestorm_cannon": {label:"Flamestorm Cannon", range:"Template", fp:1, rs:6, ap:4, d:2, specialRules:"Template, Panic (2)", rules:["Flame"]},
@@ -1115,6 +1158,96 @@ const WEAPONS = {
   "blade_encarmine":     {label:"The Blade Encarmine", melee:true, im:"I",  am:"A",  sm:"+1", ap:2, d:2, specialRules:"Critical Hit (5+), Impact (AM)", rules:["Power"]},
   "spear_of_telesto":    {label:"Spear of Telesto",    melee:true, im:"-1", am:"-2", sm:"+3", ap:2, d:2, specialRules:"Armourbane, Shock (Suppressed)", rules:["Power"]},
   "moonsilver_blade":    {label:"Moonsilver Blade",    melee:true, im:"I",  am:"A",  sm:"S",  ap:3, d:2, specialRules:"Duelist's Edge (1)", rules:["Power"]},
+  "silence":             {label:"Silence", melee:true, im:"-1", am:"A", sm:"+1", ap:2, d:2, specialRules:"Reaping Blow (3), Critical Hit (6+)", rules:["Power"]},
+  "the_lantern":         {label:"The Lantern", range:10, fp:1, rs:8, ap:2, d:3, specialRules:"Armourbane", rules:["Assault"]},
+  "lakrimae":            {label:"Lakrimae", melee:true, im:"-1", am:"A", sm:"S", ap:2, d:2, specialRules:"Reaping Blow (3), Poisoned (3+)", rules:["Power"]},
+  "slaker":              {label:"Slaker", range:"Template", fp:1, rs:3, ap:"-", d:1, specialRules:"Template, Pistol, Poisoned (2+), Panic (1)", rules:["Assault"]},
+  "alchem_caster":       {label:"Alchem Caster", range:"Template", fp:1, rs:3, ap:"-", d:1, specialRules:"Template, Pistol, Poisoned (2+)", rules:["Assault"]},
+  "power_scythe":        {label:"Power Scythe", melee:true, im:"-1", am:"A", sm:"+1", ap:3, d:1, specialRules:"Reaping Blow (2), Breaching (5+)", rules:["Power"]},
+  "eternity_spear":      {label:"Eternity Spear", profiles:[
+    {name:"Ranged", range:18, fp:2, rs:4, ap:3, d:1, specialRules:"Shred (5+)", rules:["Assault","Bolt"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:1, specialRules:"Aflame (2), Critical Hit (6+), Impact (SM), Shred (5+)", rules:[]},
+  ]},
+  "eternity_blade":      {label:"Eternity Blade", melee:true, im:"+1", am:"A", sm:"+1", ap:2, d:1, specialRules:"Aflame (2), Critical Hit (6+), Shred (4+), Duelist's Edge (1)", rules:[]},
+  "sentinel_warblade":   {label:"Sentinel Warblade", profiles:[
+    {name:"Ranged", range:8, fp:3, rs:4, ap:4, d:1, specialRules:"Shred (6+)", rules:["Assault","Bolt"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"S", ap:2, d:1, specialRules:"\u2014", rules:["Power"]},
+  ]},
+  "guardian_spear":      {label:"Guardian Spear", profiles:[
+    {name:"Ranged", range:18, fp:2, rs:4, ap:4, d:1, specialRules:"Shred (5+)", rules:["Assault","Bolt"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:1, specialRules:"Impact (AM)", rules:["Power"]},
+  ]},
+  "galatus_warblade":    {label:"Galatus Warblade", profiles:[
+    {name:"Ranged", range:"Template", fp:1, rs:6, ap:4, d:2, specialRules:"Template, Panic (2)", rules:["Flame"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"S", ap:2, d:2, specialRules:"Aflame (2), Reaping Blow (3)", rules:["Power"]},
+  ]},
+  "spiculus_missile_launcher": {label:"Spiculus Missile Launcher", range:26, fp:6, rs:5, ap:4, d:1, specialRules:"Breaching (6+), Suppressive (2)", rules:["Missile"]},
+  "telemon_caestus":     {label:"Telemon Caestus", melee:true, im:"I", am:"A", sm:"+3", ap:2, d:3, specialRules:"Critical Hit (6+), Shock (Pinned), Armourbane", rules:["Power"]},
+  "paired_telemon_caestus": {label:"Paired Telemon Caestus", melee:true, im:"I", am:"+1", sm:"+3", ap:2, d:4, specialRules:"Critical Hit (6+), Shock (Pinned), Armourbane", rules:["Power"]},
+  "twin_neutronium_cascade_projector": {label:"Twin Neutronium Cascade Projector", range:"Template", fp:1, rs:7, ap:3, d:2, specialRules:"Template, Breaching (6+), Annihilation Cascade (7), Phage (T)", rules:["Assault"]},
+  "adrathic_desolator":  {label:"Adrathic Desolator", range:24, fp:2, rs:7, ap:2, d:4, specialRules:"Rending (4+)", rules:["Disintegrator"]},
+  "adrathic_devastator": {label:"Adrathic Devastator", range:18, fp:1, rs:6, ap:2, d:4, specialRules:"Rending (5+)", rules:["Disintegrator"]},
+  "arachnus_storm_cannon": {label:"Arachnus Storm Cannon", profiles:[
+    {name:"Concentrated Fire", range:30, fp:2, rs:9, ap:2, d:3, specialRules:"Heavy (FP), Armourbane", rules:["Las"]},
+    {name:"Burst Fire",        range:24, fp:4, rs:6, ap:3, d:2, specialRules:"Heavy (FP)", rules:["Las"]},
+  ]},
+  "twin_arachnus_blaze_cannon": {label:"Twin Arachnus Blaze Cannon", profiles:[
+    {name:"Concentrated Fire", range:48, fp:2, rs:9, ap:2, d:2, specialRules:"Heavy (D), Armourbane", rules:["Las"]},
+    {name:"Burst Fire",        range:36, fp:5, rs:6, ap:3, d:1, specialRules:"Heavy (FP)", rules:["Las"]},
+  ]},
+  "twin_arachnus_blaze_carronade": {label:"Twin Arachnus Blaze Carronade", profiles:[
+    {name:"Concentrated Fire", range:72, fp:2, rs:10, ap:2, d:2, specialRules:"Ordnance (D), Armourbane", rules:["Las"]},
+    {name:"Burst Fire",        range:48, fp:6, rs:7, ap:3, d:2, specialRules:"Heavy (FP)", rules:["Las"]},
+  ]},
+  "twin_arachnus_storm_carronade": {label:"Twin Arachnus Storm Carronade", profiles:[
+    {name:"Concentrated Fire", range:30, fp:2, rs:10, ap:2, d:2, specialRules:"Heavy (D), Armourbane", rules:["Las"]},
+    {name:"Burst Fire",        range:24, fp:6, rs:7, ap:3, d:2, specialRules:"Heavy (FP)", rules:["Las"]},
+  ]},
+  "iliastus_accelerator_culverin": {label:"Iliastus Accelerator Culverin", range:36, fp:4, rs:9, ap:3, d:2, specialRules:"Breaching (6+), Rapid Tracking", rules:["Auto"]},
+  "infernus_firepike":   {label:"Infernus Firepike", range:"Template", fp:1, rs:6, ap:4, d:1, specialRules:"Template, Panic (2)", rules:["Flame"]},
+  "infernus_firebomb_clusters": {label:"Infernus Firebomb Clusters", range:18, fp:1, rs:6, ap:4, d:2, specialRules:"Blast (7in), Panic (2), Limited (1)", rules:["Flame"]},
+  "twin_iliastus_accelerator_fusil": {label:"Twin Iliastus Accelerator Fusil", range:24, fp:4, rs:7, ap:3, d:2, specialRules:"Breaching (6+), Rapid Tracking", rules:["Auto"]},
+  "twin_iliastus_accelerator_cannon": {label:"Twin Iliastus Accelerator Cannon", range:60, fp:6, rs:8, ap:3, d:2, specialRules:"Breaching (6+), Rapid Tracking", rules:["Auto"]},
+  "kinetic_destroyer":   {label:"Kinetic Destroyer", range:12, fp:3, rs:7, ap:4, d:1, specialRules:"Breaching (5+)", rules:["Assault"]},
+  "verutum_lance":       {label:"Verutum Lance", profiles:[
+    {name:"Ranged", range:8, fp:1, rs:5, ap:4, d:1, specialRules:"Stun (1)", rules:["Assault"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:1, specialRules:"Precision (5+), Impact (AM)", rules:["Power"]},
+  ]},
+  "neutronium_cascade_mines": {label:"Neutronium Cascade Mines", melee:true, im:"-3", am:"1", sm:"9", ap:4, d:3, specialRules:"Armourbane, Annihilation Cascade (9)", rules:["Detonation"]},
+  "solarite_power_lance": {label:"Solarite Power Lance", profiles:[
+    {name:"Charging Strike",  melee:true, im:"+4", am:"0", sm:"+5", ap:2, d:3, specialRules:"Impact (AM), Critical Hit (6+), Armourbane", rules:["Power"]},
+    {name:"Defensive Strike", melee:true, im:"-1", am:"A", sm:"S",  ap:2, d:1, specialRules:"Critical Hit (6+)", rules:["Power"]},
+  ]},
+  "twin_corvase_las_pulsar": {label:"Twin Corvase Las-pulsar", range:18, fp:1, rs:10, ap:3, d:3, specialRules:"Armourbane, Armour-breaker (4+)", rules:["Las"]},
+  "solarite_power_talon": {label:"Solarite Power Talon", melee:true, im:"I", am:"A", sm:"S", ap:2, d:1, specialRules:"Critical Hit (6+), Reaping Blow (2)", rules:["Power"]},
+  "adrasite_spear":      {label:"Adrasite Spear", profiles:[
+    {name:"Ranged", range:12, fp:1, rs:5, ap:2, d:2, specialRules:"Rending (6+)", rules:["Assault","Disintegrator"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:1, specialRules:"Impact (AM)", rules:["Power"]},
+  ]},
+  "pyrithite_spear":     {label:"Pyrithite Spear", profiles:[
+    {name:"Ranged", range:6, fp:1, rs:8, ap:2, d:2, specialRules:"Melta (3)", rules:["Assault","Melta"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:1, specialRules:"Impact (AM)", rules:["Power"]},
+  ]},
+  "adrastus_bolt_caliver": {label:"Adrastus Bolt Caliver", profiles:[
+    {name:"Bolt Volley (Primary)",   range:36, fp:2, rs:6, ap:4, d:2, specialRules:"Heavy (FP), Combi", rules:["Bolt"]},
+    {name:"Adrathic Beam (Secondary)", range:24, fp:1, rs:6, ap:2, d:2, specialRules:"Rending (6+), Limited (1), Combi", rules:["Disintegrator"]},
+  ]},
+  "apollonian_spear":    {label:"The Apollonian Spear", profiles:[
+    {name:"Ranged", range:18, fp:2, rs:5, ap:2, d:2, specialRules:"Suppressive (1)", rules:["Assault","Bolt"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"+2", ap:2, d:2, specialRules:"Critical Hit (5+), Duelist's Edge (2), Impact (AM)", rules:["Power"]},
+  ]},
+  "solarite_power_gauntlet": {label:"Solarite Power Gauntlet", melee:true, im:"-3", am:"A", sm:"+4", ap:2, d:2, specialRules:"Critical Hit (6+)", rules:["Power"]},
+  "lastrum_bolt_cannon": {label:"Lastrum Bolt Cannon", range:36, fp:3, rs:6, ap:4, d:2, specialRules:"\u2014", rules:["Bolt"]},
+  "twin_lastrum_bolt_cannon": {label:"Twin Lastrum Bolt Cannon", range:36, fp:6, rs:6, ap:4, d:2, specialRules:"\u2014", rules:["Bolt"]},
+  "neutronium_magna_cascade_cannon": {label:"Neutronium Magna-cascade Cannon", range:"Template", fp:1, rs:10, ap:3, d:3, specialRules:"Template (Hellstorm), Breaching (4+), Annihilation Cascade (10), Phage (T)", rules:[]},
+  "achillus_dreadspear": {label:"Achillus Dreadspear", profiles:[
+    {name:"Ranged", range:18, fp:1, rs:10, ap:3, d:2, specialRules:"Armourbane, Armour-breaker (4+)", rules:["Las"]},
+    {name:"Melee", melee:true, im:"I", am:"A", sm:"+3", ap:2, d:3, specialRules:"Armourbane, Impact (AM)", rules:["Power"]},
+  ]},
+  "infernus_incinerator": {label:"Infernus Incinerator", range:"Template", fp:1, rs:6, ap:4, d:1, specialRules:"Template, Panic (1)", rules:["Flame"]},
+  "lastrum_storm_bolter": {label:"Lastrum Storm Bolter", range:24, fp:4, rs:5, ap:4, d:1, specialRules:"Shred (5+)", rules:["Bolt"]},
+  "adrathic_combi_destructor": {label:"Adrathic Combi-destructor", range:12, fp:2, rs:5, ap:2, d:2, specialRules:"Rending (6+)", rules:["Disintegrator"]},
+  "misericordia":        {label:"Misericordia", melee:true, im:"I", am:"1", sm:"S", ap:3, d:"*", specialRules:"Precision (2+), Breaching (5+)", rules:["Power"], note:"Blade of Mercy aftermath weapon. Damage (*) equals the number of models with a Misericordia in this unit."},
   "grenade_discharger":  {label:"Grenade Discharger", profiles:[
     {name:"Frag", range:12, fp:1, rs:4, ap:6, d:1, specialRules:"Blast (3in)", rules:["Assault"]},
     {name:"Krak", range:12, fp:1, rs:6, ap:4, d:1, specialRules:"\u2014", rules:["Assault"]},
@@ -1242,6 +1375,42 @@ const WEAPONS = {
 
 const SU = {
   HighCommand:[
+    {
+      id:"hc_custodes_tribune", name:"Tribune", basePts:250, minSize:1, maxSize:1,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes","Golden Exemplar","The Sodality"],
+      specialRules:["Bulky (2)","Eternal Warrior (2)","Vanguard (3)"],
+      modelTypes:["Infantry","Command"],
+      stats:{M:8,WS:7,BS:5,S:5,T:5,W:5,I:6,A:6,LD:12,CL:10,WP:10,IN:10,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Misericordia","Arae-shrike"],
+        pairs:[
+          {id:"blade_shield", label:"Eternity Blade & Praesidium Shield", pts:0, replaces:["spear"],
+           chips:["Eternity Blade","Praesidium Shield"], sublabel:"Replaces Eternity Spear"},
+        ],
+        slots:[
+          { id:"spear", label:"Eternity Spear", defaultChips:["Eternity Spear"], options:[] },
+        ],
+        addons:[],
+      }
+    },
+    {
+      id:"hc_calas_typhon", name:"Calas Typhon", basePts:200, minSize:1, maxSize:1,
+      req:{legion:"Death Guard", allegiance:"Traitor"}, uniqueRule:"Calas Typhon",
+      traits:["Traitor","Death Guard","Psyker","Master of the Legion"],
+      specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful","Eternal Warrior (1)","Death Cloud","Witchblood"],
+      modelTypes:["Infantry","Unique","Command","Heavy"],
+      stats:{M:6,WS:6,BS:5,S:4,T:5,W:5,I:5,A:4,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Lakrimae","Slaker","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[],
+        addons:[
+          {id:"witchblood_biomancy", label:"Biomancy Discipline", pts:0, discipline:true, always_on:true,
+           activeWhen:{absent:"Mortarion"},
+           grants:{traits:["Biomancer"], specialRules:["Impact (Strength)"], weapons:["Biomantic Slam"], powers:["Biomantic Rage"]}},
+        ],
+      }
+    },
     {
       id:"hc_marduk_sedras", name:"Marduk Sedras", basePts:225, minSize:1, maxSize:1,
       req:{legion:"Dark Angels", allegiance:"Loyalist"}, uniqueRule:"Marduk Sedras",
@@ -1748,6 +1917,28 @@ const SU = {
     },
   ],
   Command:[
+    {
+      id:"cmd_custodes_shield_captain", name:"Shield-Captain", basePts:175, minSize:1, maxSize:1,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes","The Sodality"],
+      specialRules:["Bulky (2)","Eternal Warrior (1)","Vanguard (3)"],
+      modelTypes:["Infantry","Command"],
+      stats:{M:8,WS:6,BS:5,S:5,T:5,W:3,I:5,A:4,LD:10,CL:10,WP:9,IN:9,SAV:"3+",INV:"4+"},
+      wargear:{
+        included_slots:["Misericordia"],
+        pairs:[
+          {id:"eternity_spear", label:"Eternity Spear", pts:0, replaces:["armament"],
+           chips:["Eternity Spear"], sublabel:"Replaces Eternity Blade & Praesidium Shield"},
+        ],
+        slots:[
+          { id:"armament", label:"Eternity Blade & Praesidium Shield", defaultChips:["Eternity Blade","Praesidium Shield"],
+            options:[] },
+        ],
+        addons:[
+          {id:"arae_shrike", label:"Arae-shrike", pts:50, grants:{specialRules:["Deep Strike"]}},
+        ],
+      }
+    },
     {
       id:"cmd_aster_crohne", name:"Aster Crohne", basePts:155, minSize:1, maxSize:1,
       req:{legion:"Blood Angels", allegiance:"Loyalist"}, uniqueRule:"Aster Crohne",
@@ -4867,8 +5058,72 @@ const SU = {
         {id:"melta_bombs_all", label:"Melta Bombs (all models)", pts:25},
       ], champion:blk(), perModel:blk()}; })()
     },
+    {
+      id:"ret_dg_deathshroud", name:"Deathshroud Terminator Squad", basePts:100, minSize:2, maxSize:10, ptsPerModel:45,
+      req:{legion:"Death Guard"},
+      traits:["[Allegiance]","Death Guard"],
+      specialRules:["Bulky (2)","Implacable Advance","Eternal Warrior (1)"],
+      modelTypes:["Infantry"],
+      championLabel:"Deathshroud", baseModelLabel:"Deathshroud", baseModelPlural:"Deathshroud",
+      baseSizeBreakdown:"2 Deathshroud",
+      championStats:{M:7,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:10,CL:9,WP:7,IN:7,SAV:"2+",INV:"5+"},
+      modelStats:{M:7,WS:5,BS:4,S:4,T:5,W:2,I:4,A:3,LD:10,CL:9,WP:7,IN:7,SAV:"2+",INV:"5+"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Alchem Caster","Power Scythe"],
+        pairs:[], slots:[],
+        addons:[
+          {id:"melta_bombs",     label:"Melta Bombs",     pts:5, ptsPerModel:true},
+          {id:"grenade_harness", label:"Grenade Harness", pts:5, ptsPerModel:true},
+        ],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
   ],
   Elites:[
+    {
+      id:"e_custodes_adrasite_guard", name:"Adrasite Guard Sodality", basePts:360, minSize:6, maxSize:12, ptsPerModel:60,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes","The Sodality"],
+      specialRules:["Bulky (2)","Eternal Warrior (1)","Lightning Blows","Vanguard (2)"],
+      modelTypes:["Infantry"],
+      championLabel:"Adrasite Guard", baseModelLabel:"Adrasite Guard",
+      baseSizeBreakdown:"6 Adrasite Guards",
+      championStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"6+"},
+      modelStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"6+"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Misericordia"],
+        pairs:[],
+        slots:[
+          { id:"spear", label:"Adrasite Spear", defaultChips:["Adrasite Spear"], options:[
+            {id:"magisterium_vexilla", label:"Magisterium Vexilla", pts:0, max_in_unit:1},
+          ]},
+        ],
+        addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
+      id:"e_custodes_pyrithite_guard", name:"Pyrithite Guard Sodality", basePts:360, minSize:6, maxSize:12, ptsPerModel:60,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes","The Sodality"],
+      specialRules:["Bulky (2)","Eternal Warrior (1)","Lightning Blows","Vanguard (2)"],
+      modelTypes:["Infantry"],
+      championLabel:"Pyrithite Guard", baseModelLabel:"Pyrithite Guard",
+      baseSizeBreakdown:"6 Pyrithite Guards",
+      championStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"6+"},
+      modelStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"6+"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Misericordia"],
+        pairs:[],
+        slots:[
+          { id:"spear", label:"Pyrithite Spear", defaultChips:["Pyrithite Spear"], options:[
+            {id:"magisterium_vexilla", label:"Magisterium Vexilla", pts:0, max_in_unit:1},
+          ]},
+        ],
+        addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
     {
       id:"e_da_inner_circle_exemplars", name:"Inner Circle Knights Cenobium",
       basePts:275, minSize:5, maxSize:10, ptsPerModel:50,
@@ -5712,8 +5967,109 @@ const SU = {
         },
       }
     },
+    {
+      id:"e_dg_mortus_poisoner", name:"Death Guard Mortus Poisoner Squad", basePts:70, minSize:5, maxSize:15, ptsPerModel:12,
+      req:{legion:"Death Guard"},
+      traits:["[Allegiance]","Death Guard"],
+      specialRules:["Bitter Duty"],
+      modelTypes:["Infantry"],
+      championLabel:"Poison-master", baseModelLabel:"Mortus Poisoner", baseModelPlural:"Mortus Poisoners",
+      baseSizeBreakdown:"1 Poison-master + 4 Mortus Poisoners",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:8,CL:8,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:7,CL:7,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{
+        const commonBolter = ()=>({ id:"bolter", label:"Bolter", options:[
+          {id:"flamer",        label:"Flamer",        pts:0},
+          {id:"alchem_flamer", label:"Alchem Flamer", pts:2},
+          {id:"heavy_alchem_flamer", label:"Heavy Alchem Flamer", pts:10, per5cap:"mp_heavy", per5max:1, per5size:5},
+        ]});
+        const commonAddons = ()=>([
+          {id:"chainsword_add", label:"Chainsword", pts:2, ptsPerModel:true},
+          {id:"bayonet",       label:"Bayonet",       pts:1, ptsPerModel:true, requires_slot_default:"bolter", exclusive:["chain_bayonet"]},
+          {id:"chain_bayonet", label:"Chain Bayonet", pts:2, ptsPerModel:true, requires_slot_default:"bolter", exclusive:["bayonet"]},
+        ]);
+        return {
+          included_slots:[], pairs:[], slots:[], addons:[],
+          champion:{
+            modelTypes:["Infantry","Sergeant"],
+            included_slots:["Bolt Pistol","Rad Grenades","Frag Grenades","Krak Grenades"],
+            pairs:[],
+            slots:[
+              commonBolter(),
+              { id:"pmaster_melee", label:"Power Weapon / Power Scythe (optional)", options:[
+                {id:"power_weapon", label:"Power Weapon", pts:10, list:"power_weapons"},
+                {id:"power_scythe", label:"Power Scythe", pts:15},
+              ]},
+            ],
+            addons:[
+              ...commonAddons(),
+              {id:"phosphex_bombs", label:"Phosphex Bombs", pts:10, unique_in_unit:true},
+              {id:"melta_bombs",    label:"Melta Bombs",    pts:10, unique_in_unit:true},
+            ],
+          },
+          perModel:{
+            modelTypes:["Infantry"],
+            included_slots:["Bolt Pistol","Rad Grenades","Frag Grenades","Krak Grenades"],
+            pairs:[],
+            slots:[ commonBolter() ],
+            addons:[
+              ...commonAddons(),
+              {id:"vexilla",        label:"Vexilla",        pts:10, unique_in_unit:true},
+              {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["nuncio_vox"]},
+              {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["augury_scanner"]},
+            ],
+          },
+        };
+      })()
+    },
   ],
   Troops:[
+    {
+      id:"t_custodes_sentinel_guard", name:"Sentinel Guard Sodality", basePts:240, minSize:6, maxSize:12, ptsPerModel:40,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes","The Sodality"],
+      specialRules:["Bulky (2)","Eternal Warrior (1)","Lightning Blows","Vanguard (2)"],
+      modelTypes:["Infantry"],
+      championLabel:"Sentinel Guard", baseModelLabel:"Sentinel Guard",
+      baseSizeBreakdown:"6 Sentinel Guards",
+      championStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"5+"},
+      modelStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"5+"},
+      championUpgrade:{
+        label:"Sentinel Vexillarius", pts:30,
+        stats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"6+"},
+        modelTypes:["Infantry"],
+        wargear:{
+          included_slots:["Sentinel Warblade","Misericordia","Magisterium Vexilla"], pairs:[], slots:[], addons:[],
+        },
+      },
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Sentinel Warblade","Misericordia","Praesidium Shield"],
+        pairs:[], slots:[], addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
+      id:"t_custodes_custodian_guard", name:"Custodian Guard Sodality", basePts:270, minSize:6, maxSize:12, ptsPerModel:45,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes","The Sodality"],
+      specialRules:["Bulky (2)","Eternal Warrior (1)","Vanguard (2)"],
+      modelTypes:["Infantry"],
+      championLabel:"Custodian Guard", baseModelLabel:"Custodian Guard",
+      baseSizeBreakdown:"6 Custodian Guards",
+      championStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"5+"},
+      modelStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"5+"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Misericordia"],
+        pairs:[],
+        slots:[
+          { id:"spear", label:"Guardian Spear", defaultChips:["Guardian Spear"], options:[
+            {id:"magisterium_vexilla", label:"Magisterium Vexilla", pts:0, max_in_unit:1},
+          ]},
+        ],
+        addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
     {
       id:"t_da_inductii", name:"Dark Angels Inductii Squad", basePts:90, minSize:10, maxSize:20, ptsPerModel:9,
       req:{legion:"Dark Angels"},
@@ -6224,6 +6580,37 @@ const SU = {
       }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
     },
     {
+      id:"t_dg_inductii", name:"Death Guard Inductii Squad", basePts:90, minSize:10, maxSize:20, ptsPerModel:9,
+      req:{legion:"Death Guard"},
+      traits:["[Allegiance]","Death Guard"],
+      specialRules:["Line (1)","Barbaran Resilience","Fury of the Legion","Inductii"],
+      modelTypes:["Infantry"],
+      championLabel:"Inductii", baseModelLabel:"Inductii", baseModelPlural:"Inductii",
+      baseSizeBreakdown:"10 Inductii",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Frag Grenades","Krak Grenades"],
+        pairs:[],
+        slots:[
+          { id:"bolter", label:"Bolter", options:[
+            {id:"flamer",        label:"Flamer",        pts:5,  per5cap:"ind_special", per5max:1, per5size:5},
+            {id:"alchem_flamer", label:"Alchem Flamer", pts:5,  per5cap:"ind_special", per5max:1, per5size:5},
+            {id:"rotor_cannon",  label:"Rotor Cannon",  pts:10, per5cap:"ind_special", per5max:1, per5size:5},
+          ]},
+          { id:"pistol", label:"Bolt Pistol", options:[] },
+        ],
+        addons:[
+          {id:"bayonet",       label:"Bayonet",       pts:1, ptsPerModel:true, requires_slot_default:"bolter", exclusive:["chain_bayonet"]},
+          {id:"chain_bayonet", label:"Chain Bayonet", pts:2, ptsPerModel:true, requires_slot_default:"bolter", exclusive:["bayonet"]},
+          {id:"vexilla",        label:"Vexilla",        pts:10, unique_in_unit:true},
+          {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["nuncio_vox"]},
+          {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["augury_scanner"]},
+        ],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
       id:"t_medusan_immortals", name:"Medusan Immortals Squad", basePts:95, minSize:5, maxSize:20, ptsPerModel:15,
       req:{legion:"Iron Hands"},
       traits:["[Allegiance]","Iron Hands","Shield"],
@@ -6275,6 +6662,28 @@ const SU = {
     },
   ],
   Support:[
+    {
+      id:"su_custodes_sagittarum_guard", name:"Sagittarum Guard Sodality", basePts:240, minSize:6, maxSize:12, ptsPerModel:40,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes","The Sodality"],
+      specialRules:["Bulky (2)","Eternal Warrior (1)","Vanguard (2)"],
+      modelTypes:["Infantry"],
+      championLabel:"Sagittarum Guard", baseModelLabel:"Sagittarum Guard",
+      baseSizeBreakdown:"6 Sagittarum Guards",
+      championStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:2,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"6+"},
+      modelStats:{M:8,WS:5,BS:5,S:5,T:5,W:2,I:5,A:2,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"6+"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Misericordia"],
+        pairs:[],
+        slots:[
+          { id:"caliver", label:"Adrastus Bolt Caliver", defaultChips:["Adrastus Bolt Caliver"], options:[
+            {id:"magisterium_vexilla", label:"Magisterium Vexilla", pts:0, max_in_unit:1},
+          ]},
+        ],
+        addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
     {
       id:"sup_da_dreadwing_interemptors", name:"Dreadwing Interemptors",
       basePts:125, minSize:2, maxSize:7, ptsPerModel:20,
@@ -6667,6 +7076,75 @@ const SU = {
     })(),
   ],
   WarEngine:[
+    {
+      id:"we_custodes_achillus", name:"Contemptor-Achillus Dreadnought", basePts:250, minSize:1, maxSize:1,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes"],
+      specialRules:["Bulky (6)","Eternal Warrior (1)","Explodes (6+)","Implacable Advance","Lightning Blows","Vanguard (2)"],
+      modelTypes:["Walker"],
+      stats:{M:8,WS:5,BS:5,S:8,T:7,W:6,I:4,A:5,LD:12,CL:10,WP:9,IN:5,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:["Achillus Dreadspear","Smoke Launchers"],
+        pairs:[],
+        slots:[
+          { id:"incinerator1", label:"Infernus Incinerator", defaultChips:["Infernus Incinerator"], options:[
+            {id:"lastrum_storm_bolter",      label:"Lastrum Storm Bolter",      pts:0},
+            {id:"adrathic_combi_destructor", label:"Adrathic Combi-destructor", pts:5},
+          ]},
+          { id:"incinerator2", label:"Infernus Incinerator", defaultChips:["Infernus Incinerator"], options:[
+            {id:"lastrum_storm_bolter",      label:"Lastrum Storm Bolter",      pts:0},
+            {id:"adrathic_combi_destructor", label:"Adrathic Combi-destructor", pts:5},
+          ]},
+        ],
+        addons:[],
+      }
+    },
+    {
+      id:"we_custodes_galatus", name:"Contemptor-Galatus Dreadnought", basePts:225, minSize:1, maxSize:1,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes"],
+      specialRules:["Bulky (6)","Eternal Warrior (1)","Explodes (6+)","Implacable Advance","Lightning Blows","Vanguard (2)"],
+      modelTypes:["Walker"],
+      stats:{M:8,WS:5,BS:5,S:8,T:7,W:6,I:4,A:5,LD:12,CL:10,WP:9,IN:5,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Galatus Warblade","Gravis Praesidium Shield","Smoke Launchers"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"we_custodes_telemon", name:"Telemon Heavy Dreadnought", basePts:360, minSize:1, maxSize:1,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes"],
+      specialRules:["Bulky (8)","Eternal Warrior (1)","Explodes (5+)","Implacable Advance","Vanguard (2)"],
+      modelTypes:["Walker","Heavy"],
+      stats:{M:7,WS:5,BS:5,S:9,T:8,W:8,I:3,A:3,LD:12,CL:10,WP:9,IN:3,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Spiculus Missile Launcher","Smoke Launchers"],
+        pairs:[
+          // Mode B: one paired caestus + two projectors, filling both arms together.
+          {id:"paired_caestus_projectors", label:"Paired Telemon Caestus & Two Twin Neutronium Cascade Projectors",
+           pts:15, replaces:["arm1","arm2"],
+           chips:["Paired Telemon Caestus","Twin Neutronium Cascade Projector","Twin Neutronium Cascade Projector"],
+           sublabel:"Fills both arm mounts"},
+        ],
+        slots:[
+          // Mode A: two arms, each one option from the shared list.
+          { id:"arm1", label:"Arm Weapon", required:true, options:[
+            {id:"caestus_projector", label:"Telemon Caestus & Twin Neutronium Cascade Projector", pts:5, chips:["Telemon Caestus","Twin Neutronium Cascade Projector"]},
+            {id:"arachnus_storm_cannon",        label:"Arachnus Storm Cannon",        pts:20},
+            {id:"adrathic_desolator",           label:"Adrathic Desolator",           pts:15},
+            {id:"iliastus_accelerator_culverin",label:"Iliastus Accelerator Culverin", pts:15},
+          ]},
+          { id:"arm2", label:"Arm Weapon", required:true, options:[
+            {id:"caestus_projector", label:"Telemon Caestus & Twin Neutronium Cascade Projector", pts:5, chips:["Telemon Caestus","Twin Neutronium Cascade Projector"]},
+            {id:"arachnus_storm_cannon",        label:"Arachnus Storm Cannon",        pts:20},
+            {id:"adrathic_desolator",           label:"Adrathic Desolator",           pts:15},
+            {id:"iliastus_accelerator_culverin",label:"Iliastus Accelerator Culverin", pts:15},
+          ]},
+        ],
+        addons:[],
+      }
+    },
     {
       id:"we_da_excindio", name:"Dark Angels Excindio Battle-automata",
       basePts:180, minSize:1, maxSize:1,
@@ -7191,6 +7669,32 @@ const SU = {
     },
   ],
   HeavyAssault:[
+    {
+      id:"ha_custodes_aquilon", name:"Aquilon Terminator Sodality", basePts:255, minSize:3, maxSize:9, ptsPerModel:85,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes"],
+      specialRules:["Bulky (3)","Eternal Warrior (1)","Implacable Advance","Vanguard (3)"],
+      modelTypes:["Infantry","Heavy"],
+      championLabel:"Aquilon Terminator", baseModelLabel:"Aquilon Terminator",
+      baseSizeBreakdown:"3 Aquilon Terminators",
+      championStats:{M:7,WS:5,BS:5,S:5,T:6,W:3,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"4+"},
+      modelStats:{M:7,WS:5,BS:5,S:5,T:6,W:3,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"2+",INV:"4+"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry","Heavy"],
+        included_slots:["Misericordia"],
+        pairs:[],
+        slots:[
+          { id:"ranged", label:"Infernus Firepike", defaultChips:["Infernus Firepike"], options:[
+            {id:"lastrum_storm_bolter",      label:"Lastrum Storm Bolter",      pts:0},
+            {id:"adrathic_combi_destructor", label:"Adrathic Combi-destructor", pts:5},
+          ]},
+          { id:"melee", label:"Solarite Power Talon", defaultChips:["Solarite Power Talon"], options:[
+            {id:"solarite_power_gauntlet", label:"Solarite Power Gauntlet", pts:5},
+          ]},
+        ],
+        addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
     {
       id:"ha_ruinstorm_daemon_brute", name:"Ruinstorm Daemon Brutes",
       list:"Daemons of the Ruinstorm",
@@ -7939,8 +8443,70 @@ const SU = {
         };
       })()
     },
+    {
+      id:"ha_dg_grave_warden", name:"Grave Warden Terminator Squad", basePts:225, minSize:5, maxSize:10, ptsPerModel:40,
+      req:{legion:"Death Guard"},
+      traits:["[Allegiance]","Death Guard"],
+      specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful","Death Cloud","Vanguard (3)"],
+      modelTypes:["Infantry","Heavy"],
+      championLabel:"Chem-master", baseModelLabel:"Grave Warden", baseModelPlural:"Grave Wardens",
+      baseSizeBreakdown:"1 Chem-master + 4 Grave Wardens",
+      championStats:{M:6,WS:4,BS:4,S:4,T:5,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      modelStats:{M:6,WS:4,BS:4,S:4,T:5,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:[], pairs:[], slots:[], addons:[],
+        champion:{
+          modelTypes:["Infantry","Sergeant","Heavy"],
+          included_slots:[],
+          pairs:[],
+          slots:[
+            { id:"ranged", label:"Assault Grenade Launcher", defaultChips:["Assault Grenade Launcher"], options:[
+              {id:"combi_weapon", label:"Legion Combi-weapon", pts:0, freeList:true, list:"combi_weapons"},
+            ]},
+            { id:"melee", label:"Power Fist", defaultChips:["Power Fist"], options:[
+              {id:"chainfist", label:"Chainfist", pts:5},
+            ]},
+          ],
+          addons:[
+            {id:"grenade_harness", label:"Grenade Harness", pts:5},
+          ],
+        },
+        perModel:{
+          modelTypes:["Infantry","Heavy"],
+          included_slots:[],
+          pairs:[],
+          slots:[
+            { id:"ranged", label:"Assault Grenade Launcher", defaultChips:["Assault Grenade Launcher"], options:[
+              {id:"heavy_alchem_flamer", label:"Heavy Alchem Flamer", pts:5, per5cap:"gw_flamer", per5max:1, per5size:5},
+            ]},
+            { id:"melee", label:"Power Fist", defaultChips:["Power Fist"], options:[
+              {id:"chainfist", label:"Chainfist", pts:5},
+            ]},
+          ],
+          addons:[],
+        },
+      }
+    },
   ],
   HeavyTransport:[
+    {
+      id:"ht_custodes_coronus", name:"Coronus Grav-Carrier", basePts:180, minSize:1, maxSize:1,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes"],
+      specialRules:["Assault Vehicle","Auto-repair (3+)","Deep Strike","Explodes (6+)"],
+      modelTypes:["Vehicle","Antigrav","Transport"],
+      stats:{vehicle:true, M:12, BS:5, Front:13, Side:13, Rear:11, HP:8, TC:14},
+      wargear:{
+        included_slots:["Turret-mounted Twin Arachnus Blaze Cannon"],
+        pairs:[],
+        slots:[
+          { id:"hull", label:"Hull (Front) Twin Lastrum Bolt Cannon", defaultChips:["Twin Lastrum Bolt Cannon"], options:[
+            {id:"twin_neutronium_cascade_projector", label:"Hull (Front) Twin Neutronium Cascade Projector", pts:15, chips:["Twin Neutronium Cascade Projector"]},
+          ]},
+        ],
+        addons:[],
+      }
+    },
     {
       id:"ht_caestus", name:"Caestus Assault Ram", basePts:290, minSize:1, maxSize:1,
       traits:["[Allegiance]","[Legiones Astartes]"],
@@ -8282,6 +8848,34 @@ const SU = {
   ],
   Recon:[
     {
+      id:"rc_custodes_venatari", name:"Venatari Sodality", basePts:165, minSize:3, maxSize:6, ptsPerModel:55,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes","The Sodality"],
+      specialRules:["Bulky (3)","Deep Strike","Eternal Warrior (1)","Firestorm","Outflank","Vanguard (3)"],
+      modelTypes:["Infantry","Antigrav","Light"],
+      championLabel:"Venatari", baseModelLabel:"Venatari", baseModelPlural:"Venatari",
+      baseSizeBreakdown:"3 Venatari",
+      championStats:{M:14,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"3+",INV:"6+"},
+      modelStats:{M:14,WS:5,BS:5,S:5,T:5,W:2,I:5,A:3,LD:10,CL:10,WP:8,IN:8,SAV:"3+",INV:"6+"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry","Antigrav","Light"],
+        included_slots:["Misericordia"],
+        pairs:[
+          {id:"verutum_lance", label:"Verutum Lance", pts:0, replaces:["armament"],
+           chips:["Verutum Lance"], sublabel:"Replaces Kinetic Destroyer & Tarsus Buckler"},
+        ],
+        slots:[
+          { id:"armament", label:"Kinetic Destroyer & Tarsus Buckler",
+            defaultChips:["Kinetic Destroyer","Tarsus Buckler"], options:[] },
+        ],
+        addons:[],
+      }); return {included_slots:[], pairs:[], slots:[],
+        // "Every model ... may have neutronium cascade mines" — all-or-nothing for the whole
+        // squad, so it is a unit-level addon charged per model rather than a per-model pick.
+        addons:[{id:"cascade_mines", label:"Neutronium Cascade Mines", pts:10, ptsPerModel:true}],
+        champion:blk(), perModel:blk()}; })()
+    },
+    {
       id:"rc_effrit_disruption_cadre", name:"Alpha Legion Effrit Disruption Cadre",
       basePts:145, minSize:5, maxSize:10, ptsPerModel:25,
       req:{legion:"Alpha Legion"},
@@ -8613,6 +9207,49 @@ const SU = {
   ],
   FastAttack:[
     {
+      id:"fa_custodes_gyrfalcon", name:"Gyrfalcon Jetbike Sodality", basePts:140, minSize:2, maxSize:10, ptsPerModel:70,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes"],
+      specialRules:["Bulky (5)","Deep Strike","Eternal Warrior (1)","Implacable Advance","Outflank","Vanguard (3)"],
+      modelTypes:["Cavalry","Antigrav"],
+      championLabel:"Gyrfalcon Agamatus", baseModelLabel:"Gyrfalcon Agamatus", baseModelPlural:"Gyrfalcon Agamatus",
+      baseSizeBreakdown:"2 Gyrfalcon Agamatus",
+      championStats:{M:16,WS:5,BS:5,S:5,T:5,W:3,I:5,A:2,LD:10,CL:10,WP:8,IN:8,SAV:"3+",INV:"6+"},
+      modelStats:{M:16,WS:5,BS:5,S:5,T:5,W:3,I:5,A:2,LD:10,CL:10,WP:8,IN:8,SAV:"3+",INV:"6+"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Cavalry","Antigrav"],
+        included_slots:["Solarite Power Lance","Misericordia"],
+        pairs:[],
+        slots:[
+          { id:"gun", label:"Lastrum Bolt Cannon", defaultChips:["Lastrum Bolt Cannon"], options:[
+            {id:"adrathic_devastator",     label:"Adrathic Devastator",     pts:10},
+            {id:"twin_corvase_las_pulsar", label:"Twin Corvase Las-pulsar", pts:10},
+          ]},
+        ],
+        addons:[],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
+      id:"fa_custodes_pallas", name:"Pallas Grav-Attack", basePts:105, minSize:1, maxSize:1,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
+      traits:["Loyalist","Legio Custodes"],
+      specialRules:["Auto-repair (3+)","Deep Strike","Explodes (6+)"],
+      modelTypes:["Vehicle","Antigrav","Rapid"],
+      stats:{vehicle:true, M:16, BS:5, Front:12, Side:11, Rear:11, HP:4, TC:"\u2014"},
+      wargear:{
+        included_slots:[],
+        pairs:[],
+        slots:[
+          { id:"centreline", label:"Centreline-mounted Twin Iliastus Accelerator Fusil",
+            defaultChips:["Centreline-mounted Twin Iliastus Accelerator Fusil"], options:[
+            {id:"twin_arachnus_blaze_cannon", label:"Centreline-mounted Twin Arachnus Blaze Cannon", pts:25,
+             chips:["Centreline-mounted Twin Arachnus Blaze Cannon"]},
+          ]},
+        ],
+        addons:[],
+      }
+    },
+    {
       id:"fa_fire_raptor", name:"Fire Raptor", basePts:220, minSize:1, maxSize:1,
       traits:["[Allegiance]","[Legiones Astartes]"],
       specialRules:[],
@@ -8827,6 +9464,31 @@ const SU = {
   ],
   Warlord:[
     {
+      id:"wl_constantin_valdor", name:"Constantin Valdor", basePts:400, minSize:1, maxSize:1,
+      list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"}, uniqueRule:"Constantin Valdor",
+      traits:["Loyalist","Legio Custodes","Golden Exemplar","The Sodality"],
+      specialRules:["Bulky (4)","Eternal Warrior (2)","Hatred (Paragon)","Master of the Golden Legion","Vanguard (3)"],
+      modelTypes:["Paragon","Unique"],
+      stats:{M:8,WS:7,BS:6,S:5,T:5,W:6,I:6,A:6,LD:12,CL:10,WP:10,IN:10,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["The Apollonian Spear","Misericordia","Arae-shrike"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"wl_mortarion", name:"Mortarion", basePts:425, minSize:1, maxSize:1,
+      req:{legion:"Death Guard", allegiance:"Traitor"}, uniqueRule:"Mortarion",
+      primeAllTroops:{count:4, allowed:["Tactical Squad"]},
+      traits:["Traitor","Death Guard","Master of the Legion"],
+      specialRules:["Sire of the Death Guard","Bulky (5)","Fear (1)","Shadow of the Reaper","Preternatural Resilience","Eternal Warrior (3)","Death Cloud"],
+      modelTypes:["Paragon","Unique"],
+      stats:{M:8,WS:7,BS:6,S:7,T:7,W:7,I:6,A:6,LD:12,CL:10,WP:10,IN:10,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["Silence","The Lantern","Phosphex Bombs","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
       id:"wl_lion", name:"Lion El'Jonson", basePts:460, minSize:1, maxSize:1,
       req:{legion:"Dark Angels", allegiance:"Loyalist"}, uniqueRule:"Lion El'Jonson",
       primeAllTroops:{count:4, require:{"Tactical Squad":1,"Assault Squad":1,"Breacher Squad":1}},
@@ -8974,6 +9636,13 @@ const SU = {
 };
 
 const EQUIPMENT = {
+  "Arae-shrike": {grants:{specialRules:["Deep Strike"]}, text:"• This model, and any unit it joins, gains the Deep Strike rule.<br>• At the end of your turn, if this model is on the battlefield, it may make an Intelligence Check. If successful, your opponent must take a -1 modifier to the first Reserves Test they make during their next turn."},
+  "Misericordia": {alsoWeapon:true, text:"This unit may have the \"Blade of Mercy\" aftermath option selected for it after a Close Combat in which this unit has won or drawn the combat.<br>• <b>Blade of Mercy</b> — Select a single model in this unit with a Misericordia; that model resolves a normal Close Combat Phase against one enemy unit that has the Fall Back aftermath option selected for it, resolved with the Misericordia weapon profile. The Damage characteristic of this weapon is equal to the number of models with a Misericordia in this unit.<br><i>The Misericordia cannot be chosen as a weapon under normal circumstances.</i>"},
+  "Praesidium Shield": {traits:["Shield"], grants:{traits:["Shield"]}, text:"This model gains a 5+ invulnerable save and the Shield trait."},
+  "Gravis Praesidium Shield": {traits:["Shield"], grants:{traits:["Shield"]}, text:"This model gains a 4+ invulnerable save and the Shield trait."},
+  "Magisterium Vexilla": {text:"At the end of any turn, when your opponent would score points for Controlling or Contesting an objective with a unit that is within Line of Sight and 8\" of a Magisterium Vexilla, they must first make a Leadership Check. If failed, that unit may only score 1 point for that objective, regardless of other special rules like Line (X)."},
+  "Smoke Launchers": {grants:{traits:["Smokescreen"]}, text:"This model has the Smokescreen trait."},
+  "Tarsus Buckler": {text:"The Ranged Strength characteristic of attacks made as part of a Volley Attack or Overwatch Reaction are modified by -1 against this unit."},
   "Gorgon Pattern Terminator Armour": {text:"This model gains the Heavy type and the Feel No Pain (5+) rule. During the Assault phase, after Volley Fire, if this model passed at least one Invulnerable or Armour Save against Volley Fire attacks, the unit that inflicted those Wounds must make a Cool Check. If failed, that unit gains the Suppressed Status."},
   "Armatus Necrotechnika": {text:"This model gains the Auto-repair (5+) rule. When making a repair roll for this model, if any friendly models were removed as Casualties from a unit within 6\" this turn, add +1 to the roll."},
   "Stasis Grenades":      {text:"One per battle, the first time this model and any unit it has joined are successfully Charged, the Combat Initiative of all models in the Charging Unit are modified by -2 for this turn. This does not affect Combat Initiative inside a Challenge."},
@@ -9164,6 +9833,14 @@ const RULES = {
   "Incaendius Boost Pack":        {type:"special_rule",  text:"When this model makes a Rush, it gains the Antigrav type for that movement."},
   "Sire of the Blood Angels":     {type:"special_rule",  text:"If this is a Blood Angels army:<br>• If four or more Troops slots in your Primary Detachment are filled with Assault Squads, then all of those slots are considered Prime Slots.<br>• Once per turn, when making a Reserves Roll for a Blood Angels unit with the Deep Strike rule, you may modify this Roll by +1. If successful, this unit must be deployed using the Deep Strike rule."},
   "Angelic Descent":              {type:"special_rule",  text:"While this model is in a Challenge, it has access to the following special Gambit:<br>• Angelic Descent — May only be selected during the first Face-Off Step of a Challenge, and only if this model made a successful Charge this turn. When selected, this model gains a positive modifier to the Focus Roll equal to the X value in any Bulky (X) rule the enemy model it is engaged in the Challenge with has."},
+  "Sire of the Death Guard":      {type:"special_rule",  text:"If this is a Death Guard army:<br>• If four or more Troops slots in your Primary Detachment are filled with Tactical Squad units, then all of those slots are considered Prime Slots.<br>• Until the end of the first Battle Turn, each time you make a Shooting Attack for a Death Guard unit, if a Fire Group has a total Firepower of 11 or more, those attacks have the Pinning (0) rule."},
+  "Shadow of the Reaper":         {type:"special_rule",  text:"When this model Rushes or makes a Set-Up Move, it has a Movement of 12\"."},
+  "Preternatural Resilience":     {type:"special_rule",  text:"When engaged in a Challenge, attacks with the Critical Hit (X) rule made against this model only trigger that rule on a natural 6."},
+  "Death Cloud":                  {type:"special_rule",  text:"At the start of the Fight sub-phase, each enemy unit locked in combat with at least one unit with this rule is affected by the Death Cloud.<br>Units affected by the Death Cloud immediately suffer a number of hits equal to the number of models with this rule they are locked in combat with. Those hits have a Strength of 1, an AP of 5, a Damage of 1, and the Poisoned (3+) rule. No Cover Saves or Shrouded Rolls may be made to ignore these wounds — other saves may be made as normal."},
+  "Barbaran Resilience":          {type:"special_rule",  text:"This unit is never required to take a Leadership Check in the Morale Subphase after shooting to avoid becoming Routed due to having a certain number of models removed as Casualties from a single Shooting Attack."},
+  "Lightning Blows":              {type:"special_rule",  text:"If this unit made a successful Charge this turn, then for this Assault Phase this model gains the Critical Hit (6+) rule on their Melee weapons."},
+  "Master of the Golden Legion":  {type:"special_rule",  text:"\u2022 All non-Vehicle models with the Legio Custodes trait in this army gain the Fear (1) rule until the end of the first Battle Turn.<br>\u2022 Once per turn, when you make a Reserves Test for a Legio Custodes model with the Deep Strike rule, before making the test you may choose to modify that test by +1. If this test is successful, that unit must be deployed using the Deep Strike rule."},
+  "Witchblood":                   {type:"special_rule",  text:"If Mortarion is not in this army, this model has the Biomancy Psychic Discipline. Otherwise, it has no Psychic Discipline.<br>Additionally, when this model is in a Challenge, it has access to the following special Gambit once per battle:<br>• Witchblood — When this Gambit is selected, this model may make a Willpower Check. If successful, this model gains +2 Attacks and +2 Strength in the following Strike Step. If failed, this model suffers 1 wound, with AP 2 and Damage 1, against which it may only take Invulnerable Saves. If this model would die from this wound, remove it from play immediately and the Challenge ends."},
   "Forbidden Augmentations":      {type:"special_rule",  text:"A unit containing only models with this rule is considered to contain a model with the Medic (X) rule for the purposes of declaring the Medic! Advanced Reaction. When targeted by that reaction, all Recovery Tests made as part of it have a Target Number of 5+."},
   "Sire of the Iron Hands":       {type:"special_rule",  text:"If this is an Iron Hands army:<br>• If four or more Troops slots in your Primary Detachment are filled with Tactical Squads and/or Breacher Squads, then all of those slots are considered Prime Slots.<br>• Until the end of the first Battle Turn, all Iron Hands Infantry in the army have the Feel No Pain (6+) rule."},
   "Tempered by War":              {type:"special_rule",  text:"While this model is in a Challenge, it has access to the following special Gambit:<br>• Tempered by War — When this Gambit is selected, this model's Toughness is set to 8 for the following Strike Step."},
@@ -9208,6 +9885,7 @@ const RULES = {
   "Heavy (RS)": {type:"weapon_special", text:"If this unit remained stationary this turn, this weapon has +1 to the RS characteristic."},
   "Lance":                        {type:"weapon_special", text:"..."},
   "Rapid Tracking": {type:"weapon_special", text:"This weapon may be used as part of the Intercept Advanced Reaction, even if it is not a Defensive Weapon."},
+  "Annihilation Cascade": {type:"weapon_special", text:"After resolving any Fire Group or Strike Group that includes a weapon with this rule, but before removing casualties, if this Group inflicted any Penetrating Hits, inflict a number of additional automatic Hits on the target equal to the amount of Hull Points the target model lost due to the triggering Group. Those Hits all have Strength {X}, AP —, Damage 1, and no special rules. Resolve those Hits immediately, following the normal sequence."},
   "Shot Selector": {type:"weapon_special", text:"When shooting with this weapon, you may select one of the following special rules for it to gain for this attack: • Panic (1) • Breaching (4+) • Suppressive (2)"},
   "Skyfire": {type:"weapon_special", text:"This weapon may fire at Flyers using a normal Hit roll instead of Snap Shots. This rule may not be used if the firing unit has any Tactical Statuses."},
   "Thunderstrike": {type:"weapon_special", text:"If three or more Hit rolls for this weapon are successful, you immediately make an extra attack with this weapon's The Prophet profile at the current Initiative Step."},
@@ -9299,6 +9977,11 @@ const ARMY_LISTS = {
       HeavyAssault:[]
     }
   },
+  legio_custodes: { id:"legio_custodes", label:"Legio Custodes",
+    // The Legio Custodes are a single monolithic force with no sub-faction axis
+    // (factions:[] → no faction dropdown). Always Loyalist; units gated by list membership.
+    allegiance:"Loyalist",
+    factions:[] },
   forces_taghmata: { id:"forces_taghmata", label:"Forces of the Taghmata",
     // The Taghmata have no Legion/faction axis — units are gated by army list alone
     // (their Faction Trait is Reductor, carried on the unit, not a selectable faction).
@@ -9495,6 +10178,33 @@ function allUnitIds(){ return ST.dets.flatMap(d=>(d.slots||[]).filter(Boolean).m
 function countUnitName(name){
   return ST.dets.flatMap(d=>d.slots.filter(Boolean)).filter(u=>u.name===name).length;
 }
+// Is a conditional grant active? An addon may declare activeWhen:{absent:"<Unit Name>"} or
+// activeWhen:{present:"<Unit Name>"} — used e.g. for Witchblood's discipline, which the model
+// only has while Mortarion is absent from the army.
+function addonConditionMet(addon){
+  const w = addon && addon.activeWhen; if(!w) return true;
+  if(w.absent  && countUnitName(w.absent)  > 0) return false;
+  if(w.present && countUnitName(w.present) < 1) return false;
+  return true;
+}
+
+// Collect grants conferred by a unit's carried WARGEAR that lives outside the addon system:
+//  • EQUIPMENT[label].grants — for any equipment in the loadout (e.g. Arae-shrike → Deep Strike)
+//  • active pair.grants       — for a taken pair exchange (e.g. Praesidium Shield → Shield trait)
+// Returns a merged {traits,types,specialRules,weapons,powers}. Mirrors addon grants.
+function wargearGrants(u, cfg){
+  const out={traits:[],types:[],specialRules:[],weapons:[],powers:[]};
+  const merge=g=>{ if(!g)return; ["traits","types","specialRules","weapons","powers"].forEach(k=>(g[k]||[]).forEach(v=>out[k].push(v))); };
+  const lo = playLoadout(u, cfg);
+  (lo.gearLabels||[]).forEach(l=>{ const e=(typeof EQUIPMENT!=='undefined')?EQUIPMENT[l]:null; if(e&&e.grants) merge(e.grants); });
+  const wg = activeWargear(u, cfg);
+  const blocks = wg.perModel ? [[wg.champion,(cfg.champion||{})],[wg.perModel,null]] : [[wg,cfg]];
+  // A pair grant applies when that pair exchange is active (root or per-model champion block).
+  const pairActive=(blk,sel)=>{ const id=sel&&sel.pairExchange; if(!id)return; const p=(blk.pairs||[]).find(x=>x.id===id); if(p&&p.grants) merge(p.grants); };
+  if(wg.pairs) pairActive(wg, cfg);
+  if(wg.champion) pairActive(wg.champion, cfg.champion||{});
+  return out;
+}
 
 // Count how many of a given detachment ID are already in the army
 function countDetachment(did){
@@ -9575,6 +10285,26 @@ function sireTroopsPrime(){
 }
 
 function detsOfGroup(gid){ const pg=primaryGroup().gid; return ST.dets.filter(d=>(d.grp||pg)===gid); }
+// How many Auxiliary Detachments a Command slot unlocks. Officer of the Line (X) raises this
+// from the default 1. The rule may come from the unit/profile OR be granted by a Prime
+// Advantage (e.g. Custodes "Prefect" grants Officer of the Line (2)), so both are considered
+// and the highest value wins.
+function ootlUnlocks(u, cfg, paId){
+  if(!u) return 1;
+  const prof = (u.profiles&&u.profiles.length)
+    ? (u.profiles.find(pr=>pr.id===((cfg||{}).profileId||u.profiles[0].id))||u.profiles[0]) : null;
+  const sr = (((prof&&prof.specialRules)||u.specialRules||[])).slice();
+  const adv = paId ? PA.find(a=>a.id===paId) : null;
+  if(adv && adv.grants && adv.grants.specialRules) sr.push(...adv.grants.specialRules);
+  let best = 0;
+  sr.forEach(r=>{
+    if(String(r).startsWith("Officer of the Line (")){
+      const n = parseInt(String(r).match(/\((\d+)\)/)?.[1]||"1");
+      if(n>best) best=n;
+    }
+  });
+  return best||1;
+}
 function getUnlocks(gid){
   // HighCommand and Command slots grant unlocks WITHIN THEIR OWN GROUP: HighCommand →
   // Apex unlock; Command → Aux unlock (or Apex via a Delegatus/commandUnlockUpgrade, or
@@ -9592,13 +10322,7 @@ function getUnlocks(gid){
       if(s.r==="Command"){
         if(det.slots[i].commandUnlockUpgrade) ao++;
         else {
-          const u = det.slots[i];
-          const cfg = det.cfgs[i]||{};
-          const prof = (u.profiles&&u.profiles.length) ? (u.profiles.find(pr=>pr.id===(cfg.profileId||u.profiles[0].id))||u.profiles[0]) : null;
-          const unitSpecial = (prof&&prof.specialRules)||u.specialRules||[];
-          const ootl = unitSpecial.find(r=>r.startsWith("Officer of the Line ("));
-          if(ootl) ax += parseInt(ootl.match(/\((\d+)\)/)?.[1]||"1");
-          else ax++;
+          ax += ootlUnlocks(det.slots[i], det.cfgs[i]||{}, det.pa[i]);
         }
       }
     });
@@ -9847,6 +10571,11 @@ const LEGION_SWAPS = [
     from:"Power Lance", to:"Spear of Perdition", toId:"spear_of_perdition", pts:5 },
   { legion:"Blood Angels", type:"modelConditional",
     from:"Plasma Pistol", to:"Inferno Pistol", toId:"inferno_pistol", pts:5 },
+  // ── Death Guard ──
+  { legion:"Death Guard", type:"modelConditional", requireTypes:["Command","Champion","Specialist","Sergeant"],
+    from:"Power Weapon", to:"Power Scythe", toId:"power_scythe", pts:10 },
+  { legion:"Death Guard", type:"modelConditional", requireTypes:["Command","Champion","Specialist","Sergeant"],
+    from:"Power Fist", to:"Power Scythe", toId:"power_scythe", pts:5 },
   // ── Iron Hands ──
   // Gorgon Pattern Terminator Armour — Tartaros-profile terminator characters only (+ Iron Father via a separate row).
   { legion:"Iron Hands", type:"grant", requireTypes:["Infantry"], profileIncludes:"tartaros",
@@ -10017,11 +10746,21 @@ function paOncePerDetTaken(a, det, slotIdx){
   return Object.keys(pa).some(k => String(k)!==String(slotIdx) && pa[k]===a.id);
 }
 // A PA flagged oncePerArmy may be taken only once across the WHOLE army (every detachment).
+// oncePerArmyExempt:{trait:"X"} — models WITH that trait are unrestricted: they may all take the
+// PA, and they never consume the single army-wide slot. Only non-exempt models compete for it.
+// (Hataeron Guard: every Golden Exemplar model, PLUS up to one other Infantry/Cavalry unit.)
 function paOncePerArmyTaken(a, det, slotIdx){
   if(!a.oncePerArmy) return false;
+  const ex = a.oncePerArmyExempt;
+  const isExempt = un => !!(ex && ex.trait && un && (un.traits||[]).includes(ex.trait));
+  // The unit being considered is exempt → never blocked.
+  if(isExempt((det.slots||[])[slotIdx])) return false;
   return ST.dets.some(d=>{
     const pa = d.pa || {};
-    return Object.keys(pa).some(k => !(d.iid===det.iid && String(k)===String(slotIdx)) && pa[k]===a.id);
+    return Object.keys(pa).some(k =>
+      !(d.iid===det.iid && String(k)===String(slotIdx)) &&
+      pa[k]===a.id &&
+      !isExempt((d.slots||[])[k]));   // exempt holders don't consume the slot
   });
 }
 
@@ -10030,9 +10769,26 @@ function paAvailable(a, u, cfg){
   if(u && (u.specialRules||[]).includes("Inductii")) return false;
   if(!a.req) return true;
   if(a.req.allegiance && ST.allegiance !== a.req.allegiance) return false;
+  if(a.req.list){ const gl=(activeGroup()||{}).list||DEFAULT_LIST; if(gl !== a.req.list) return false; }
+  if(a.req.hasTrait){ if(!u || !(u.traits||[]).includes(a.req.hasTrait)) return false; }
   if(a.req.legion){ if(!u || !unitAdoptsLegion(u, a.req.legion)) return false; }
   if(a.req.infantryOnly){ if(!u || !unitInfantryOnly(u)) return false; }
   if(a.req.hasType){ if(!u || !unitHasType(u, a.req.hasType)) return false; }
+  // req.anyType:[...] — unit must have ONE of these types. If the PA also declares
+  // oncePerArmyExempt.trait, models carrying that trait bypass this type restriction
+  // (it constrains only the single "additional" non-exempt pick).
+  if(a.req.anyType){
+    const exT = a.oncePerArmyExempt && a.oncePerArmyExempt.trait;
+    const isExempt = exT && u && (u.traits||[]).includes(exT);
+    if(!isExempt){ if(!u || !a.req.anyType.some(t=>unitHasType(u,t))) return false; }
+  }
+  // req.unitProfiles:{unitId:profileId} — unit must be one of the keys, and if it has profiles,
+  // its active profile must match the mapped id (e.g. Terminator Centurion only on Cataphractii).
+  if(a.req.unitProfiles){
+    if(!u || !(u.id in a.req.unitProfiles)) return false;
+    const want = a.req.unitProfiles[u.id];
+    if(want && u.profiles){ const active=(cfg&&cfg.profileId)||u.profiles[0].id; if(active!==want) return false; }
+  }
   if(a.req.unit){ const us=Array.isArray(a.req.unit)?a.req.unit:[a.req.unit]; if(!u || !us.includes(u.id)) return false; }
   if(a.req.profile){ if(!u || !u.profiles) return false; const active=(cfg&&cfg.profileId)||u.profiles[0].id; if(active!==a.req.profile) return false; }
   return true;
@@ -10833,6 +11589,14 @@ function resolveOption(slot, optId) {
 // (e.g. "Power Weapon +10" → then pick a type from power_weapons). resolveOption returns the
 // list ITEM (usually 0 pts), so the premium has to be added separately — mirroring how
 // list-based ADDONS are priced as addon.pts + item.pts. Returns the offering option, or null.
+// True if the option offering listKey on this slot (in the given block) waives item cost.
+function slotListIsFree(wgBlock, slotId, listKey){
+  if(!wgBlock) return false;
+  const slot=(wgBlock.slots||[]).find(s=>s.id===slotId);
+  if(!slot) return false;
+  const host=(slot.options||[]).find(o=>o.list===listKey);
+  return !!(host && host.freeList);
+}
 function slotListHost(slot, chosenId) {
   if (!chosenId) return null;
   if ((slot.options || []).some(o => o.id === chosenId)) return null;   // inline pick, no host
@@ -10946,9 +11710,10 @@ function cp(u, cfg) {
     if (!chosen) return;
     const opt = resolveOption(slot, chosen);
     if (!opt) return;
-    p += opt.ptsPerModel ? (opt.pts||0)*modelCount : (opt.pts||0);
     const _host = slotListHost(slot, chosen);
-    if (_host) p += _host.ptsPerModel ? (_host.pts||0)*modelCount : (_host.pts||0);
+    // freeList: this slot offers the list at no cost — the item's own pts are waived.
+    if (!(_host && _host.freeList)) p += opt.ptsPerModel ? (opt.pts||0)*modelCount : (opt.pts||0);
+    if (_host && !_host.freeList) p += _host.ptsPerModel ? (_host.pts||0)*modelCount : (_host.pts||0);
   });
   (cfg.addons||[]).forEach(id => {
     const addon = (wg.addons||[]).find(a=>a.id===id);
@@ -10972,9 +11737,9 @@ function cp(u, cfg) {
         const chosen = (mc.slots||{})[slot.id];
         if (!chosen) return;
         const opt = resolveOption(slot, chosen);
-        if (opt) mp += opt.pts||0;
         const _host = slotListHost(slot, chosen);
-        if (_host) mp += _host.pts||0;
+        if (opt && !(_host && _host.freeList)) mp += opt.pts||0;
+        if (_host && !_host.freeList) mp += _host.pts||0;
       });
       (mc.addons||[]).forEach(id => {
         const addon = (mwg.addons||[]).find(a=>a.id===id);
@@ -11429,7 +12194,7 @@ function renderWargearModal(det, slotIdx) {
     (g.powers||[]).forEach(p=>grantedPowers.push(p));
   };
   (wg.addons||[]).forEach(addon => {
-    if (addon.grants && !addon.decurionDisabled && (addon.always_on || (cfg.addons||[]).includes(addon.id))) pushGrants(addon.grants);
+    if (addon.grants && !addon.decurionDisabled && addonConditionMet(addon) && (addon.always_on || (cfg.addons||[]).includes(addon.id))) pushGrants(addon.grants);
   });
   // Injected-slot grants (e.g. The Iron-Clad → Champion on the filling unit) — build-card parity with play mode.
   if (ST.modalUnit && ST.modalUnit.inj) {
@@ -11437,6 +12202,7 @@ function renderWargearModal(det, slotIdx) {
     const injSlot = rawDet && getInjectedSlots(rawDet)[slotIdx];
     if (injSlot && injSlot.grants) pushGrants(injSlot.grants);
   }
+  pushGrants(wargearGrants(u, cfg));   // equipment/pair grants (Arae-shrike, Praesidium Shield, …)
   const allTraits  = [...new Set([...dispTraits,  ...grantedTraits])];
   const allSpecial = [...new Set([...dispSpecial, ...grantedSpecial])];
   const grantedWeaponsU = [...new Set(grantedWeapons)];
@@ -11643,7 +12409,7 @@ function renderWargearModal(det, slotIdx) {
           const displayLabel = listIsActive ? currentListItem.label : opt.label;
           const resolvedOpt = listIsActive ? currentListItem : opt;
           const displayPts = listIsActive
-            ? (currentListItem.ptsPerModel ? `+${currentListItem.pts} pts/model (${currentListItem.pts*modelCount} total)` : (currentListItem.pts?"+"+currentListItem.pts+" pts":"free"))
+            ? (opt.freeList ? "free" : (currentListItem.ptsPerModel ? `+${currentListItem.pts} pts/model (${currentListItem.pts*modelCount} total)` : (currentListItem.pts?"+"+currentListItem.pts+" pts":"free")))
             : optPtsLabel(opt, modelCount);
           const clickAction = isSharedUsed ? "" :
             isList ? `openListPicker('${esc(iid)}',${slotIdx},'${slot.id}','${opt.list}')` :
@@ -11673,10 +12439,14 @@ function renderWargearModal(det, slotIdx) {
       // Discipline): shown active and locked, not toggleable, and excluded from the
       // discipline cap. Their grants are applied unconditionally in the grant-gather above.
       if (addon.always_on) {
-        html += `<div class="addon-row active" style="cursor:default;">
+        const condMet = addonConditionMet(addon);
+        const stateLabel = !condMet
+          ? (addon.activeWhen && addon.activeWhen.absent ? `(inactive — ${addon.activeWhen.absent} in army)` : `(inactive)`)
+          : `(always active)`;
+        html += `<div class="addon-row${condMet?' active':''}" style="cursor:default;${condMet?'':'opacity:.5;'}">
           <div style="display:flex;align-items:center;gap:8px;">
-            <div class="addon-check on"></div>
-            <span ${weaponHoverAttrs(addon.label)}>${addon.label} <span class="addon-reason">(always active)</span></span>
+            <div class="addon-check${condMet?' on':''}"></div>
+            <span ${weaponHoverAttrs(addon.label)}>${addon.label} <span class="addon-reason">${stateLabel}</span></span>
           </div>
           <span class="addon-pts">${addon.pts?`+${addon.pts} pts`:"—"}</span>
         </div>`;
@@ -11793,12 +12563,14 @@ function renderWargearModal(det, slotIdx) {
         }
       });
       const summaryChips = [];
-      if (lockedPair) {
-        summaryChips.push({label:lockedPair.label, kind:'changed'});
-      } else {
+      {
         const slotLabelsLower = new Set((mwg.slots||[]).map(s=>(s.label||'').toLowerCase()));
+        // An active pair replaces only the slots it names — included gear (e.g. a Misericordia)
+        // and addons are still carried, so they must keep rendering alongside it.
+        if (lockedPair) summaryChips.push({label:lockedPair.label, kind:'changed'});
         // Exchangeable slots — show current choice (changed) or default label
         (mwg.slots||[]).forEach(slot => {
+          if (lockedPair && (lockedPair.replaces||[]).includes(slot.id)) return; // consumed by the pair
           if (slotConsumedBy(mwg, mc, slot.id)) return; // replaced by a two-handed weapon shown in its own slot
           const chosen = (mc.slots||{})[slot.id];
           const chosenOpt = chosen ? resolveOption(slot,chosen) : null;
@@ -12053,7 +12825,7 @@ function renderWargearModal(det, slotIdx) {
               }
             }
             const dispLabel = listIsActive ? currentListItem.label : opt.label;
-            const dispPts = listIsActive ? (currentListItem.pts?'+'+currentListItem.pts+' pts':'free') : optPtsLabel(opt, 1);
+            const dispPts = listIsActive ? ((opt.freeList||!currentListItem.pts)?'free':'+'+currentListItem.pts+' pts') : optPtsLabel(opt, 1);
             const listOC = "openPerModelListPicker('" + esc(iid) + "'," + slotIdx + ",'" + mkey + "','" + slot.id + "','" + opt.list + "')";
             const slotOC = "setPerModelSlot('" + esc(iid) + "'," + slotIdx + ",'" + mkey + "','" + slot.id + "','" + opt.id + "')";
             const clickAct = isList ? listOC : slotOC;
@@ -12291,11 +13063,7 @@ function _renderCardInner(det){
       const idx=def.slots.indexOf(s);
       const u=det.slots[idx]; if(!u)return;
       if(u.commandUnlockUpgrade) return; // already counted in apexAuxTotal
-      const cfg=det.cfgs[idx]||{};
-      const prof=(u.profiles&&u.profiles.length)?(u.profiles.find(pr=>pr.id===(cfg.profileId||u.profiles[0].id))||u.profiles[0]):null;
-      const sr=(prof&&prof.specialRules)||u.specialRules||[];
-      const ootl=sr.find(r=>r.startsWith("Officer of the Line ("));
-      cmdAuxTotal+=ootl?parseInt(ootl.match(/\((\d+)\)/)?.[1]||"1"):1;
+      cmdAuxTotal += ootlUnlocks(u, det.cfgs[idx]||{}, (det.pa||{})[idx]);
     });
     const apexAuxTotal=hcf+cmdUpgraded;
     const parts=[];
@@ -12395,15 +13163,16 @@ function _renderCardInner(det){
 function detTier(def){
   if(def.req && def.req.legion) return 'legion';
   if(def.req && def.req.any_unit) return 'unit';
+  if(def.req && def.req.list) return 'list';
   return 'ungated';
 }
 function pbtn(did,cat,gid){
   const def=DD[did];const reason=disReason(def,cat,gid);const dis=!!reason;
   const tier=detTier(def);
-  const reqStr=def.req?(()=>{const rp=[];if(def.req.legion)rp.push(def.req.legion);if(def.req.allegiance)rp.push(def.req.allegiance);if(def.req.any_unit)rp.push(def.req.any_unit.map(id=>{const u=UNIT_LOOKUP[id];return u?u.name:id;}).join(" or "));return rp.length?`<br><em style="color:#a0c0e0">Req: ${rp.join(" · ")}</em>`:"";})():"";
+  const reqStr=def.req?(()=>{const rp=[];if(def.req.list)rp.push(def.req.list);if(def.req.legion)rp.push(def.req.legion);if(def.req.allegiance)rp.push(def.req.allegiance);if(def.req.any_unit)rp.push(def.req.any_unit.map(id=>{const u=UNIT_LOOKUP[id];return u?u.name:id;}).join(" or "));return rp.length?`<br><em style="color:#a0c0e0">Req: ${rp.join(" · ")}</em>`:"";})():"";
   const tip=`<div class="tip"><strong>${def.name}</strong>${reason?"":reqStr}<br>${stip(def.slots)}${reason?`<br><em style="color:#f09090">${reason}</em>`:""}</div>`;
-  const pill=(tier==='legion'&&def.req&&def.req.legion)?` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${def.req.legion}</span>`:"";
-  const tierCls=tier==='legion'?" pb-legion":tier==='unit'?" pb-unit":"";
+  const pill=(tier==='legion'&&def.req&&def.req.legion)?` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${def.req.legion}</span>`:(tier==='list'&&def.req&&def.req.list)?` <span class="ibadge" style="font-size:10px;padding:1px 5px;">${def.req.list}</span>`:"";
+  const tierCls=tier==='legion'?" pb-legion":tier==='unit'?" pb-unit":tier==='list'?" pb-list":"";
   return `<button class="pb${cat==="apex"?" apex":cat==="warlord"?" wlord":""}${tierCls}" onclick="addDet('${did}'${gid?`,'${gid}'`:""})" ${dis?"disabled":""}>${def.name}${pill}${tip}</button>`;
 }
 
@@ -12418,8 +13187,8 @@ function renderPool(gid){
   return withGroup(_grp, ()=>_renderPoolInner(_grp));
 }
 function _renderPoolInner(_grp){
-  const allApex=["combat_retinue","officer_cadre","army_vanguard","linebreaker_echelon","hammer_of_olympia","medusan_vanguard"];
-  const allAux=["armoured_fist","tactical_support","armoured_support","heavy_support","combat_pioneer","shock_assault","first_strike","apothecarion_detachment","techmarine_covenant","daemonic_manifestation","dreadnought_talon","recon_demi_company","maelstrom_sentry_battery","storm_battery","veteran_cadre","ironfire_cohort","headhunter_leviathal","planetfall_speartip","primus_demi_company","spearhead_phalanx","revelation_host","supremacy_cadre","primacy_wing",
+  const allApex=["combat_retinue","officer_cadre","army_vanguard","linebreaker_echelon","hammer_of_olympia","medusan_vanguard","moritoi_convocation"];
+  const allAux=["armoured_fist","tactical_support","armoured_support","heavy_support","combat_pioneer","shock_assault","first_strike","apothecarion_detachment","techmarine_covenant","daemonic_manifestation","dreadnought_talon","recon_demi_company","maelstrom_sentry_battery","storm_battery","veteran_cadre","ironfire_cohort","headhunter_leviathal","planetfall_speartip","primus_demi_company","spearhead_phalanx","revelation_host","reaping_host","hykanatoi_convocation","tharanatoi_convocation","ephoroi_convocation","kataphractoi_convocation","supremacy_cadre","primacy_wing",
     "ironwing_gauntlet","deathwing_conclave","dreadwing_cadre","ravenwing_lance","stormwing_muster","firewing_echelon"];
   const altWarlord=["brotherhood_of_the_phoenix"];   // alternative Warlord detachments, gated by req (legion/allegiance/rite)
   // Army-list gate + allied-group restrictions, applied to EVERY detachment pool.
@@ -12779,7 +13548,7 @@ function _renderModalInner(){
               opt.list&&(WARGEAR_LISTS[opt.list]||{items:[]}).items.some(ii=>ii.id===currentChoice);
             const effSel=isSel||listIsActive;
             const dispLabel=listIsActive?currentListItem.label:opt.label;
-            const dispPts=listIsActive?(currentListItem.pts?'+'+currentListItem.pts+' pts':'free'):optPtsLabel(opt,1);
+            const dispPts=listIsActive?((opt.freeList||!currentListItem.pts)?'free':'+'+currentListItem.pts+' pts'):optPtsLabel(opt,1);
             const clickAction=isSharedUsed?'':isList
               ?`openPerModelListPicker('${esc(iid)}',${i},'champion','${slot.id}','${opt.list}')`
               :`setPerModelSlot('${esc(iid)}',${i},'champion','${slot.id}','${opt.id}')`;
@@ -12869,6 +13638,8 @@ function _renderModalInner(){
     const mc2=modelKey==='champion'?(cfg2.champion||{}):(cfg2.chosen||[])[parseInt(modelKey)]||{};
     const items=list.items.filter(item=>optionVisible(item,u2||{}));
     const currentChoice=(mc2.slots||{})[slotId];
+    const wgm2 = activeWargear(u2,cfg2);
+    const _pmFree = slotListIsFree(modelKey==='champion'?wgm2.champion:wgm2.perModel, slotId, listKey);
     return `<div class="ov" onclick="backToUnit('${esc(iid)}',${i})">
       <div class="mod" onclick="event.stopPropagation()">
       <button class="mc" onclick="backToUnit('${esc(iid)}',${i})">✕</button>
@@ -12877,7 +13648,7 @@ function _renderModalInner(){
       ${items.map(item=>{
         const isChosen=currentChoice===item.id;
         const legBadge=item.req&&item.req.legion?` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${item.req.legion}</span>`:'';
-        const ptsLabel=item.pts?'+'+item.pts+' pts':'free';
+        const ptsLabel=_pmFree?'free':(item.pts?'+'+item.pts+' pts':'free');
         const pmLiWA = weaponHoverAttrs(item.label);
         const iidb64 = btoa(iid);
         return `<div class="slot-option${isChosen?' selected':''}" ${pmLiWA}
@@ -12960,6 +13731,7 @@ function _renderModalInner(){
     const modelCount2=cfg2.size||(u2?u2.minSize:1);
     const items=list.items.filter(item=>optionVisible(item, u2||{}));
     const currentChoice=(cfg2.slots||{})[slotId];
+    const _free = slotListIsFree(activeWargear(u2,cfg2), slotId, listKey) || slotListIsFree(u2&&u2.wargear, slotId, listKey);
     return `<div class="ov" onclick="closeModal()"><div class="mod" onclick="event.stopPropagation()">
       <button class="mc" onclick="closeModal()">✕</button>
       <div class="mt">${list.label}</div>
@@ -12967,7 +13739,7 @@ function _renderModalInner(){
       ${items.map(item=>{
         const isChosen=currentChoice===item.id;
         const legBadge=item.req&&item.req.legion?` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${item.req.legion}</span>`:"";
-        const ptsLabel=item.ptsPerModel?`+${item.pts} pts/model (${item.pts*modelCount2} total)`:(item.pts?"+"+item.pts+" pts":"free");
+        const ptsLabel=_free?"free":(item.ptsPerModel?`+${item.pts} pts/model (${item.pts*modelCount2} total)`:(item.pts?"+"+item.pts+" pts":"free"));
         return `<div class="slot-option${isChosen?" selected":""}" onclick="setSlotOption('${esc(iid)}',${i},'${slotId}','${item.id}');backToUnit('${esc(iid)}',${i});" ${weaponHoverAttrs(item.label)}>
           <span>${item.label}${legBadge}</span>
           <span class="slot-option-pts">${ptsLabel}</span>
@@ -13079,6 +13851,40 @@ const LEGION_RITES = {
       text: "<b>Restriction:</b> Once per battle.<br><b>Trigger:</b> Your opponent declares a Shooting Attack targeting your unit.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> Your targeted unit.<br><b>Effect:</b> Your opponent finishes resolving this Shooting Attack. After you Remove Casualties, each remaining model in your unit immediately makes a normal Move directly towards the nearest model in the triggering unit. These models must move as close as possible to the triggering unit while remaining at least 1\" away from any enemy model. After this move, if any model from your unit is within 6\" of the triggering unit, that unit must make a Cool Check during the Morale sub-phase of this Shooting Phase. If this check is failed, the triggering unit gains the Pinned status."
     },
   },
+  "Legio Custodes": {
+    tactica: {
+      name: "Only in Death",
+      text: "All non-Vehicle Legio Custodes models gain the following:<br>\u2022 Whenever a model with this rule would gain the Routed Tactical Status after failing a Leadership Check in the Make Panic Checks step of resolving a Close Combat, that model gains the Stunned status instead, unless there are any models without this rule in that unit.<br>\u2022 A unit that contains only models with this rule may never have the Disengage or Fall Back aftermath options selected for it, unless it is entirely composed of models with the Antigrav type, in which case it may still select Disengage."
+    },
+    gambits: [
+      { name: "Raptor's Surge",
+        text: "When this Gambit is selected, then if the opponent may claim a greater Outside Support bonus than you in this Challenge, this model gains a bonus to its Attacks Characteristic for this round equal to the difference in the Outside Support bonus the models could claim, up to +3." },
+      { name: "World Serpent's Bane",
+        text: "When this Gambit is selected, this model may only make a single attack during the following Strike Step, but the Damage Characteristic of the weapon used to make that attack is modified by this model's current remaining Wounds." },
+      { name: "Heavens' Strike",
+        text: "When this Gambit is selected, as long as this model is using a weapon with the Critical Hit (6+) rule for this Challenge Round, that rule is replaced by the Critical Hit (5+) rule and that model's base Attacks Characteristic is halved for this Challenge Round." },
+      { name: "Stone's Aegis",
+        text: "This Gambit may only be selected for a model with the Shield trait. When this Gambit is selected, this model gains +1 to its Toughness Characteristic for this Challenge Round, but any Wound Tests made for this model during this Challenge Round automatically fail on a natural 1 or 2." },
+    ],
+    reaction: {
+      name: "The Blade Splits",
+      text: "<b>Restriction:</b> Once per battle.<br><b>Trigger:</b> An enemy unit ends a move within 12\" and in Line of Sight of your unit. Your unit must contain at least 6 models and must have The Sodality trait.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> Your unit.<br><b>Effect:</b> Move at least 3 models from your unit a number of inches up to its base Initiative Characteristic so that they are no longer in Unit Coherency with the rest of your unit, but are in Unit Coherency with each other. There must still be at least three models from your unit which did not move and are still in Unit Coherency with each other. These two groups of models are now considered separate units for the remainder of the game."
+    },
+  },
+  "Death Guard": {
+    tactica: {
+      name: "Remorseless Advance",
+      text: "\u2022 Non-Vehicle Death Guard units in your army that moved no more than 4\" and did not Rush still benefit from the Heavy (X) rule.<br>\u2022 Non-Vehicle Death Guard units in your army ignore the Movement penalty for moving through difficult terrain."
+    },
+    gambit: {
+      name: "Steadfast Resilience",
+      text: "When this Gambit is selected, for this Challenge Round, replace the Toughness characteristic of this model with the Weapon Skill characteristic of the opposing model in this Challenge."
+    },
+    reaction: {
+      name: "Barbaran Endurance",
+      text: "<b>Restriction:</b> Once per battle.<br><b>Trigger:</b> Opponent declares a Shooting Attack during the Shooting Phase against your non-Vehicle Death Guard unit.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> Your unit that is being shot.<br><b>Effect:</b> Your unit immediately recovers from all Tactical Statuses, automatically passes any Leadership or Cool checks it is required to make this Phase, and gains the Feel No Pain (5+) rule for this Phase."
+    },
+  },
   "Alpha Legion": {
     tactica: {
       name: "Lies and Obfuscation",
@@ -13188,6 +13994,7 @@ function _modelGearLabels(blk, mc){
     const _activeAddonIds = new Set(mc.addons||[]);
     (blk.addons||[]).forEach(a=>{ if(!a||a.decurionDisabled) return;
       if(!(a.always_on || _activeAddonIds.has(a.id))) return;   // always-on (innate) grants apply even when unselected
+      if(!addonConditionMet(a)) return;
       if(a.grants&&a.grants.weapons) a.grants.weapons.forEach(add);
       // An addon whose label is itself a weapon or piece of equipment (e.g. Grenade Harness, Augury Scanner)
       if(weaponKeyFromLabel(a.label) || (typeof EQUIPMENT!=='undefined' && EQUIPMENT[a.label])) add(a.label);
@@ -13213,6 +14020,7 @@ function _unitWideAddonLabels(wg, cfg){
   (wg.addons||[]).forEach(a=>{
     if(!a || a.decurionDisabled) return;
     if(!(a.always_on || active.has(a.id))) return;
+    if(!addonConditionMet(a)) return;
     if(a.grants && a.grants.weapons) a.grants.weapons.forEach(w=>out.push(w));
     const base=String(a.label||'').replace(/\s*\([^)]*\)\s*$/,'').trim();  // drop "(all models)" style hints
     if(weaponKeyFromLabel(base) || (typeof EQUIPMENT!=='undefined' && EQUIPMENT[base])) out.push(base);
@@ -13402,7 +14210,7 @@ function playCollectRules(u, cfg, extra){
   (cfg.chosen||[]).forEach(mc=>(mc.addons||[]).forEach(a=>activeIds.add(a)));
   const blocks = wg.perModel ? [wg.champion, wg.perModel] : [wg];
   blocks.forEach(blk=>{ if(!blk)return; (blk.addons||[]).forEach(a=>{
-    if(a.grants&&!a.decurionDisabled&&a.grants.specialRules&&(a.always_on||activeIds.has(a.id))) a.grants.specialRules.forEach(r=>rules.push(r)); }); });
+    if(a.grants&&!a.decurionDisabled&&addonConditionMet(a)&&a.grants.specialRules&&(a.always_on||activeIds.has(a.id))) a.grants.specialRules.forEach(r=>rules.push(r)); }); });
   // A SELECTED SLOT OPTION may also grant rules (e.g. the Inner Circle's Order choice).
   // Covers the unit-level slots plus the champion/per-model blocks.
   const grantFromSlots = (blk, sel) => {
@@ -13417,7 +14225,17 @@ function playCollectRules(u, cfg, extra){
   grantFromSlots(wg, cfg.slots);
   grantFromSlots(wg.champion, (cfg.champion||{}).slots);
   (cfg.chosen||[]).forEach(mc=>grantFromSlots(wg.perModel, (mc||{}).slots));
+  wargearGrants(u, cfg).specialRules.forEach(r=>rules.push(r));
   ((extra&&extra.specialRules)||[]).forEach(r=>rules.push(r));
+  // A Prime Advantage may REWRITE the value of an existing parameterised rule rather than
+  // granting a new one (e.g. Hataeron Guard: Eternal Warrior (X) → Eternal Warrior (2)).
+  const rr = extra && extra.ruleReplace;
+  if(rr && rr.from){
+    const base = rr.from, re = new RegExp('^'+base.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(\\s*\\([^)]*\\))?$');
+    let hit=false;
+    rules = rules.map(r=>{ if(re.test(r)){ hit=true; return rr.to; } return r; });
+    if(!hit && rr.addIfMissing!==false) rules.push(rr.to);
+  }
   return [...new Set(rules)];
 }
 
@@ -13443,7 +14261,7 @@ function playCollectPowers(u, cfg){
   const powers=[];
   (wg.perModel ? [wg.champion, wg.perModel] : [wg]).forEach(blk=>{ if(!blk)return;
     (blk.addons||[]).forEach(a=>{
-      if(a.grants&&!a.decurionDisabled&&a.grants.powers&&(a.always_on||activeIds.has(a.id))) a.grants.powers.forEach(p=>powers.push(p)); }); });
+      if(a.grants&&!a.decurionDisabled&&addonConditionMet(a)&&a.grants.powers&&(a.always_on||activeIds.has(a.id))) a.grants.powers.forEach(p=>powers.push(p)); }); });
   const fromSlots=(blk,sel)=>{ if(!blk||!sel)return; (blk.slots||[]).forEach(sl=>{ const ch=sel[sl.id]; if(!ch)return;
     const opt=(sl.options||[]).find(o=>o.id===ch); if(opt&&opt.grants&&opt.grants.powers) opt.grants.powers.forEach(p=>powers.push(p)); }); };
   fromSlots(wg, cfg.slots); fromSlots(wg.champion,(cfg.champion||{}).slots);
@@ -13531,8 +14349,9 @@ function playReactions(u, cfg){
 }
 
 function playEquipmentSection(labels){
-  const items=[...new Set(labels)].filter(l => l && !weaponKeyFromLabel(l) &&
-    ((typeof EQUIPMENT!=='undefined' && EQUIPMENT[l]) || playRuleText(l)));
+  const eqForced = l => (typeof EQUIPMENT!=='undefined' && EQUIPMENT[l] && EQUIPMENT[l].alsoWeapon);
+  const items=[...new Set(labels)].filter(l => l && (eqForced(l) || (!weaponKeyFromLabel(l) &&
+    ((typeof EQUIPMENT!=='undefined' && EQUIPMENT[l]) || playRuleText(l)))));
   if(!items.length) return '';
   return `<div class="pm-section-h">EQUIPMENT</div>`+items.map(it=>{
     const txt=playRuleText(it);
@@ -13551,7 +14370,8 @@ function playTraitPills(u, cfg, extra){
   const grantedTraits=[];
   (wg.perModel ? [wg.champion, wg.perModel] : [wg]).forEach(blk=>{ if(!blk)return;
     (blk.addons||[]).forEach(a=>{
-      if(a.grants&&!a.decurionDisabled&&a.grants.traits&&(a.always_on||activeIds.has(a.id))) a.grants.traits.forEach(t=>grantedTraits.push(t)); }); });
+      if(a.grants&&!a.decurionDisabled&&addonConditionMet(a)&&a.grants.traits&&(a.always_on||activeIds.has(a.id))) a.grants.traits.forEach(t=>grantedTraits.push(t)); }); });
+  wargearGrants(u, cfg).traits.forEach(t=>grantedTraits.push(t));
   const traits = [...new Set([...(u.traits||[]), ...((extra&&extra.traits)||[]), ...grantedTraits])];
   const pills = [];
   types.forEach(t=>pills.push(`<span class="pm-pill">${t}</span>`));
@@ -13580,7 +14400,9 @@ function renderRiteOfWar(g){
   return withGroup(grp.gid, ()=>_renderRiteOfWarInner(grp));
 }
 function _renderRiteOfWarInner(grp){
-  const rite = currentRite(grp.faction) || {};
+  // Rites are keyed by faction (legion) for the Legiones Astartes, but a faction-less army
+  // list (e.g. Legio Custodes, factions:[]) keys its rite by the LIST name instead.
+  const rite = currentRite(grp.faction) || currentRite(grp.list) || {};
   const open = !!(ST.riteOpen && ST.riteOpen[grp.gid]);
   const sub = ST.riteSub || {};
   const entry = (rawKey, label, e) => {
@@ -13588,7 +14410,7 @@ function _renderRiteOfWarInner(grp){
     const isOpen = !!sub[key];
     const name = (e && e.name) ? e.name : '—';
     const text = (e && e.text) ? e.text
-      : `<span style="color:var(--text-muted);font-style:italic;">Not yet entered for ${grp.faction}.</span>`;
+      : `<span style="color:var(--text-muted);font-style:italic;">Not yet entered for ${escH(grp.faction||grp.list||'this army')}.</span>`;
     return `<div class="pm-rite-sub">
       <div class="pm-rite-subh" onclick="toggleRiteSub('${key}')">
         <span class="pm-rite-lab"><b>${label}:</b> ${name}</span><span class="pm-rite-chev">${isOpen?'⌃':'⌄'}</span>
@@ -13600,7 +14422,9 @@ function _renderRiteOfWarInner(grp){
     <div class="pm-sec-h" onclick="toggleRite('${grp.gid}')"><span>Rite of War${grp.kind!=="primary"?` — ${escH(grp.faction||grp.list)}`:""}</span><span>${open?'⌃':'⌄'}</span></div>
     ${open ? (
       entry('tactica','Legion Tactica', rite.tactica) +
-      entry('gambit','Gambit', rite.gambit) +
+      (Array.isArray(rite.gambits)
+        ? rite.gambits.map((g,gi)=>entry('gambit'+gi, rite.gambits.length>1?`Gambit ${gi+1}`:'Gambit', g)).join('')
+        : entry('gambit','Gambit', rite.gambit)) +
       entry('reaction','Reaction', rite.reaction)
     ) : ''}
   </div>`;
@@ -13652,7 +14476,8 @@ function renderPlayRoster(){
         <span class="pm-grp-meta">${escH(kindLabel)} · ${pts} pts</span>
       </div>`;
       // The contingent's own Rite of War sits at the top of its section.
-      const rite = legionRites(g.faction).length ? renderRiteOfWar(g) : '';
+      // Faction-less army lists (e.g. Legio Custodes) key their rite by LIST name.
+      const rite = (legionRites(g.faction).length || legionRites(g.list).length) ? renderRiteOfWar(g) : '';
       return `<div class="pm-grp ${isPri?'pri':'ally'}">${head}${rite}${secs}</div>`;
     };
     const ordered = [primaryGroup(),
@@ -13679,7 +14504,8 @@ function _renderPlayDatasheetInner(){
   const wg = activeWargear(u, cfg);
   const size = wg.perModel ? (cfg.size||u.minSize||1) : 1;
   const adv = pa ? PA.find(a=>a.id===pa) : null;
-  const pg = (adv && adv.grants) || r.injGrants || {};   // PA-granted OR injected-slot-granted types/rules/traits → fold into the displayed unit
+  const pgBase = (adv && adv.grants) || r.injGrants || {};   // PA-granted OR injected-slot-granted types/rules/traits → fold into the displayed unit
+  const pg = (adv && adv.ruleReplace) ? {...pgBase, ruleReplace: adv.ruleReplace} : pgBase;
   const load = playLoadout(u, cfg);
 
   const subParts = [];
@@ -13750,8 +14576,8 @@ function renderGroups(){
     const members = dets.filter(d=>DD[d.did] && DD[d.did].cat!==anchorCat);
     const {ao,ax}=getUnlocks(g.gid); const {a,b}=getUsed(g.gid);
     const isAlly = g.kind==="ally";
-    const rites = legionRites(g.faction);
-    const cur = currentRite(g.faction);
+    const rites = legionRites(g.faction).length ? legionRites(g.faction) : legionRites(g.list);
+    const cur = currentRite(g.faction) || currentRite(g.list);
     const locked = groupHasUnits(g.gid);
     const head = isAlly ? `
       <div class="grp-head">
@@ -13865,7 +14691,7 @@ function render(){
         <select onchange="setGroupFaction('${primaryGroup().gid}',this.value)">
           ${fx.map(L=>`<option${ST.legion===L?" selected":""}>${escH(L)}</option>`).join("")}
         </select></div>`;})()}
-      ${(()=>{const rites=legionRites(ST.legion);if(rites.length<2)return"";const cur=currentRite(ST.legion);return `<div class="cg"><span class="cl">Rite of War</span>
+      ${(()=>{const pgl=(primaryGroup()||{}).list;const rites=legionRites(ST.legion).length?legionRites(ST.legion):legionRites(pgl);if(rites.length<2)return"";const cur=currentRite(ST.legion)||currentRite(pgl);return `<div class="cg"><span class="cl">Rite of War</span>
         <select onchange="setGroupRite('${primaryGroup().gid}',this.value)">
           ${rites.map(r=>`<option value="${esc(r.id)}"${cur&&cur.id===r.id?" selected":""}>${escH(r.name||r.id)}</option>`).join("")}
         </select></div>`;})()}
