@@ -402,6 +402,12 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
  *      this unit is the only Unique-type model placed anywhere in the army).
  *    unitNote:"...",           // free-text note shown on the unit for rules the engine can't enforce
  *    primeAllTroops:{count, allowed:[...]},   // Sire-style: N filled Troops of these names -> all Prime
+ *    sireStarSlots:{count, role:"Role", add:[names], label},  // Sire-style STAR slots: once `count`
+ *      Troops slots in the PRIMARY detachment are filled, that detachment's `role` slots become star
+ *      slots which take everything the role normally takes PLUS the units named in `add`. Applies
+ *      per-slot, Primary Detachment only, and needs no toggle or state — a star slot is a superset of
+ *      the original, so a unit already placed in one stays legal. Evaluated by sireStarSlots();
+ *      e.g. Jaghatai Khan (Transport slots also take the Land Raider Explorator).
  *    profiles:[{id,label,stats,subtypes,type,wargear,...}],   // profile units (active = cfg.profileId||profiles[0])
  *    wargear:{ included_slots:[label...], pairs:[], slots:[], addons:[],
  *              champion:{...}, perModel:{...} } }             // champion/perModel for multi-model squads
@@ -430,6 +436,9 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
  *      Toggling the addon off runs pruneSlotChoices (toggleAddon + both togglePerModelAddon branches),
  *      clearing now-illegal picks so the model reverts to the slot default rather than keeping a ghost choice.
  *    per5cap:"grp", per5max:N, per5size:S    // at most per5max of options sharing "grp" per S models (e.g. 1 special weapon per 4/5). Inductii: per5size:4 }
+ *  An option may carry chips:[...] to describe a multi-weapon LOADOUT. With list:"key" as well,
+ *  the chip named by genericChip:"X" is replaced by whatever the player picks, so the companion
+ *  weapons survive the pick (optionChipLabels) — e.g. Falcon's Claws "Power Weapon and Bolt Pistol".
  *  A slot whose label ends "(optional)" and is not a weapon name has NO default weapon — nothing added until an option is picked (Orchestrator melee, pintle slots).
  *
  *
@@ -462,7 +471,11 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
  *                                                        // subsection (playPowers; each power/reaction/gambit carries its type inline).
  *    list:"<key>"          // addon opens a list picker
  *  }
- *  PAIR (wargear.pairs[]): { id, label, pts, replaces:["slotId",...], req:{legion}, sublabel }  // two-for-one weapon swap
+ *  PAIR (wargear.pairs[]): { id, label, pts, replaces:["slotId",...], req:{legion}, sublabel, chips:[...],
+ *    default:true }  // two-for-one weapon swap. default:true means the model STARTS on this pair
+ *    (defaultPairId / defaultPerModelCfg) — use when the printed loadout IS the combined weapon and the
+ *    separate weapons are the paid upgrade, e.g. Ebon Keshig's power glaive, where trading out of the
+ *    pair buys combi-bolter + power weapon/fist and re-exposes each slot's own exchanges.
  *
  *  INJECTED SLOTS (unit.injectSlots[] -> getInjectedSlots(det); a unit adds foreign slots to its
  *    detachment while it occupies a slot there — e.g. Forge Lord "Legiones Thallaxes", Praevian
@@ -511,7 +524,9 @@ select,input[type=number]{background:var(--card-bg);border:.5px solid var(--gold
  *    disabled ones contribute 0 cost and no grants (guarded at every cost/grant gather site).
  *
  *  PA[] (Prime Advantages; paAvailable): { id, label, desc, slotRole, oncePerDet,
- *    req:{legion,allegiance,infantryOnly,hasType,unit,profile,unitProfiles}, grants:{types,specialRules}, statBonus }
+ *    req:{legion,allegiance,infantryOnly,onlyTypes:[...],hasType,unit,profile,unitProfiles}, grants:{types,specialRules}, statBonus }
+ *      onlyTypes is the general form of infantryOnly: every model set must carry at least one of
+ *      the listed types, so ["Infantry","Cavalry"] reads "Infantry or Cavalry only".
  *      unitProfiles:{unitId:profileId} — unit must be a key; if it has profiles, the active one must
  *      equal the mapped id (null = any profile). Used for "Centurion or Cataphractii Centurion only",
  *      where the Terminator Centurion qualifies ONLY on its cataphractii_centurion profile.
@@ -629,6 +644,9 @@ const PA = [
   {id:"logistical",         label:"Logistical Benefit", desc:"Add one bonus non-prime slot (not HC/Command/Warlord/LoW). Once per detachment.", oncePerDet:true},
   {id:"the_unfavoured",     label:"The Unfavoured",     desc:"All Models in this unit gain the Expendable (1) Special Rule.",
     req:{legion:"Iron Warriors", infantryOnly:true}, grants:{specialRules:["Expendable (1)"]}},
+  {id:"the_sagyar_mazan", label:"The Sagyar Mazan",
+    desc:"All models in this unit gain the Expendable (2) special rule.",
+    req:{legion:"White Scars", onlyTypes:["Infantry","Cavalry"]}, grants:{specialRules:["Expendable (2)"]}},
   {id:"true_believers",     label:"True Believers",     desc:"This unit gains the Malefic type.",
     req:{allegiance:"Traitor"}, grants:{types:["Malefic"]}},
   {id:"rewards_of_treachery",     label:"Rewards of Treachery",     desc:"Command slots only. Add one bonus non-prime slot (any role except HC/Command/Warlord/Lord of War), filled by a non-unique, faction-specific unit from another Legion (no [Legiones Astartes] wildcard). That unit's Faction Trait becomes Alpha Legion.",
@@ -709,6 +727,12 @@ const DD = {
     restr:{Troops:["Assault Squad"]},
     rnote:"Troops: Assault Squads only.",
     slots:[{r:"Troops",p:true},{r:"Troops",p:false},{r:"Support",p:false},{r:"HeavyAssault",p:false}]},
+  chogorian_warband:{id:"chogorian_warband",name:"Chogorian Warband",cat:"auxiliary",
+    req:{legion:"White Scars"},
+    // Both role types are locked to a single unit each.
+    restr:{FastAttack:["Scimitar Jetbike Squadron"], Recon:["Outrider Squadron"]},
+    rnote:"Fast Attack: Scimitar Jetbike Squadrons only. Recon: Outrider Squadrons only.",
+    slots:[{r:"FastAttack",p:true},{r:"FastAttack",p:false},{r:"Recon",p:false},{r:"Recon",p:false}]},
   exalted_conclave:{id:"exalted_conclave",name:"Exalted Conclave",cat:"apex",
     req:{legion:"Word Bearers", allegiance:"Traitor"},
     // Only True Believers may be taken as the Prime Advantage in this detachment's prime slots.
@@ -1102,6 +1126,11 @@ const WEAPONS = {
 
   "power_axe": {label:"Power Axe", melee:true, im:-1, am:"A", sm:"+1", ap:3, d:1, specialRules:"Breaching (5+)", rules:["Power"]},
   "phoenix_power_spear": {label:"Phoenix Power Spear", melee:true, im:"+1", am:"A", sm:"+1", ap:3, d:1, specialRules:"Impact (D), Breaching (6+)", rules:["Power"]},
+  "power_glaive":        {label:"Power Glaive", melee:true, im:"I", am:"A", sm:"+1", ap:3, d:1, specialRules:"Impact (AP), Breaching (5+)", rules:["Power"]},
+  "the_white_tiger_dao": {label:"The White Tiger Dao", melee:true, im:"+2", am:"A", sm:"S", ap:2, d:2, specialRules:"Impact (AM), Duellist’s Edge (1)", rules:["Power"]},
+  "kontos_power_lance": {label:"Kontos Power Lance", melee:true, im:"+4", am:"1", sm:"+5", ap:3, d:2, specialRules:"Impact (AP), Armourbane", rules:["Power"]},
+  "tails_of_the_dragon": {label:"The Tails of the Dragon", melee:true, im:"I", am:"A", sm:"+1", ap:2, d:1, specialRules:"Critical Hit (5+), Precision (3+)", rules:["Power"]},
+  "breath_of_the_storm": {label:"The Breath of the Storm", melee:true, im:"+1", am:"A", sm:"+2", ap:3, d:1, specialRules:"Critical Hit (6+), Breaching (4+)", rules:["Power"]},
   "phoenix_rapier": {label:"Phoenix Rapier", melee:true, im:"I", am:"A", sm:"S", ap:3, d:1, specialRules:"Impact (D), Breaching (6+)", rules:["Power"]},
   "sovereign_blade": {label:"Sovereign Blade", melee:true, im:"I", am:"A", sm:"S", ap:2, d:2, specialRules:"Phage (S), Reaping Blow (1)", rules:["Immaterial"]},
   "sovereign_greatblade": {label:"Sovereign Greatblade", melee:true, im:-2, am:"A", sm:"+3", ap:2, d:3, specialRules:"Phage (S), Reaping Blow (2)", rules:["Immaterial"]},
@@ -1265,6 +1294,9 @@ const WEAPONS = {
   "gravis_bolt_cannon":         {label:"Gravis Bolt Cannon",         range:36, fp:6,  rs:5, ap:4, d:2, specialRules:"Heavy (FP)", rules:["Bolt"]},
   "warpfire_cannon":            {label:"Warpfire Cannon",            range:36, fp:1,  rs:6, ap:4, d:2, specialRules:"Heavy (RS), Blast (3in), Breaching (4+), Shred (6+)", rules:["Plasma"]},
   "akkadic_hand_flamer":        {label:"Akkadic Hand Flamer",        range:"Template", fp:1, rs:4, ap:4, d:1, specialRules:"Template, Pistol, Panic (2)", rules:["Assault","Flame"]},
+  "storms_voice":               {label:"Storm’s Voice",               range:12, fp:2, rs:6, ap:4, d:2, specialRules:"Breaching (5+), Deflagrate (6), Stun (1)", rules:["Assault"]},
+  "unseen_bolt":                {label:"Unseen Bolt",                 range:36, fp:1, rs:4, ap:4, d:1, specialRules:"Blast (5in), Barrage (2), Stun (2), Force (RS)", rules:["Ranged","Psychic"]},
+  "scatterbolt_launcher":       {label:"Scatterbolt Launcher",        range:"Template", fp:1, rs:5, ap:4, d:1, specialRules:"Template, Shred (6+), Pinning (1)", rules:["Bolt","Assault"]},
   "burning_warpfire":           {label:"Burning Warpfire",           range:"Template", fp:1, rs:5, ap:4, d:1, specialRules:"Template, Panic (2), Breaching (4+), Shred (6+)", rules:["Flame"]},
   "gravis_heavy_bolter_battery":{label:"Gravis Heavy Bolter Battery",range:36, fp:8,  rs:5, ap:4, d:1, specialRules:"Suppressive (2)", rules:["Bolt"]},
   "twin_avenger_bolt_cannon":   {label:"Twin Avenger Bolt Cannon",   range:36, fp:10, rs:6, ap:3, d:1, specialRules:"Suppressive (2)", rules:["Bolt"]},
@@ -1583,6 +1615,18 @@ const SU = {
            activeWhen:{absent:"Mortarion"},
            grants:{traits:["Biomancer"], specialRules:["Impact (Strength)"], weapons:["Biomantic Slam"], powers:["Biomantic Rage"]}},
         ],
+      }
+    },
+    {
+      id:"hc_qin_xa", name:"Qin Xa", basePts:220, minSize:1, maxSize:1,
+      req:{legion:"White Scars", allegiance:"Loyalist"}, uniqueRule:"Qin Xa",
+      traits:["Loyalist","White Scars","Master of the Legion"],
+      specialRules:["Bulky (2)","Chosen of the Khagan"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:6,BS:4,S:4,T:5,W:4,I:5,A:5,LD:10,CL:9,WP:9,IN:9,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["The Tails of the Dragon"],
+        pairs:[], slots:[], addons:[],
       }
     },
     {
@@ -2129,6 +2173,179 @@ const SU = {
     },
   ],
   Command:[
+    {
+      id:"cmd_hibou_khan", name:"Hibou Khan", basePts:165, minSize:1, maxSize:1,
+      req:{legion:"White Scars", allegiance:"Loyalist"}, uniqueRule:"Hibou Khan",
+      traits:["Loyalist","White Scars"],
+      specialRules:["Officer of the Line (2)","Seeker of Atonement","Expendable (2)"],
+      modelTypes:["Infantry","Unique","Command"],
+      stats:{M:7,WS:6,BS:5,S:4,T:4,W:3,I:5,A:4,LD:10,CL:8,WP:8,IN:8,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:["The Breath of the Storm","Bolt Pistol","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
+      id:"cmd_stormseer", name:"Stormseer", basePts:95, minSize:1, maxSize:1,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars","Psyker"],
+      specialRules:[],
+      modelTypes:["Infantry","Command"],
+      unitNote:"May select up to two Psychic Disciplines.",
+      stats:{M:7,WS:5,BS:5,S:4,T:4,W:3,I:5,A:4,LD:8,CL:7,WP:10,IN:8,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:["Force Staff","Frag Grenades","Krak Grenades"],
+        pairs:[],
+        slots:[
+          { id:"pistol", label:"Bolt Pistol", options:[
+            {id:"legion_pistol", label:"Legion Pistol", pts:0, list:"legion_pistols"},
+          ]},
+        ],
+        addons:[
+          // Same shape as the Librarian's disciplines: discipline:true + maxDisciplines caps the
+          // pick, and everything a discipline confers (including the Every Strike Foreseen gambit)
+          // rides in grants. Free here — the datasheet lists no cost.
+          {id:"stormcalling", label:"Stormcalling", pts:0, discipline:true, maxDisciplines:2, grants:{traits:["Stormseer"], specialRules:["Move Through Cover"], weapons:["Unseen Bolt"], powers:["Call of the Wind"]}},
+          {id:"divination",   label:"Divination",   pts:0, discipline:true, maxDisciplines:2, grants:{traits:["Diviner"], specialRules:["Duellist\u2019s Edge (2)"], weapons:[], powers:["Every Strike Foreseen","Foresight's Blessing"]}},
+          {id:"thaumaturgy",  label:"Thaumaturgy",  pts:0, discipline:true, maxDisciplines:2, grants:{traits:["Thaumaturge"], specialRules:["Hatred (Psykers)"], weapons:[], powers:["Resurrection","Tranquility"]}},
+          {id:"telepathy",    label:"Telepathy",    pts:0, discipline:true, maxDisciplines:2, grants:{traits:["Telepath"], specialRules:["Fear (1)"], weapons:["Cursed Whispers"], powers:["Mind-burst"]}},
+        ],
+      }
+    },
+    {
+      id:"cmd_mounted_stormseer", name:"Mounted Stormseer", basePts:125, minSize:1, maxSize:1,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars","Psyker"],
+      unitNote:"May select up to two Psychic Disciplines.",
+      profiles:[
+        {
+          id:"outrider_stormseer", label:"Outrider Stormseer", pts:0,
+          stats:{M:14,WS:5,BS:5,S:4,T:4,W:4,I:5,A:4,LD:8,CL:7,WP:10,IN:7,SAV:"2+",INV:"5+"},
+          type:"Cavalry", subtypes:["Command"],
+          specialRules:["Bulky (2)","Firestorm","Implacable Advance","Outflank"],
+          wargear:{
+            included_slots:["Force Staff","Frag Grenades","Krak Grenades"],
+            pairs:[],
+            slots:[
+              { id:"twin_bolter", label:"Twin Bolter", options:[
+                {id:"twin_plasma_gun", label:"Twin Plasma Gun", pts:15},
+              ]},
+              { id:"pistol", label:"Bolt Pistol", options:[
+                {id:"legion_pistol", label:"Legion Pistol", pts:0, list:"legion_pistols"},
+              ]},
+            ],
+            addons:[
+              {id:"stormcalling", label:"Stormcalling", pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Stormseer"], specialRules:["Move Through Cover"], weapons:["Unseen Bolt"], powers:["Call of the Wind"]}},
+              {id:"divination",   label:"Divination",   pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Diviner"], specialRules:["Duellist\u2019s Edge (2)"], weapons:[], powers:["Every Strike Foreseen","Foresight's Blessing"]}},
+              {id:"thaumaturgy",  label:"Thaumaturgy",  pts:0,  discipline:true, maxDisciplines:2, grants:{traits:["Thaumaturge"], specialRules:["Hatred (Psykers)"], weapons:[], powers:["Resurrection","Tranquility"]}},
+              {id:"telepathy",    label:"Telepathy",    pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Telepath"], specialRules:["Fear (1)"], weapons:["Cursed Whispers"], powers:["Mind-burst"]}},
+            ],
+          }
+        },
+        {
+          id:"scimitar_stormseer", label:"Stormseer on Scimitar Jetbike", pts:0,
+          stats:{M:16,WS:5,BS:5,S:4,T:4,W:4,I:5,A:4,LD:8,CL:7,WP:10,IN:8,SAV:"2+",INV:"5+"},
+          type:"Cavalry", subtypes:["Command","Antigrav"],
+          specialRules:["Bulky (3)","Deep Strike"],
+          wargear:{
+            included_slots:["Scimitar Jetbike","Force Staff","Frag Grenades","Krak Grenades"],
+            pairs:[],
+            slots:[
+              { id:"heavy_bolter", label:"Heavy Bolter", options:[
+                {id:"volkite_culverin", label:"Volkite Culverin", pts:10},
+                {id:"plasma_cannon",   label:"Plasma Cannon",    pts:15},
+                {id:"multi_melta",     label:"Multi-melta",      pts:20},
+              ]},
+              { id:"pistol", label:"Bolt Pistol", options:[
+                {id:"legion_pistol", label:"Legion Pistol", pts:0, list:"legion_pistols"},
+              ]},
+            ],
+            addons:[
+              {id:"stormcalling", label:"Stormcalling", pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Stormseer"], specialRules:["Move Through Cover"], weapons:["Unseen Bolt"], powers:["Call of the Wind"]}},
+              {id:"divination",   label:"Divination",   pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Diviner"], specialRules:["Duellist\u2019s Edge (2)"], weapons:[], powers:["Every Strike Foreseen","Foresight's Blessing"]}},
+              {id:"thaumaturgy",  label:"Thaumaturgy",  pts:0,  discipline:true, maxDisciplines:2, grants:{traits:["Thaumaturge"], specialRules:["Hatred (Psykers)"], weapons:[], powers:["Resurrection","Tranquility"]}},
+              {id:"telepathy",    label:"Telepathy",    pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Telepath"], specialRules:["Fear (1)"], weapons:["Cursed Whispers"], powers:["Mind-burst"]}},
+            ],
+          }
+        },
+      ]
+    },
+    {
+      id:"cmd_terminator_stormseer", name:"Stormseer in Terminator Armour", basePts:115, minSize:1, maxSize:1,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars","Psyker"],
+      unitNote:"May select up to two Psychic Disciplines.",
+      profiles:[
+        {
+          id:"cataphractii_stormseer", label:"Cataphractii Stormseer", pts:0,
+          stats:{M:6,WS:5,BS:5,S:4,T:5,W:4,I:5,A:4,LD:8,CL:7,WP:10,IN:8,SAV:"2+",INV:"4+"},
+          type:"Infantry", subtypes:["Command","Heavy"],
+          specialRules:["Bulky (2)","Implacable Advance","Slow and Purposeful"],
+          wargear:{
+            included_slots:["Force Staff"],
+            pairs:[],
+            slots:[
+              { id:"combi_bolter", label:"Combi-bolter", options:[
+                {id:"volkite_charger", label:"Volkite Charger", pts:0},
+                {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
+              ]},
+            ],
+            addons:[
+              {id:"stormcalling", label:"Stormcalling", pts:10, discipline:true, maxDisciplines:2, grants:{traits:["Stormseer"], specialRules:["Move Through Cover"], weapons:["Unseen Bolt"], powers:["Call of the Wind"]}},
+              {id:"divination",   label:"Divination",   pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Diviner"], specialRules:["Duellist\u2019s Edge (2)"], weapons:[], powers:["Every Strike Foreseen","Foresight's Blessing"]}},
+              {id:"thaumaturgy",  label:"Thaumaturgy",  pts:0,  discipline:true, maxDisciplines:2, grants:{traits:["Thaumaturge"], specialRules:["Hatred (Psykers)"], weapons:[], powers:["Resurrection","Tranquility"]}},
+              {id:"telepathy",    label:"Telepathy",    pts:10, discipline:true, maxDisciplines:2, grants:{traits:["Telepath"], specialRules:["Fear (1)"], weapons:["Cursed Whispers"], powers:["Mind-burst"]}},
+            ],
+          }
+        },
+        {
+          id:"tartaros_stormseer", label:"Tartaros Stormseer", pts:0,
+          stats:{M:7,WS:5,BS:5,S:4,T:5,W:4,I:5,A:4,LD:8,CL:7,WP:10,IN:8,SAV:"2+",INV:"5+"},
+          type:"Infantry", subtypes:["Command"],
+          specialRules:["Bulky (2)","Implacable Advance"],
+          wargear:{
+            included_slots:["Force Staff"],
+            pairs:[],
+            slots:[
+              { id:"combi_bolter", label:"Combi-bolter", options:[
+                {id:"volkite_charger", label:"Volkite Charger", pts:0},
+                {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
+              ]},
+            ],
+            addons:[
+              {id:"stormcalling", label:"Stormcalling", pts:10, discipline:true, maxDisciplines:2, grants:{traits:["Stormseer"], specialRules:["Move Through Cover"], weapons:["Unseen Bolt"], powers:["Call of the Wind"]}},
+              {id:"divination",   label:"Divination",   pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Diviner"], specialRules:["Duellist\u2019s Edge (2)"], weapons:[], powers:["Every Strike Foreseen","Foresight's Blessing"]}},
+              {id:"thaumaturgy",  label:"Thaumaturgy",  pts:0,  discipline:true, maxDisciplines:2, grants:{traits:["Thaumaturge"], specialRules:["Hatred (Psykers)"], weapons:[], powers:["Resurrection","Tranquility"]}},
+              {id:"telepathy",    label:"Telepathy",    pts:10, discipline:true, maxDisciplines:2, grants:{traits:["Telepath"], specialRules:["Fear (1)"], weapons:["Cursed Whispers"], powers:["Mind-burst"]}},
+            ],
+          }
+        },
+      ]
+    },
+    {
+      id:"cmd_jump_stormseer", name:"Stormseer with Jump Pack", basePts:115, minSize:1, maxSize:1,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars","Psyker"],
+      specialRules:["Bulky (2)","Deep Strike"],
+      modelTypes:["Infantry","Command","Antigrav"],
+      unitNote:"May select up to two Psychic Disciplines.",
+      stats:{M:12,WS:5,BS:5,S:4,T:4,W:3,I:5,A:4,LD:8,CL:7,WP:10,IN:8,SAV:"2+",INV:"5+"},
+      wargear:{
+        included_slots:["Force Staff","Frag Grenades","Krak Grenades"],
+        pairs:[],
+        slots:[
+          { id:"pistol", label:"Bolt Pistol", options:[
+            {id:"legion_pistol", label:"Legion Pistol", pts:0, list:"legion_pistols"},
+          ]},
+        ],
+        addons:[
+          {id:"stormcalling", label:"Stormcalling", pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Stormseer"], specialRules:["Move Through Cover"], weapons:["Unseen Bolt"], powers:["Call of the Wind"]}},
+          {id:"divination",   label:"Divination",   pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Diviner"], specialRules:["Duellist\u2019s Edge (2)"], weapons:[], powers:["Every Strike Foreseen","Foresight's Blessing"]}},
+          {id:"thaumaturgy",  label:"Thaumaturgy",  pts:0,  discipline:true, maxDisciplines:2, grants:{traits:["Thaumaturge"], specialRules:["Hatred (Psykers)"], weapons:[], powers:["Resurrection","Tranquility"]}},
+          {id:"telepathy",    label:"Telepathy",    pts:20, discipline:true, maxDisciplines:2, grants:{traits:["Telepath"], specialRules:["Fear (1)"], weapons:["Cursed Whispers"], powers:["Mind-burst"]}},
+        ],
+      }
+    },
     {
       id:"cmd_custodes_shield_captain", name:"Shield-Captain", basePts:175, minSize:1, maxSize:1,
       list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
@@ -5473,6 +5690,54 @@ const SU = {
   ],
   Elites:[
     {
+      id:"el_golden_keshig", name:"Golden Keshig", basePts:140, minSize:3, maxSize:6, ptsPerModel:40,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars"],
+      specialRules:["Deep Strike","Bulky (3)"],
+      modelTypes:["Cavalry","Antigrav"],
+      championLabel:"Keshig Champion", baseModelLabel:"Keshig Rider",
+      baseSizeBreakdown:"1 Keshig Champion, 2 Keshig Riders",
+      championStats:{M:16,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:9,CL:8,WP:7,IN:7,SAV:"2+",INV:"\u2014"},
+      modelStats:{M:16,WS:5,BS:4,S:4,T:4,W:2,I:4,A:3,LD:8,CL:8,WP:7,IN:7,SAV:"2+",INV:"\u2014"},
+      wargear:(()=>{ const incl=["Kontos Power Lance","Bolt Pistol","Scatterbolt Launcher"];
+        // "Any Model" may swap its power sword for these three, free.
+        const anyModel=[
+          {id:"power_lance",     label:"Power Lance",     pts:0},
+          {id:"power_maul",      label:"Power Maul",      pts:0},
+          {id:"charnabal_sabre", label:"Charnabal Sabre", pts:0},
+        ];
+        return {
+          included_slots:[], pairs:[], slots:[], addons:[],
+          champion:{
+            modelTypes:["Cavalry","Sergeant","Antigrav"],
+            included_slots:incl.slice(),
+            pairs:[],
+            slots:[
+              { id:"melee", label:"Power Sword", options:[
+                {id:"power_axe",      label:"Power Axe",      pts:0},
+                {id:"thunder_hammer", label:"Thunder Hammer", pts:10},
+                ...anyModel,
+              ]},
+            ],
+            addons:[],
+          },
+          perModel:{
+            modelTypes:["Cavalry","Antigrav"],
+            included_slots:incl.slice(),
+            pairs:[],
+            slots:[
+              { id:"melee", label:"Power Sword", options:[
+                {id:"power_axe", label:"Power Axe", pts:0},
+                ...anyModel,
+              ]},
+            ],
+            addons:[
+              {id:"vexilla", label:"Vexilla", pts:10, unique_in_unit:true},
+            ],
+          },
+        }; })()
+    },
+    {
       id:"e_custodes_adrasite_guard", name:"Adrasite Guard Sodality", basePts:360, minSize:6, maxSize:12, ptsPerModel:60,
       list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
       traits:["Loyalist","Legio Custodes","The Sodality"],
@@ -6575,6 +6840,40 @@ const SU = {
   ],
   Troops:[
     {
+      id:"t_ws_inductii", name:"White Scars Inductii Squad", basePts:100, minSize:10, maxSize:20, ptsPerModel:9,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars"],
+      specialRules:["Vanguard (2)","Expendable (1)","Proof of Valour","Inductii"],
+      modelTypes:["Infantry"],
+      championLabel:"Inductii", baseModelLabel:"Inductii", baseModelPlural:"Inductii",
+      baseSizeBreakdown:"10 Inductii",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:7,CL:7,WP:6,IN:6,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:["Frag Grenades","Krak Grenades"],
+        pairs:[
+          {id:"heavy_chainsword", label:"Heavy Chainsword", pts:5, replaces:["melee","pistol"],
+           chips:["Heavy Chainsword"], sublabel:"Replaces chainsword & bolt pistol"},
+        ],
+        slots:[
+          { id:"melee", label:"Chainsword", options:[
+            {id:"power_weapon",    label:"Power Weapon",    pts:10, per5cap:"ind_melee", per5max:1, per5size:4, list:"power_weapons"},
+            {id:"charnabal_sabre", label:"Charnabal Sabre", pts:5,  per5cap:"ind_melee", per5max:1, per5size:4},
+          ]},
+          { id:"pistol", label:"Bolt Pistol", options:[
+            {id:"legion_pistol", label:"Legion Pistol", pts:0, per5cap:"ind_pistol", per5max:1, per5size:4, list:"legion_pistols"},
+          ]},
+        ],
+        addons:[
+          {id:"vexilla",        label:"Vexilla",        pts:10, unique_in_unit:true},
+          // Legion Equipment list = Augury Scanner / Nuncio-vox at +10 each (see architecture notes).
+          {id:"augury_scanner", label:"Augury Scanner", pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["nuncio_vox"]},
+          {id:"nuncio_vox",     label:"Nuncio-vox",     pts:10, unique_in_unit:true, max_in_unit:2, exclusive:["augury_scanner"]},
+        ],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
+    {
       id:"t_custodes_sentinel_guard", name:"Sentinel Guard Sodality", basePts:240, minSize:6, maxSize:12, ptsPerModel:40,
       list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
       traits:["Loyalist","Legio Custodes","The Sodality"],
@@ -7247,6 +7546,25 @@ const SU = {
     },
   ],
   Support:[
+    {
+      id:"sup_kyzagan_assault_speeder", name:"Kyzagan Assault Speeder", basePts:105, minSize:1, maxSize:1,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars"],
+      specialRules:["Bulky (5)","Deep Strike","Firing Protocols (3)"],
+      modelTypes:["Cavalry","Antigrav"],
+      stats:{M:14,WS:4,BS:4,S:4,T:7,W:4,I:4,A:2,LD:8,CL:8,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      wargear:{
+        included_slots:["Kheres Assault Cannon","Two Reaper Autocannon"],
+        pairs:[],
+        slots:[],
+        // "Up to two hunter-killer missiles at +5 each" — one tickbox per missile rather than a
+        // slot offering "1 missile / 2 missiles", so the count reads directly off what's ticked.
+        addons:[
+          {id:"hk_1", label:"Hunter-killer Missile", pts:5},
+          {id:"hk_2", label:"Hunter-killer Missile", pts:5},
+        ],
+      }
+    },
     {
       id:"su_custodes_sagittarum_guard", name:"Sagittarum Guard Sodality", basePts:240, minSize:6, maxSize:12, ptsPerModel:40,
       list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
@@ -8275,6 +8593,102 @@ const SU = {
     },
   ],
   HeavyAssault:[
+    {
+      id:"ha_dark_sons_of_death", name:"Dark Sons of Death", basePts:125, minSize:5, maxSize:15, ptsPerModel:20,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars"],
+      specialRules:["Bulky (2)","Deep Strike","Impact (A)","Invocation of the Razing Tempest"],
+      modelTypes:["Infantry","Antigrav"],
+      championLabel:"Death\u2019s Champion", baseModelLabel:"Dark Son",
+      baseSizeBreakdown:"1 Death\u2019s Champion, 4 Dark Sons",
+      championStats:{M:12,WS:5,BS:4,S:4,T:4,W:1,I:4,A:2,LD:9,CL:8,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      modelStats:{M:12,WS:4,BS:4,S:4,T:4,W:1,I:4,A:1,LD:8,CL:8,WP:7,IN:7,SAV:"3+",INV:"\u2014"},
+      wargear:(()=>{ const incl=["Frag Grenades","Krak Grenades","Rad Grenades"];
+        // "Any Model" chainsword exchanges — offered on both the Champion and the rank and file.
+        const anyMelee=[
+          {id:"charnabal_sabre", label:"Charnabal Sabre", pts:5},
+          {id:"power_glaive",    label:"Power Glaive",    pts:15},
+        ];
+        return {
+          included_slots:[], pairs:[], slots:[], addons:[],
+          champion:{
+            modelTypes:["Infantry","Sergeant","Antigrav"],
+            included_slots:incl.slice(),
+            pairs:[
+              {id:"pair_of_lightning_claws", label:"Pair of Lightning Claws", pts:10, replaces:["melee","pistol"],
+               chips:["Pair of Lightning Claws"], sublabel:"Replaces bolt pistol & chainsword"},
+            ],
+            slots:[
+              { id:"melee", label:"Chainsword", options:[
+                ...anyMelee,
+                {id:"power_weapon",   label:"Power Weapon",   pts:10, list:"power_weapons"},
+                {id:"power_fist",     label:"Power Fist",     pts:15},
+                {id:"lightning_claw", label:"Lightning Claw", pts:10},
+              ]},
+              { id:"pistol", label:"Bolt Pistol", options:[
+                {id:"legion_pistol", label:"Legion Pistol", pts:0, list:"legion_pistols"},
+              ]},
+            ],
+            addons:[
+              {id:"melta_bombs", label:"Melta Bombs", pts:10},
+            ],
+          },
+          perModel:{
+            modelTypes:["Infantry","Antigrav"],
+            included_slots:incl.slice(),
+            pairs:[],
+            slots:[
+              { id:"melee", label:"Chainsword", options:[...anyMelee] },
+              { id:"pistol", label:"Bolt Pistol", options:[
+                {id:"plasma_pistol", label:"Plasma Pistol", pts:5, per5cap:"ds_pistol", per5max:1, per5size:5},
+                {id:"hand_flamer",   label:"Hand Flamer",   pts:5, per5cap:"ds_pistol", per5max:1, per5size:5},
+              ]},
+              // Additive, not an exchange — "may have one of the following selected for it".
+              { id:"special", label:"Special Weapon (optional)", options:[
+                {id:"flamer",    label:"Flamer",    pts:5,  per5cap:"ds_special", per5max:1, per5size:5},
+                {id:"plasma_gun",label:"Plasma Gun",pts:10, per5cap:"ds_special", per5max:1, per5size:5},
+                {id:"meltagun",  label:"Meltagun",  pts:15, per5cap:"ds_special", per5max:1, per5size:5},
+              ]},
+            ],
+            addons:[],
+          },
+        }; })()
+    },
+    {
+      id:"ha_ebon_keshig", name:"Ebon Keshig", basePts:200, minSize:5, maxSize:10, ptsPerModel:35,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars"],
+      specialRules:["Bulky (2)","Vanguard (3)","Feel No Pain (6+)","Expendable (2)"],
+      modelTypes:["Infantry"],
+      championLabel:"Kharash", baseModelLabel:"Kharash",
+      baseSizeBreakdown:"5 Kharash",
+      wargear:(()=>{ const blk=()=>({
+        modelTypes:["Infantry"],
+        included_slots:[],
+        // Modelled the way the other combi-bolter sheets are, but inverted: the printed loadout is
+        // the power glaive, so THAT is the default pair. Trading out of it buys the combi-bolter +
+        // melee loadout (+5 / +10) and re-exposes the combi-bolter's own exchange, exactly as on a
+        // Terminator datasheet.
+        pairs:[
+          {id:"power_glaive", label:"Power Glaive", pts:0, default:true, replaces:["combi_bolter","melee"],
+           chips:["Power Glaive"], sublabel:"Printed loadout \u2014 remove to buy a combi-bolter loadout"},
+        ],
+        slots:[
+          { id:"combi_bolter", label:"Combi-bolter", options:[
+            {id:"volkite_charger", label:"Volkite Charger", pts:0},
+            {id:"combi_weapon",    label:"Combi-weapon",    pts:0, list:"combi_weapons"},
+          ]},
+          { id:"melee", label:"Melee Weapon", required:true, options:[
+            {id:"power_weapon", label:"Power Weapon", pts:5,  list:"power_weapons"},
+            {id:"power_fist",   label:"Power Fist",   pts:10},
+          ]},
+        ],
+        addons:[
+          {id:"vexilla",         label:"Vexilla",         pts:10, unique_in_unit:true},
+          {id:"grenade_harness", label:"Grenade Harness", pts:5},
+        ],
+      }); return {included_slots:[], pairs:[], slots:[], addons:[], champion:blk(), perModel:blk()}; })()
+    },
     {
       id:"ha_custodes_aquilon", name:"Aquilon Terminator Sodality", basePts:255, minSize:3, maxSize:9, ptsPerModel:85,
       list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
@@ -9454,6 +9868,53 @@ const SU = {
   ],
   Recon:[
     {
+      id:"rec_falcons_claws", name:"Falcon\u2019s Claws", basePts:110, minSize:5, maxSize:10, ptsPerModel:18,
+      req:{legion:"White Scars"},
+      traits:["[Allegiance]","White Scars","Smokescreen"],
+      specialRules:["Outflank","Precision (6+)"],
+      modelTypes:["Infantry","Light"],
+      championLabel:"Falcon\u2019s Claw Champion", baseModelLabel:"Falcon\u2019s Claw",
+      baseSizeBreakdown:"1 Falcon\u2019s Claw Champion, 4 Falcon\u2019s Claws",
+      championStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:3,LD:8,CL:7,WP:7,IN:8,SAV:"4+",INV:"\u2014"},
+      modelStats:{M:7,WS:4,BS:4,S:4,T:4,W:1,I:4,A:2,LD:7,CL:7,WP:7,IN:8,SAV:"4+",INV:"\u2014"},
+      wargear:(()=>{ const incl=["Frag Grenades","Krak Grenades"];
+        // Every exchange trades the paired claws for a TWO-weapon loadout, so each option carries
+        // chips for both resulting weapons. Offered to any model:
+        const anyModel={id:"power_weapon_bolt_pistol", label:"Power Weapon and Bolt Pistol", pts:0,
+                        list:"power_weapons", chips:["Power Weapon","Bolt Pistol"], genericChip:"Power Weapon"};
+        return {
+          included_slots:[], pairs:[], slots:[], addons:[],
+          champion:{
+            modelTypes:["Infantry","Sergeant","Light"],
+            included_slots:incl.slice(),
+            pairs:[],
+            slots:[
+              { id:"claws", label:"Pair of Lightning Claws", options:[
+                anyModel,
+                {id:"claw_thunder_hammer",   label:"Lightning Claw and Thunder Hammer",   pts:15, chips:["Lightning Claw","Thunder Hammer"]},
+                {id:"claw_power_fist",       label:"Lightning Claw and Power Fist",       pts:15, chips:["Lightning Claw","Power Fist"]},
+                {id:"claw_hand_flamer",      label:"Lightning Claw and Hand Flamer",      pts:5,  chips:["Lightning Claw","Hand Flamer"]},
+                {id:"claw_plasma_pistol",    label:"Lightning Claw and Plasma Pistol",    pts:10, chips:["Lightning Claw","Plasma Pistol"]},
+                {id:"claw_volkite_serpenta", label:"Lightning Claw and Volkite Serpenta", pts:0,  chips:["Lightning Claw","Volkite Serpenta"]},
+              ]},
+            ],
+            addons:[
+              {id:"melta_bombs", label:"Melta Bombs", pts:10},
+              {id:"cyber_hawk",  label:"Cyber-hawk",  pts:10},
+            ],
+          },
+          perModel:{
+            modelTypes:["Infantry","Light"],
+            included_slots:incl.slice(),
+            pairs:[],
+            slots:[
+              { id:"claws", label:"Pair of Lightning Claws", options:[anyModel] },
+            ],
+            addons:[],
+          },
+        }; })()
+    },
+    {
       id:"rc_custodes_venatari", name:"Venatari Sodality", basePts:165, minSize:3, maxSize:6, ptsPerModel:55,
       list:"Legio Custodes", req:{list:"Legio Custodes", allegiance:"Loyalist"},
       traits:["Loyalist","Legio Custodes","The Sodality"],
@@ -9703,15 +10164,15 @@ const SU = {
           { id:"pintle", label:"Pintle Weapon (optional)", options:[
             {id:"legion_pintle", label:"Legion Pintle Weapon", pts:0, list:"pintle_weapons"},
           ]},
-          { id:"sabre_missiles", label:"Hull (Front) Sabre Missiles (optional)", options:[
-            {id:"sabre_1", label:"1 Sabre Missile",  pts:5},
-            {id:"sabre_2", label:"2 Sabre Missiles", pts:10},
-            {id:"sabre_3", label:"3 Sabre Missiles", pts:15},
-            {id:"sabre_4", label:"4 Sabre Missiles", pts:20},
-          ]},
         ],
         addons:[
           {id:"searchlights", label:"Searchlights", pts:5, unique_in_unit:true},
+          // One tickbox per missile rather than a "1/2/3/4 missiles" slot, so the count reads
+          // off what's ticked. Same shape as the Kyzagan and Land Speeder hunter-killers.
+          {id:"sabre_1", label:"Hull (Front) Sabre Missile", pts:5},
+          {id:"sabre_2", label:"Hull (Front) Sabre Missile", pts:5},
+          {id:"sabre_3", label:"Hull (Front) Sabre Missile", pts:5},
+          {id:"sabre_4", label:"Hull (Front) Sabre Missile", pts:5},
         ],
       }
     },
@@ -9948,12 +10409,13 @@ const SU = {
               {id:"a_plasma_cannon", label:"Plasma Cannon", pts:10},
               {id:"a_graviton_gun", label:"Graviton Gun", pts:10},
             ]},
-            { id:"hk", label:"Hunter-killer Missiles (optional)", options:[
-              {id:"hk_1", label:"1 Hunter-killer Missile", pts:5},
-              {id:"hk_2", label:"2 Hunter-killer Missiles", pts:10},
-            ]},
           ],
-          addons:[],
+          // One tickbox per missile rather than a "1 missile / 2 missiles" slot, so the count
+          // reads off what's ticked. Same shape as the Kyzagan Assault Speeder.
+          addons:[
+            {id:"hk_1", label:"Hunter-killer Missile", pts:5},
+            {id:"hk_2", label:"Hunter-killer Missile", pts:5},
+          ],
         },
         champion:{
           modelTypes:["Cavalry","Skirmish","Antigrav"],
@@ -9977,12 +10439,13 @@ const SU = {
               {id:"a_plasma_cannon", label:"Plasma Cannon", pts:10},
               {id:"a_graviton_gun", label:"Graviton Gun", pts:10},
             ]},
-            { id:"hk", label:"Hunter-killer Missiles (optional)", options:[
-              {id:"hk_1", label:"1 Hunter-killer Missile", pts:5},
-              {id:"hk_2", label:"2 Hunter-killer Missiles", pts:10},
-            ]},
           ],
-          addons:[],
+          // One tickbox per missile rather than a "1 missile / 2 missiles" slot, so the count
+          // reads off what's ticked. Same shape as the Kyzagan Assault Speeder.
+          addons:[
+            {id:"hk_1", label:"Hunter-killer Missile", pts:5},
+            {id:"hk_2", label:"Hunter-killer Missile", pts:5},
+          ],
         },
       }
     },
@@ -10229,6 +10692,19 @@ const SU = {
       }
     },
     {
+      id:"wl_jaghatai_khan", name:"Jaghatai Khan", basePts:440, minSize:1, maxSize:1,
+      req:{legion:"White Scars", allegiance:"Loyalist"}, uniqueRule:"Jaghatai Khan",
+      traits:["Loyalist","White Scars","Master of the Legion"],
+      specialRules:["Sire of the White Scars","Bulky (4)","Death by a Thousand Cuts","Eternal Warrior (2)"],
+      modelTypes:["Paragon","Unique"],
+      sireStarSlots:{count:4, role:"Transport", add:["Land Raider Explorator"], label:"Sire of the White Scars"},
+      stats:{M:8,WS:7,BS:6,S:6,T:6,W:6,I:7,A:7,LD:12,CL:10,WP:10,IN:10,SAV:"2+",INV:"4+"},
+      wargear:{
+        included_slots:["The White Tiger Dao","Storm\u2019s Voice","Frag Grenades","Krak Grenades"],
+        pairs:[], slots:[], addons:[],
+      }
+    },
+    {
       id:"wl_alpharius", name:"Alpharius", basePts:465, minSize:1, maxSize:1,
       req:{legion:"Alpha Legion"}, uniqueRule:"Alpharius",
       primeAllTroops:{count:4, allowed:["Tactical Squad","Assault Squad"]},
@@ -10292,6 +10768,7 @@ const SU = {
 };
 
 const EQUIPMENT = {
+  "Cyber-hawk": {grants:{specialRules:["Move Through Cover"]}, text:"All Models in a Unit that includes any Models with a cyber-hawk gain the Move Through Cover Special Rule."},
   "Arae-shrike": {grants:{specialRules:["Deep Strike"]}, text:"• This model, and any unit it joins, gains the Deep Strike rule.<br>• At the end of your turn, if this model is on the battlefield, it may make an Intelligence Check. If successful, your opponent must take a -1 modifier to the first Reserves Test they make during their next turn."},
   "Misericordia": {type:"special_rule", text:"A Unit containing any Models with a Misericordia may select a unique aftermath option in which it makes a single attack against an enemy Unit from the same Combat.", full:"A Unit which contains any Models with a Misericordia may have the Blade of Mercy aftermath option selected for it in Step 4 of the Resolution Sub-Phase of the Assault Phase for any Combat in which that Unit has won or drawn the Combat.<br><br><b>The Blade of Mercy</b> - The Controlling Player selects a single Model in this Unit which has a Misericordia to resolve Steps 4-10 of the Resolving an Initiative Step sequence with, targeting one enemy Unit from the selected Combat which has had the Fall Back aftermath option selected for it. Attacks made as part of this aftermath option are resolved using the Misericordia Weapon profile. The Damage characteristic is equal to the number of Models with a Misericordia in the Unit for which this aftermath option has been selected. The Misericordia Weapon profile may not be selected to make attacks unless it is during this aftermath option."},
   "Praesidium Shield": {traits:["Shield"], grants:{traits:["Shield"]}, text:"This model gains a 5+ invulnerable save and the Shield trait."},
@@ -10354,6 +10831,8 @@ const EQUIPMENT = {
   "Resurrection": {text:"This Power can be used in the Shooting Phase and can return a single Casualty to the Unit with all Wounds restored.", full:"<i>(Psychic Reaction, Blessing)</i><br><br><b>Trigger:</b> The Reactive Player may choose to declare a Resurrection Psychic Reaction in the Shooting Phase, at the start of Step 11 of any Shooting Attack made by the Active Player.<br><br><b>Cost:</b> The Reactive Player must spend 1 point of their Reaction Allotment to declare a Resurrection Psychic Reaction - this cost paid as soon as the declaration is made.<br><br><b>Focus:</b> The Focus of this Psychic Reaction must be a Model with the Thaumaturge Trait and under the Reactive Player\u2019s Control, and must be a part of the Unit targeted by the Shooting Attack that triggers this Psychic Reaction.<br><br><b>Target:</b> The Target Unit must be the Unit that is the target of the Shooting Attack that triggered the Reaction.<br><br><b>Duration:</b> If successfully Manifested, the effects of this Psychic Reaction are resolved immediately.<br><br><b>Process</b><br>Once the Focus and Target Unit have been decided, make a Manifestation Check.<br>If the Manifestation Check is successful then, before any Models in the Target Unit are Removed as Casualties, the Controlling Player of the Target Unit must select one Model being Removed as a Casualty and roll a Dice. If the Dice roll for the chosen Model is equal to or higher than a \u20184\u2019, then that Model is not Removed as a Casualty and is returned to play in Unit Coherency with its Unit and with its Wounds Characteristic set to its Base Value, as listed on that Model\u2019s profile. This Psychic Reaction has no effect on Models that do not have a Wounds Characteristic and if the result of the Manifestation Check causes Perils of the Warp, then this instance of Perils of the Warp is resolved after any Models are returned to the Unit.<br>If the Manifestation Check fails then there is no further effect."},
   "Tranquility": {text:"This Power is used in the Start Phase and makes it harder for the Target Unit to use Psychic Powers, Psychic Reactions or to attack with Psychic Weapons.", full:"<i>(Psychic Power, Curse)</i><br><br><b>Trigger:</b> The Active Player may choose to Manifest the Tranquillity Psychic Power in the Effects Sub-Phase of the Start Phase.<br><br><b>Focus:</b> The Focus of the Power must be a Model with the Thaumaturge Trait and must be controlled by the Active Player.<br><br><b>Target:</b> The Target Unit must be a Unit under the control of the Reactive Player with at least one Model within 18\" of the Focus and with Line of Sight to the Focus. The Target Unit must include at least one Model with the Psyker Trait.<br><br><b>Duration:</b> If successfully Manifested, the effects of this Psychic Power last until the start of the Active Player\u2019s next Turn as the Active Player.<br><br><b>Process</b><br>Once the Focus and Target Unit have been decided, the Target Unit\u2019s Controlling Player makes a Resistance Check for that Unit.<br>If the Resistance Check is failed, then all Models in the Target Unit suffer a penalty of -2 to their Willpower Characteristic when attempting to Manifest any Psychic Power or Psychic Reaction. If any Model in the Target Unit makes attacks with a Weapon that has the Psychic Trait, then the Strength Characteristic of all Hits inflicted is reduced by 1.<br>If the Resistance Check succeeds then there is no further effect."},
   "Thaumaturgy": {types:["psychic_discipline"], text:"Grants the following:<br>• Thaumaturge trait<br>• Hatred (Psykers) special rule<br>• Resurrection psychic power<br>• Tranquility psychic power"},
+  "Call of the Wind": {text:"This Power is used in the Movement Phase and can allow the Target Unit to move its full Rush distance as a normal Move.", full:"<i>(Psychic Power, Blessing)</i><br><br><b>Trigger:</b> The Active Player may choose to Manifest the Call of the Wind Psychic Power in the Movement Phase, when selecting a Unit under their control that includes at least one Model with the Stormseer Trait to Move and before any Move is made for that Unit.<br><br><b>Focus:</b> The Focus of the Power must be a Model with the Stormseer Trait that is part of the Unit that was selected to Move.<br><br><b>Target:</b> The Target Unit must be a Unit under the control of the Active Player with at least one Model within 12\" of the Focus and with Line of Sight to the Focus, including the Unit that the Focus is part of, and must only include Models with the White Scars Trait. The Target may not be a Unit that is Locked in Combat, or otherwise ineligible to Move normally, for example, it is under the effects of the Routed Status, and may not include any Models with the Vehicle Type.<br><br><b>Duration:</b> If successfully Manifested, the effects of this Psychic Power are resolved immediately.<br><br><b>Process</b><br>Once the Focus and Target Unit have been decided, make a Manifestation Check.<br>If this Psychic Power is successfully Manifested, until the end of the Phase, the Target Unit cannot Rush, but the Movement Characteristic of each Model in the Target Unit is modified by a value equal to that Model\u2019s Initiative Characteristic.<br>If the Manifestation Check fails then there is no further effect to the Target Unit."},
+  "Stormcalling": {types:["psychic_discipline"], text:"Grants the following:<br>• Stormseer trait<br>• Move Through Cover special rule<br>• Unseen Bolt psychic weapon<br>• Call of the Wind psychic power"},
   "Ætheric Juncture Splicer": {text:"This model has the Deep Strike special rule. When joined to an Infantry unit without Bulky, or with Bulky (2), all models in that unit gain Deep Strike.<br><br>If the opponent uses the Interceptor reaction against this unit and causes at least one wound, this unit gains the Suppressed status."},
 };
 
@@ -10376,6 +10855,12 @@ const RULES = {
   "Ferrum Occularis": {type:"special_rule", text:"If this unit remained Stationary during its last Movement phase, Cover saves may not be taken against Shooting performed by this model."},
   "Inductii": {type:"special_rule", text:"If taken in a Prime Slot, this unit may not select a Prime Advantage."},
   "Empty Vessels": {type:"special_rule", text:"A Unit containing any Models with this Special Rule gains the Malefic Sub-Type and the Feel No Pain (6+) Special Rule once it scores Victory Points due to the Vanguard (X) Special Rule, after suffering D3 wounds.", full:"A Unit containing Models with this Special Rule may never be joined by a Model without this Special Rule. Additionally, the first time in a Battle each Unit which includes Models with this Special Rule scores Victory Points due to the Vanguard (X) Special Rule, that Unit immediately suffers D3 automatic wounds with an AP of 2 and a Damage of 1 against which no Saving Throws of any kind may be made. Once these wounds are resolved, every Model in that Unit immediately gains the Malefic Sub-Type and the Feel No Pain (6+) Special Rule for the remainder of the Battle."},
+  "Sire of the White Scars": {type:"special_rule", text:"If a Model with this Special Rule is part of an Army, then the Controlling Player may apply the following additional Special Rules to all Auxiliary, Apex and Primary Detachments that have the same Faction Trait as the Model with this Special Rule:<br>• If four or more Troops Battlefield Role Slots in the Primary Detachment of this Army are filled then any Transport Battlefield Role Slots in the Primary Detachment may be exchanged for Recon Battlefield Role Slots. Any Recon Battlefield Role Slots included in the Primary Detachment in this way must be filled with Land Raider Explorator Units.<br><br>Furthermore, if a Model with this Special Rule is part of an Army, then the following Special Rules are granted to all Models with the Infantry and or Paragon Type with the White Scars Trait in the same Army:<br>• Until the end of the first Battle Turn of a Battle, all Models in this Army with the Infantry or Paragon Type and the White Scars Trait have the Fast (2) Special Rule."},
+  "Chosen of the Khagan": {type:"special_rule", text:"This Special Rule ensures the arrival of a Unit held in Reserves.", full:"Once per Battle, at the start of the Reserves Sub-Phase of the Movement Phase, this Model’s Controlling Player may select a single Unit which only includes Models with the White Scars Trait that is in Reserves. Reserves Rolls made for that Unit during this Sub-Phase are automatically successful."},
+  "Seeker of Atonement": {type:"special_rule", text:"This Gambit allows Hibou Khan to avoid being Removed as a Casualty.", full:"While a Model with this Special Rule is engaged in a Challenge, its Controlling Player can select the following Gambit:<br><br><b>Seeker of Atonement:</b> While this Gambit is selected, if this Model is reduced to 0 Wounds in Step 4 of the Strike Step, its Controlling Player can roll a Dice. On a result of 4+, this Model is not Removed as a Casualty but instead remains Engaged in the Challenge with a Wounds Characteristic of 1 and its Controlling Player gains Challenge Advantage."},
+  "Invocation of the Razing Tempest": {type:"special_rule", text:"A Unit that includes any Models with this Special Rule can be more easily selected as the target of the Call of the Wind Psychic Power.", full:"A Unit that includes any Models with this Special Rule may be selected as the target of the Call of the Wind Psychic Power from the Stormcalling Discipline while it has at least one Model within 24\" of the Focus instead of 12\". In addition, a Unit that includes any Models with this Special Rule may be selected as the Target of that Psychic Power even if no Models in that Unit have Line of Sight to the Focus."},
+  "Proof of Valour": {type:"special_rule", text:"Hit Tests resolved for Models with a Weapon Skill of 5 against a Unit entirely composed of Models with this Special Rule are only successful on a 4+.", full:"For any Strike Group in which the attacking Combatants have a current Weapon Skill Characteristic of 5, the Target Number of any Hit Test resulting from that Strike Group is always 4+ if that Strike Group’s Target Unit is entirely composed of Models with this Special Rule."},
+  "Death by a Thousand Cuts": {type:"special_rule", text:"This Gambit reduces the strength of an opponent when they are wounded.", full:"While a Model with this Special Rule is engaged in a Challenge, the Controlling Player can select the following Gambit:<br><br><b>Death by a Thousand Cuts:</b> If this Gambit is selected, during the Strike Step, the Strength of attacks made by the enemy Model are modified by -1 if that Model’s Wounds Characteristic has been reduced from its Base Value. This cannot reduce the Strength Characteristic of an attack below 1."},
   "Harbingers of Truth": {type:"special_rule", text:"Ashen Circle improve the Firepower Characteristic of Akkadic hand flamers in the Volley Step.", full:"When a Model with this Special Rule makes Volley Attacks, modify the Firepower Characteristic of that Model\u2019s Akkadic hand flamer by +1."},
   "Sire of the Iron Warriors": {type:"special_rule", text:"If Perturabo is in your Army, Iron Warriors Detachments make their Troops Slots Prime (with 4+ Tactical/Breacher Squads), and Iron Warriors Infantry gain Expendable (1) until the end of Turn 1.", full:"If a Model with this Special Rule is part of an Army, then the Controlling Player may apply the following additional Special Rules to all Auxiliary, Apex and Primary Detachments that have the same Faction Trait as the Model with this Special Rule:<br><br>\u2022 If four or more Troops Battlefield Role Slots in the Primary Detachment of this Army are filled with Tactical Squad and/or Breacher Squad Units, then all Force Organisation Slots with the Troops Battlefield Role in the Primary Detachment are considered Prime Slots.<br><br>Furthermore, if a Model with this Special Rule is part of an Army, then the following Special Rules are granted to all Models with the Infantry Type and the Iron Warriors Trait in the same Army:<br><br>\u2022 Until the end of the first Battle Turn of the Battle, all Models in this Army with the Infantry Type and the Iron Warriors Trait have the Expendable (1) Special Rule. If they already have the Expendable (X) Special Rule, increase its value by 1."},
   "Sire of the Alpha Legion": {type:"special_rule", text:"If Alpharius is in your Army, Alpha Legion Detachments make their Troops Slots Prime (with 4+ Tactical/Assault Squads) and gain Outflank-style Reserves on a 5+.", full:"If a Model with this Special Rule is part of an Army, then the Controlling Player may apply the following additional Special Rules to all Auxiliary, Apex and Primary Detachments that have the same Faction Trait as the Model with this Special Rule:<br><br>\u2022 If four or more Troops Battlefield Role Slots in the Primary Detachment of this Army are filled with Tactical Squad Units and/or Assault Squad Units, then all Force Organisation Slots with the Troops Battlefield Role in the Primary Detachment are considered Prime Slots.<br><br>Furthermore, if a Model with this Special Rule is part of an Army, then the following Special Rules are granted to all Models with the Alpha Legion Trait in the same Army:<br><br>\u2022 When the Controlling Player of a Model with this Special Rule makes a Reserve Roll for a Unit which only includes Models with the Alpha Legion Trait, on a Reserve Roll of 5+ that Unit can enter play as if it has the Outflank Special Rule."},
@@ -10470,11 +10955,9 @@ const RULES = {
   "Shred": {type:"weapon_special", text:"Attacks made with the Shred (X) Special Rule can sometimes inflict an extra point of Damage.", full:"When any Wound Test is made for an attack with the Shred (X) Special Rule, if the result of the Dice roll, before any modifiers are applied, is equal to or greater than the value of X attached to this variant of the Shred (X) Special Rule, then if a wound is inflicted by that Wound Test, the Damage Characteristic of that wound is increased by 1. Note that the Shred (X) Special Rule may only be triggered by a Wound Test and has no effect when making an Armour Penetration Test."},
   "Stun": {type:"weapon_special", text:"Weapons and other attacks that have the Stun (X) Special Rule have a chance of inflicting the Stunned Status on the Target Unit.", full:"If a Shooting Attack made for a Weapon or Model with this Special Rule inflicts one or more Hits on a Target Unit, that Target Unit must make a Cool Check in the Morale Sub-Phase of the same Player Turn. If this Check is failed then all Models in the Unit gain the Stunned Status and if the Check is passed then there is no further effect. The value of X attached to this Rule is applied as a negative modifier to the Cool Characteristic of Models in the Target Unit when making Checks caused by an Attack with this Special Rule, if the attack includes multiple Weapons with different versions of this Special Rule the modifiers do not stack - use only the greatest modifier."},
   "Suppressive": {type:"weapon_special", text:"Weapons and other attacks that have the Suppressive (X) Special Rule have a chance of inflicting the Suppressed Status on the Target Unit.", full:"If a Shooting Attack made for a Weapon or Model with this Special Rule inflicts one or more Hits on a Target Unit, that Target Unit must make a Cool Check in the Morale Sub-Phase of the same Player Turn. If this Check is failed all Models in the Unit gain the Suppressed Status, and if the Check is passed then there is no further effect. The value of X attached to this Rule is applied as a negative modifier to the Cool Characteristic of Models in the Target Unit when making Checks caused by an Attack with this Special Rule, if the attack includes multiple Weapons with different versions of this Special Rule the modifiers do not stack - use only the greatest modifier."},
-  "And They Shall Know No Fear":  {type:"special",       text:"..."},
-  "Legiones Astartes":            {type:"special",       text:"..."},
-  "Fury of the Legion":           {type:"special",       text:"When this model Shoots with a bolter, it gains the Heavy (FP) special rule for that attack."},
-  "Consul-Delegatus":             {type:"special",       text:"One per army. When filling a Command slot, this model may grant an Apex unlock instead of Auxiliary only. Counts as a High Command choice for Slay the Warlord."},
-  "Legiones Thallaxes":           {type:"special",       text:"Adds two slots to this Detachment that can only be filled with Thallax Cohort units (Taghmata army list)."},
+  "Fury of the Legion":           {type:"special_rule",  text:"When this model Shoots with a bolter, it gains the Heavy (FP) special rule for that attack."},
+  "Consul-Delegatus":             {type:"special_rule",  text:"One per army. When filling a Command slot, this model may grant an Apex unlock instead of Auxiliary only. Counts as a High Command choice for Slay the Warlord."},
+  "Legiones Thallaxes":           {type:"special_rule",  text:"Adds two slots to this Detachment that can only be filled with Thallax Cohort units (Taghmata army list)."},
   "Aegis of Pain": {type:"special_rule", text:"A Unit made up of Models with the Reductor Trait gain bonuses when they have Cybertheurgic Statuses.", full:"All Models in a Unit composed entirely of Models with this Special Rule and the Reductor Trait gain the Fear (1) Special Rule while any Models in that Unit also have one or more Cybertheurgic Statuses. If a Unit that includes any Models with this Special Rule already has any variant of the Fear (X) Special Rule, then this Special Rule has no effect and does not stack with or otherwise improve any existing variant of the Fear (X) Special Rule that any Model in the Unit has."},
   "Phased Refractor Shields": {type:"special_rule", text:"A Model with this Special Rule improves their Invulnerable Save against Shooting Attacks.", full:"When the Controlling Player of a Model with this Special Rule chooses to make an Invulnerable Save for that Model against a wound generated by a Shooting Attack, that Invulnerable Save is improved by one step. For example, a Model with a 6+ Invulnerable Save Characteristic and this Special Rule that makes an Invulnerable saving throw against a wound inflicted by a Shooting Attack would have its Invulnerable Save Characteristic improved to a 5+ for that roll."},
   "Lord of Automata":             {type:"special_rule",  text:"Adds one slot to this Detachment that may be filled with a single Castellax Battle Maniple or Castellax Destructor Maniple (Forces of the Taghmata army list)."},
@@ -10629,6 +11112,7 @@ const RULES = {
   "Battlesmith": {type:"special_rule", text:"A Model with the Battlesmith (X) Special Rule can repair Vehicles, Automata and other mechanical Units.", full:"In the Controlling Player\u2019s Movement Phase as the Active Player, when a Model with the Battlesmith (X) Special Rule has been selected, but either before or after it has been moved, the Controlling Player of that Model may activate this Special Rule. Once activated, the Controlling Player of the Model with the Battlesmith (X) Special Rule, hereafter referred to as the \u2018Acting Model\u2019, must select one friendly Model within 6\" of the Acting Model. The Model selected must have the Vehicle, Automata or Walker Type and is hereafter referred to as the \u2018Target Model\u2019. Once a Target Model has been selected, the Player controlling the Acting Model must make an Intelligence Check for the Acting Model.<br><br>If the Check is failed there is no further effect, but if the Check is passed then the Player controlling the Acting Model may select one of the following options:<br>\u2022 <b>Repair</b> \u2013 The Target Model gains a number of Wounds or Hull Points equal to the value of X in the Battlesmith (X) Special Rule variant possessed by the Acting Model. This cannot increase the Target Model\u2019s Wounds or Hull Points above its Base Value.<br>\u2022 <b>Restore</b> \u2013 A number of Statuses equal to the value of X in the Battlesmith (X) Special Rule variant possessed by the Acting Model may be removed from the Target Model.<br><br>Activating the Battlesmith (X) Special Rule does not limit the Acting Model or the Target Model when moving or attacking in the same Turn."},
   "Master of Automata": {type:"special_rule", text:"Adds one slot to this Detachment that may be filled with a single Castellax Battle Maniple or Castellax Destructor Maniple (Forces of the Taghmata army list)."},
 };
+
 
 // ── Army lists ───────────────────────────────────────────────────────────────
 // The registry of army lists. `label` is the value stored on a group/unit as its
@@ -10974,6 +11458,34 @@ function sireTroopsPrime(){
   return {iid:pri.iid, set};
 }
 
+// Sire-style STAR SLOTS: a Primarch carrying sireStarSlots upgrades the PRIMARY detachment's
+// slots of one role into "star" slots once its Troops condition is met. A star slot still takes
+// everything its own role takes, plus the extra units named in `add` — which simulates the
+// rules' optional slot exchange without a toggle, and without ever orphaning a unit already
+// placed. Applies per-slot and to the Primary Detachment only.
+// Returns {iid, set:Set<slotIndex>, cond} or null.
+//   sireStarSlots:{count, role:"Transport", add:["Land Raider Explorator"], label}
+function sireStarSlots(){
+  let cond=null;
+  for(const d of ST.dets){
+    for(const u of (d.slots||[])){ if(u && u.sireStarSlots){ cond=u.sireStarSlots; break; } }
+    if(cond) break;
+    for(const u of (d.injectedUnits||[])){ if(u && u.sireStarSlots){ cond=u.sireStarSlots; break; } }
+    if(cond) break;
+  }
+  if(!cond) return null;
+  const pri = ST.dets.find(d=>DD[d.did] && DD[d.did].cat==="primary");
+  if(!pri) return null;
+  const def=DD[pri.did];
+  let filledTroops=0;
+  def.slots.forEach((s,i)=>{ if(s.r==="Troops" && pri.slots[i]) filledTroops++; });
+  if(filledTroops < (cond.count||4)) return null;
+  const set=new Set();
+  def.slots.forEach((s,i)=>{ if(s.r===cond.role) set.add(i); });
+  if(!set.size) return null;
+  return {iid:pri.iid, set, cond};
+}
+
 function detsOfGroup(gid){ const pg=primaryGroup().gid; return ST.dets.filter(d=>(d.grp||pg)===gid); }
 // How many Auxiliary Detachments a Command slot unlocks. Officer of the Line (X) raises this
 // from the default 1. The rule may come from the unit/profile OR be granted by a Prime
@@ -11237,6 +11749,9 @@ const LEGION_SWAPS = [
   { legion:"Sons of Horus", type:"modelConditional", from:"Power Axe", to:"Carsoran Power Tabar", toId:"carsoran_power_tabar", costMode:"matchSource", costAdd:10 },
   { legion:"Emperor's Children", type:"modelConditional", requireTypes:["Command","Champion","Sergeant"],
     fromTrait:"Power", to:"Phoenix Power Spear", toId:"phoenix_power_spear", pts:10 },
+  // White Scars: any Command model may trade its power weapon for a power glaive.
+  { legion:"White Scars", type:"modelConditional", requireTypes:["Command"],
+    fromTrait:"Power", to:"Power Glaive", toId:"power_glaive", pts:10 },
   { legion:"Dark Angels", type:"modelConditional", requireTypes:["Command","Champion","Sergeant"],
     from:"Power Sword", to:"Calibanite Warblade", toId:"calibanite_warblade", pts:5 },
   { legion:"Dark Angels", type:"modelConditional", requireTypes:["Command","Champion"],
@@ -11397,6 +11912,15 @@ function unitInfantryOnly(u){
   return sets.length>0 && sets.every(ts => (ts||[]).includes("Infantry"));
 }
 
+// Generalised form of unitInfantryOnly: every model set must carry at least ONE of the listed
+// types. req:{onlyTypes:["Infantry","Cavalry"]} therefore reads "Infantry or Cavalry only".
+// req:{infantryOnly:true} is the older single-type spelling and still works.
+function unitOnlyTypes(u, types){
+  if(!types || !types.length) return true;
+  const sets = unitModelTypeSets(u);
+  return sets.length>0 && sets.every(ts => types.some(t => (ts||[]).includes(t)));
+}
+
 // Does the unit carry the Unique type anywhere (unit traits/modelTypes or any profile)?
 function unitIsUnique(u){
   const flat = [...(u.traits||[]), ...(u.modelTypes||[])];
@@ -11470,6 +11994,7 @@ function paAvailable(a, u, cfg){
   if(a.req.hasTrait){ if(!u || !(u.traits||[]).includes(a.req.hasTrait)) return false; }
   if(a.req.legion){ if(!u || !unitAdoptsLegion(u, a.req.legion)) return false; }
   if(a.req.infantryOnly){ if(!u || !unitInfantryOnly(u)) return false; }
+  if(a.req.onlyTypes){ if(!u || !unitOnlyTypes(u, a.req.onlyTypes)) return false; }
   if(a.req.hasType){ if(!u || !unitHasType(u, a.req.hasType)) return false; }
   // req.anyType:[...] — unit must have ONE of these types. If the PA also declares
   // oncePerArmyExempt.trait, models carrying that trait bypass this type restriction
@@ -11692,16 +12217,25 @@ function injectDecurions(u, wg, cfg){
   return {...wg, addons:[...(wg.addons||[]), ...adds]};
 }
 
-function defaultPerModelCfg() {
-  return {slots:{}, addons:[], pairExchange:null};
+// A pair may declare default:true, meaning the model STARTS on that combination rather than on the
+// block's individual slots. Needed where the datasheet's printed loadout IS the combined weapon and
+// the separate weapons are what you trade up to (Ebon Keshig's power glaive).
+function defaultPairId(blk){
+  const p = ((blk&&blk.pairs)||[]).find(x=>x.default);
+  return p ? p.id : null;
+}
+function defaultPerModelCfg(blk) {
+  return {slots:{}, addons:[], pairExchange:defaultPairId(blk)};
 }
 
 function defaultCfg(u){
   const size = u.minSize;
-  const chosen = u.wargear && u.wargear.perModel
-    ? Array(Math.max(0, size - 1)).fill(null).map(() => ({slots:{}, addons:[], pairExchange:null}))
+  const wg = u.wargear||{};
+  const chosen = wg.perModel
+    ? Array(Math.max(0, size - 1)).fill(null).map(() => defaultPerModelCfg(wg.perModel))
     : [];
-  return {size, pairExchange:null, slots:{}, addons:[], champion:{slots:{},addons:[],pairExchange:null}, chosen};
+  return {size, pairExchange:defaultPairId(wg), slots:{}, addons:[],
+          champion:defaultPerModelCfg(wg.champion), chosen};
 }
 
 // A "uniform" squad has no distinct leader — its champion and base models share one label.
@@ -11883,7 +12417,7 @@ function setSize(iid,i,v){
     const chosenCount = s - 1;
     const existing = cfg.chosen || [];
     if(existing.length < chosenCount){
-      cfg.chosen = [...existing, ...Array.from({length:chosenCount-existing.length},()=>defaultPerModelCfg())];
+      cfg.chosen = [...existing, ...Array.from({length:chosenCount-existing.length},()=>defaultPerModelCfg((u.wargear||{}).perModel))];
     } else if(existing.length > chosenCount){
       cfg.chosen = existing.slice(0, chosenCount);
     }
@@ -12411,6 +12945,23 @@ function slotListHost(slot, chosenId) {
       .some(it => it.id === chosenId)) || null;
 }
 
+// A slot option may describe a whole LOADOUT with chips ("Power Weapon and Bolt Pistol"). When that
+// option also offers a wargear LIST, resolveOption returns the picked list ITEM, which has no chips
+// of its own — so the companion weapons would silently vanish from the loadout. Take the HOST
+// option's chips and substitute the picked item for its generic entry (named by genericChip).
+// Returns an array of chip labels, or null when the option has no chips.
+function optionChipLabels(slot, chosen){
+  if(!chosen) return null;
+  const inline = (slot.options||[]).find(o=>o.id===chosen);
+  if(inline) return inline.chips || null;
+  const host = slotListHost(slot, chosen);
+  if(!host || !host.chips) return null;
+  const item = findListItem(chosen);
+  const picked = item ? item.label : chosen;
+  const generic = host.genericChip;
+  return host.chips.map(c => (generic && c===generic) ? picked : c);
+}
+
 // Get all weapon labels available to a unit (included + slot options + list items)
 function unitWeaponLabels(u, activeCfg) {
   const labels = new Set();
@@ -12673,7 +13224,14 @@ function slotLabel(wg, cfg, slot) {
   const chosen = (cfg.slots||{})[slot.id];
   if (!chosen) return {name: slot.label, pts:0, isDefault:true};
   const opt = (slot.options||[]).find(o=>o.id===chosen);
-  return {name: opt?opt.label:chosen, pts: opt?opt.pts:0};
+  // A multi-weapon loadout shows every weapon it grants, not just the picked list item, so the
+  // build screen matches the chips and the play-mode datasheet. For a plain list pick fall back to
+  // resolveOption, which finds the list ITEM — `opt` only covers inline options, so without this a
+  // list pick rendered its raw id.
+  const chips = optionChipLabels(slot, chosen);
+  const resolved = opt || resolveOption(slot, chosen);
+  const name = (chips && chips.length>1) ? chips.join(" & ") : ((resolved&&resolved.label)||chosen);
+  return {name, pts: opt?opt.pts:0};
 }
 
 function sharedOptionUsed(wg, cfg, optId, excludeSlotId, opt) {
@@ -13268,7 +13826,8 @@ function renderWargearModal(det, slotIdx) {
       // Option gated on an addon that is no longer active → show the slot default instead
       const chosenOpt = (chosen && slotChoiceAddonOk(slot, chosen, cfg.addons||[])) ? resolveOption(slot,chosen) : null;
       if (chosenOpt) {
-        if (chosenOpt.chips) chosenOpt.chips.forEach(w=>sChips.push({label:w,kind:'changed'}));
+        const _chips = optionChipLabels(slot, chosen);
+        if (_chips) _chips.forEach(w=>sChips.push({label:w,kind:'changed'}));
         else sChips.push({label:chosenOpt.label||chosen,kind:'changed'});
       } else if (slot.defaultChips) {
         slot.defaultChips.forEach(w=>sChips.push({label:w,kind:'default'}));
@@ -13336,7 +13895,9 @@ function renderWargearModal(det, slotIdx) {
           <span class="slot-option-pts">+${pair.pts} pts</span>
         </div>`;
       });
-      if (!locked) {
+      {
+        // While a pair replaces this slot the options are still LISTED, greyed and unclickable, so
+        // the player can see what removing the pair would buy rather than the slot looking empty.
         const allSlotOptions = [...slot.options, ...getFactionOptions(slot)];
         allSlotOptions.forEach(opt => {
           // Filter by legion, weapon availability, subtype
@@ -13356,15 +13917,15 @@ function renderWargearModal(det, slotIdx) {
           const displayPts = listIsActive
             ? (opt.freeList ? "free" : (currentListItem.ptsPerModel ? `+${currentListItem.pts} pts/model (${currentListItem.pts*modelCount} total)` : (currentListItem.pts?"+"+currentListItem.pts+" pts":"free")))
             : optPtsLabel(opt, modelCount);
-          const clickAction = isSharedUsed ? "" :
+          const clickAction = (isSharedUsed || locked) ? "" :
             isList ? `openListPicker('${esc(iid)}',${slotIdx},'${slot.id}','${opt.list}')` :
             `setSlotOption('${esc(iid)}',${slotIdx},'${slot.id}','${opt.id}')`;
           const listChevron = isList ? ` <span style="font-size:12px;color:var(--text-muted);">▶</span>` : "";
           const legionBadge = opt.req && opt.req.legion ? ` <span class="ibadge" style="font-size:10px;padding:1px 5px;">Req: ${opt.req.legion}</span>` : "";
           const optWA = optionHoverAttrs(opt, displayLabel);
-          html += `<div class="slot-option${effectiveSelected?" selected":""}${isSharedUsed?" disabled":""}"
-            onclick="${clickAction}" ${optWA}>
-            <span>${displayLabel}${legionBadge}${listChevron}${isSharedUsed?` <span class="slot-option-note">— already selected</span>`:""}</span>
+          html += `<div class="slot-option${(effectiveSelected&&!locked)?" selected":""}${(isSharedUsed||locked)?" disabled":""}"
+            ${locked?'style="opacity:.45;cursor:not-allowed;"':''} onclick="${clickAction}" ${optWA}>
+            <span>${displayLabel}${legionBadge}${locked?"":listChevron}${isSharedUsed?` <span class="slot-option-note">— already selected</span>`:""}</span>
             <span class="slot-option-pts">${displayPts}</span>
           </div>`;
         });
@@ -13525,7 +14086,8 @@ function renderWargearModal(det, slotIdx) {
           const chosenOpt = (chosen && slotChoiceAddonOk(slot, chosen, mc.addons||[])) ? resolveOption(slot,chosen) : null;
           if (replacementMap[slot.label]) { summaryChips.push({label:replacementMap[slot.label], kind:'changed'}); return; }
           if (chosenOpt) {
-            if (chosenOpt.chips) chosenOpt.chips.forEach(w=>summaryChips.push({label:w, kind:'changed'}));
+            const _chips = optionChipLabels(slot, chosen);
+            if (_chips) _chips.forEach(w=>summaryChips.push({label:w, kind:'changed'}));
             else summaryChips.push({label:chosenOpt.label||chosen, kind:'changed'});
           } else if (slot.defaultChips) {
             slot.defaultChips.forEach(w=>summaryChips.push({label:w, kind:'default'}));
@@ -13662,8 +14224,9 @@ function renderWargearModal(det, slotIdx) {
         });
       }
 
-      // Slots
-      if (!locked) {
+      // Slots — rendered even when a pair replaces them, greyed and unclickable, so the player
+      // can see what removing the pair would buy instead of the section vanishing.
+      {
         (mwg.slots||[]).forEach(slot => {
           // Slot requires another addon active on this model (e.g. Procurator-only upgrades)
           if (!isSlotActive(slot, mc.addons||[])) return;
@@ -13681,11 +14244,14 @@ function renderWargearModal(det, slotIdx) {
           const slotWA = weaponHoverAttrs(slot.label);
           // Mandatory pick not yet made → red warning, matching the pair-pick prompt.
           const needsPick = slot.required && !((mc.slots||{})[slot.id]);
-          html2 += `<div style="font-size:13px;color:${needsPick?'var(--red)':'var(--gold-dark)'};font-family:'Cinzel',serif;margin:.3rem 0 .2rem;" ${slotWA}>${needsPick?'<span style="font-weight:600;">⚠ Specify </span>':''}${slot.label}</div>`;
+          html2 += `<div style="font-size:13px;color:${(needsPick&&!locked)?'var(--red)':'var(--gold-dark)'};font-family:'Cinzel',serif;margin:.3rem 0 .2rem;" ${slotWA}>${(needsPick&&!locked)?'<span style="font-weight:600;">⚠ Specify </span>':''}${slot.label}${locked?` <span style="font-size:12px;font-style:italic;color:var(--text-muted);font-family:inherit;">— replaced by ${lockedPair?lockedPair.label:'pair exchange'}</span>`:''}</div>`;
           // Restore button
           const curChoice = (mc.slots||{})[slot.id];
-          if (curChoice) {
-            const resolvedLabel = (resolveOption(slot,curChoice)||{}).label||curChoice;
+          if (curChoice && !locked) {
+            const _curChips = optionChipLabels(slot, curChoice);
+            const resolvedLabel = (_curChips && _curChips.length>1)
+              ? _curChips.join(" & ")
+              : ((resolveOption(slot,curChoice)||{}).label||curChoice);
             const curChoiceWA = weaponHoverAttrs(resolvedLabel);
             const restoreOC = "setPerModelSlot('" + esc(iid) + "'," + slotIdx + ",'" + mkey + "','" + slot.id + "',null)";
             html2 += `<div style="display:flex;justify-content:space-between;align-items:center;background:#ede5cc;padding:3px 6px;border-radius:3px;margin-bottom:3px;">
@@ -13814,7 +14380,7 @@ function renderWargearModal(det, slotIdx) {
             const clickAct = isList ? listOC : slotOC;
             const chevron = isList ? ' ▶' : '';
             const pmOptWA = optionHoverAttrs(opt, dispLabel);
-            html2 += `<div class="slot-option${effSel?' selected':''}" onclick="${clickAct}" ${pmOptWA} style="padding:3px 8px;margin-bottom:2px;">
+            html2 += `<div class="slot-option${(effSel&&!locked)?' selected':''}${locked?' disabled':''}" onclick="${locked?'':clickAct}" ${pmOptWA} style="padding:3px 8px;margin-bottom:2px;${locked?'opacity:.45;cursor:not-allowed;':''}">
               <span>${dispLabel}${chevron}</span>
               <span class="slot-option-pts">${dispPts}</span>
             </div>`;
@@ -14082,8 +14648,13 @@ function _renderCardInner(det){
   }
   // Build full slot list including injected slots
   const injectedSlots = getInjectedSlots(det);
+  // Sire star slots: keep the slot's own role, but let it also take the named extra units.
+  const _star = sireStarSlots();
+  const _starOn = !!(_star && _star.iid===det.iid);
   const allSlotDefs = [
-    ...def.slots.map((s,i) => ({...s, _idx:i, _injected:false})),
+    ...def.slots.map((s,i) => (_starOn && _star.set.has(i)
+        ? {...s, _idx:i, _injected:false, _star:true, _starAdd:_star.cond.add, _starLabel:_star.cond.label}
+        : {...s, _idx:i, _injected:false})),
     ...injectedSlots.map((s,j) => ({...s, _idx: def.slots.length + j, _injected:true, _injIdx:j})),
   ];
   const slotCells=allSlotDefs.map((s)=>{
@@ -14091,7 +14662,7 @@ function _renderCardInner(det){
     const u = s._injected ? null : det.slots[i];
     const cfg = s._injected ? {} : (det.cfgs[i]||{});
     const adv=PA.find(a=>a.id===det.pa[i]);
-    const rn=s.r.replace(/([A-Z])/g," $1").trim();
+    const rn=s.r.replace(/([A-Z])/g," $1").trim() + (s._star?" \u2605":"");
     const isMissing=u&&u._missing;
     // Effective prime: natively prime, OR a Troops slot made prime by a Sire rule.
     const sireP = isPri && !s._injected && !!sirePrime && sirePrime.iid===det.iid && sirePrime.set.has(i);
@@ -14196,7 +14767,8 @@ function renderPool(gid){
 function _renderPoolInner(_grp){
   const allApex=["combat_retinue","officer_cadre","army_vanguard","linebreaker_echelon","hammer_of_olympia","medusan_vanguard","moritoi_convocation","exalted_conclave"];
   const allAux=["armoured_fist","tactical_support","armoured_support","heavy_support","combat_pioneer","shock_assault","first_strike","apothecarion_detachment","techmarine_covenant","daemonic_manifestation","dreadnought_talon","recon_demi_company","maelstrom_sentry_battery","storm_battery","veteran_cadre","ironfire_cohort","headhunter_leviathal","planetfall_speartip","primus_demi_company","spearhead_phalanx","revelation_host","reaping_host","hykanatoi_convocation","tharanatoi_convocation","ephoroi_convocation","kataphractoi_convocation","supremacy_cadre","primacy_wing",
-    "ironwing_gauntlet","deathwing_conclave","dreadwing_cadre","ravenwing_lance","stormwing_muster","firewing_echelon"];
+    "ironwing_gauntlet","deathwing_conclave","dreadwing_cadre","ravenwing_lance","stormwing_muster","firewing_echelon",
+    "chogorian_warband"];
   const altWarlord=["brotherhood_of_the_phoenix"];   // alternative Warlord detachments, gated by req (legion/allegiance/rite)
   // Army-list gate + allied-group restrictions, applied to EVERY detachment pool.
   // - req.list  : detachment belongs to a specific army list (e.g. Legiones Astartes only)
@@ -14381,7 +14953,11 @@ function _renderModalInner(){
     }
     return"";
   }
-  const sd=def.slots[i];const rn=sd.r.replace(/([A-Z])/g," $1").trim();
+  const sd=(()=>{ const base=def.slots[i]; if(!base) return base;
+    const st=sireStarSlots();
+    return (st && st.iid===det.iid && st.set.has(i))
+      ? {...base, _star:true, _starAdd:st.cond.add, _starLabel:st.cond.label} : base; })();
+  const rn=sd.r.replace(/([A-Z])/g," $1").trim() + (sd._star?" \u2605":"");
 
   if(mode==="prime"){
     const cur=det.pa[i]||"";const isSA=sd.r==="Command";
@@ -14413,7 +14989,7 @@ function _renderModalInner(){
       ${PA.filter(a=>(det.slots[i]||a.id==="special_assignment") && (a.id!=="special_assignment"||isSA) && (a.id!=="rewards_of_treachery"||isSA) && (a.id!=="logisticae"||isSA) && (a.id!=="iron_clad"||isSA) && (!a.slotRole || (def.slots[i]&&def.slots[i].r===a.slotRole)) && (!def.paOnly || def.paOnly.includes(a.id)) && !paOncePerDetTaken(a, det, i) && !paOncePerArmyTaken(a, det, i) && paAvailable(a, det.slots[i], det.cfgs[i])).map(a=>{
         const isLog=a.id==="logistical"||a.id==="rewards_of_treachery"||a.id==="logisticae";
         const roleSuffix=isLog&&logRole?" ("+logRole.replace(/([A-Z])/g," $1").trim()+")":"";
-        const reqBadge=a.req||a.slotRole?(()=>{const parts=[];if(a.req&&a.req.legion)parts.push(a.req.legion);if(a.req&&a.req.allegiance)parts.push(a.req.allegiance);if(a.req&&a.req.infantryOnly)parts.push("Infantry only");if(a.slotRole)parts.push(a.slotRole+" slot");return parts.length?` <span class="ibadge">Req: ${parts.join(" · ")}</span>`:"";})():"";
+        const reqBadge=a.req||a.slotRole?(()=>{const parts=[];if(a.req&&a.req.legion)parts.push(a.req.legion);if(a.req&&a.req.allegiance)parts.push(a.req.allegiance);if(a.req&&a.req.infantryOnly)parts.push("Infantry only");if(a.req&&a.req.onlyTypes)parts.push(a.req.onlyTypes.join("/")+" only");if(a.slotRole)parts.push(a.slotRole+" slot");return parts.length?` <span class="ibadge">Req: ${parts.join(" · ")}</span>`:"";})():"";
         return `<div class="po${cur===a.id?" sel":""}" onclick="setPA('${esc(iid)}',${i},'${a.id}')">
           <div class="pon">${a.label}${roleSuffix}${reqBadge}</div>
           <div class="pod">${a.desc}</div>
@@ -14428,6 +15004,11 @@ function _renderModalInner(){
     // Special Assignment: a Command slot carrying this prime may also be filled by a High Command unit.
     if(sd.r==="Command" && det.pa[i]==="special_assignment") us=[...us, ...(SU.HighCommand||[])];
     if(def.restr&&def.restr[sd.r])us=us.filter(u=>def.restr[sd.r].includes(u.name));
+    // Sire star slot: also offer the named extra units, wherever they live in SU.
+    if(sd._starAdd){
+      const extra=[]; for(const rk in SU) for(const cu of SU[rk]) if(sd._starAdd.includes(cu.name)) extra.push(cu);
+      extra.forEach(cu=>{ if(!us.some(x=>x.id===cu.id)) us.push(cu); });
+    }
     // Keyword-restricted detachment (e.g. Linebreaker Echelon): the chosen word
     // filters which units these roles may take, by unit-name substring.
     const kwActive = def.keyword_roles && def.keyword_roles.includes(sd.r);
@@ -14445,7 +15026,8 @@ function _renderModalInner(){
     const slotList = def.slotList || null;   // detachment whose slots use another army list
     us=us.filter(u=>!u.injectedOnly && !unitAlliedBlocked(u) && (slotList ? unitListOk(u, slotList) : (unitListOk(u) && unitLegionOk(u))));
     us=us.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-    const rn2=def.restr&&def.restr[sd.r]?`<div class="wt">⚠ Restricted to: ${def.restr[sd.r].join(", ")}</div>`:"";
+    const rn2=def.restr&&def.restr[sd.r]?`<div class="wt">⚠ Restricted to: ${def.restr[sd.r].join(", ")}</div>`
+      :(sd._star?`<div class="wt">\u2605 ${sd._starLabel||"Star slot"}: may also take ${sd._starAdd.join(" or ")}</div>`:"");
     const legionNote = (us.length===0 && beforeLegion>0)
       ? `<div class="wt">No ${ST.legion} units available for this slot — try changing the Legion in the header.</div>` : "";
     const emptyNote = (us.length===0)
@@ -14920,6 +15502,20 @@ const LEGION_RITES = {
       text: "<b>Trigger:</b> During the Shooting step, after the opponent has declared one of your Alpha Legion units as a target of Shooting.<br><b>Cost:</b> 1 Reaction Point.<br><b>Target:</b> The Shooting enemy unit.<br><b>Effect:</b> Until the target unit's Shooting is resolved, attacks with the Precision (X) special rule only trigger on a natural 6."
     },
   },
+  "White Scars": {
+    tactica: {
+      name: "Swift of Action",
+      text: "The White Scars Player may increase their Model\u2019s Movement Characteristic.<br><br>At the start of any of the Controlling Player\u2019s Turns that Player may choose to increase the Movement Characteristic of any non-Vehicle White Scars Model with a Base Movement Characteristic of at least 1 and apply a modifier of +2 to that Characteristic until the end of that Player Turn."
+    },
+    gambit: {
+      name: "The Path of the Warrior",
+      text: "The Controlling Player may take a chance to gain a bonus to the Focus Roll.<br><br>When this Gambit is selected, before making the Focus Roll, the Controlling Player must declare a choice to ‘Strike Low’ (predicting the result of the next Focus Roll, before any modifiers are applied, is 1-3) or to ‘Strike High’ (predicting the result of the next Focus Roll, before any modifiers are applied, is 4-6). If the result of the Focus Roll corresponds with their choice, they may ignore all negative modifiers and only apply positive modifiers to their Focus Roll."
+    },
+    reaction: {
+      name: "Chasing the Wind",
+      text: "This Advanced Reaction allows the Controlling Player to make an additional Move with the Reacting Unit.<br><br><b>Trigger:</b> The Reactive Player may declare a Chasing the Wind Advanced Reaction in Step 2 of the Move Sub-Phase process, if an enemy Unit ends a move within 12\" and in Line of Sight of a Unit that only includes Models with the White Scars Trait under the Reactive Player’s Control.<br><b>Cost:</b> The Reactive Player must spend 1 point of their Reaction Allotment to declare a Chasing the Wind Advanced Reaction, this cost paid as soon as the declaration is made.<br><b>Target:</b> The Target Unit is always the Unit whose Move triggered the Advanced Reaction. Once the cost has been paid, the Reactive Player must select one Unit that only includes Models with the White Scars Trait under their control that is within 12\" and has Line of Sight to the Target Unit, that Unit is the Reacting Unit.<br><b>Process</b><br>1. Once the Target Unit has finished its Move, the Reactive Player may make a Move with the Reacting Unit, following the normal Rules for Movement, including applying any modifiers due to Difficult Terrain and making Tests required due to Dangerous Terrain but the Reacting Unit may not Rush.<br>2. Once the Reacting Unit has completed this move, the Active Player must then proceed with the remainder of their Movement Phase."
+    },
+  },
 };
 
 function toggleRite(gid){ ST.riteOpen = ST.riteOpen || {}; ST.riteOpen[gid] = !ST.riteOpen[gid]; render(); }
@@ -15014,10 +15610,11 @@ function _modelGearLabels(blk, mc){
       if(chosen && slotChoiceAddonOk(slot, chosen, mc.addons||[])){ const opt=resolveOption(slot,chosen); if(opt){
         // A pure rule-granting option (e.g. the Inner Circle's Order) is not wargear —
         // it shows in Special Rules, not the equipment list.
-        const isRuleOnly = opt.grants && opt.grants.specialRules && !opt.chips
+        const _chips = optionChipLabels(slot, chosen);
+        const isRuleOnly = opt.grants && opt.grants.specialRules && !_chips
           && !weaponKeyFromLabel(opt.label) && !(typeof EQUIPMENT!=='undefined' && EQUIPMENT[opt.label]);
         if(isRuleOnly) { /* granted rule only */ }
-        else if(opt.chips) opt.chips.forEach(add);
+        else if(_chips) _chips.forEach(add);
         else add(opt.label||chosen); } }
       else { if(slot.defaultChips) slot.defaultChips.forEach(add); else { const dl=stripHint(slot.label); if(weaponKeyFromLabel(dl) || (typeof EQUIPMENT!=="undefined" && EQUIPMENT[dl])) add(dl); } }
     });
